@@ -1,36 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-
-// Catégories proposées dans la liste déroulante. Les deux premières ("hero"
-// et "histoire") sont des emplacements spéciaux lus directement par le site
-// (diaporama d'accueil, section Notre histoire). Les suivantes servent
-// uniquement à organiser la page Galerie — elles n'ont pas d'effet spécial.
-const CATEGORY_GROUPS = [
-  {
-    label: "Emplacements spéciaux du site",
-    options: [
-      { value: "hero", label: "Diaporama d'accueil (fond du haut de page)" },
-      { value: "histoire", label: "Section « Notre histoire »" },
-    ],
-  },
-  {
-    label: "Catégories de la galerie",
-    options: [
-      { value: "equipe", label: "Équipe" },
-      { value: "bassins", label: "Bassins" },
-      { value: "silures", label: "Silures" },
-      { value: "recolte", label: "Récolte" },
-      { value: "alimentation", label: "Alimentation" },
-      { value: "livraison", label: "Livraison / commandes" },
-      { value: "ferme", label: "La ferme en général" },
-      { value: "autre", label: "Autre" },
-    ],
-  },
-];
-
-const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
-  CATEGORY_GROUPS.flatMap((g) => g.options.map((o) => [o.value, o.label]))
-);
+import { CATEGORY_GROUPS, CATEGORY_LABELS } from "@/lib/mediaCategories";
 
 export default function MediaManager() {
   const [items, setItems] = useState<any[]>([]);
