@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { formatFCFA } from "@/lib/whatsapp";
 import { getContent } from "@/lib/content";
 import HeroSlideshow from "@/components/HeroSlideshow";
+import ProductCarousel from "@/components/ProductCarousel";
 
 export const revalidate = 60; // re-lit les données produit/contenu toutes les 60s
 
@@ -72,6 +73,47 @@ async function getHeroImages() {
   }
 }
 
+// Photo pour la section "Notre histoire", taguée catégorie "histoire" depuis
+// /admin/galerie. Retourne null tant qu'aucune n'est publiée — la section
+// garde alors son dégradé de couleur.
+async function getHistoireImage() {
+  try {
+    const { data } = await supabaseAdmin()
+      .from("media")
+      .select("url")
+      .eq("published", true)
+      .eq("kind", "photo")
+      .eq("category", "histoire")
+      .order("position")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    return data?.url ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Photos pour la section "Notre production", taguées catégorie "production"
+// depuis /admin/galerie. Tableau vide tant qu'aucune n'est publiée — la
+// section garde alors son dégradé de couleur.
+async function getProductionImages() {
+  try {
+    const { data } = await supabaseAdmin()
+      .from("media")
+      .select("url")
+      .eq("published", true)
+      .eq("kind", "photo")
+      .eq("category", "production")
+      .order("position")
+      .order("created_at", { ascending: false })
+      .limit(8);
+    return (data || []).map((d: any) => d.url as string);
+  } catch {
+    return [];
+  }
+}
+
 const STATUS_LABEL: Record<string, string> = {
   disponible: "Disponible",
   stock_limite: "Stock limité",
@@ -79,12 +121,14 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default async function HomePage() {
-  const [product, heroLead, histoireTexte, reviews, heroImages] = await Promise.all([
+  const [product, heroLead, histoireTexte, reviews, heroImages, histoireImage, productionImages] = await Promise.all([
     getProduct(),
     getContent("hero_lead"),
     getContent("histoire_texte"),
     getReviews(),
     getHeroImages(),
+    getHistoireImage(),
+    getProductionImages(),
   ]);
   const histoireParagraphs = histoireTexte.split(/\n\s*\n/).filter(Boolean);
 
@@ -144,7 +188,11 @@ export default async function HomePage() {
           <span className="mb-2.5 inline-block text-[13px] font-bold text-gold">Notre production</span>
           <h2 className="font-serif text-[clamp(28px,4.5vw,42px)] font-semibold">Du bassin à votre table.</h2>
           <div className="mt-11 grid gap-8 rounded-l border border-paper/10 bg-waterDeep p-9 md:grid-cols-2 md:items-center md:p-11">
-            <div className="aspect-[4/3] rounded-m bg-gradient-to-br from-[#2A5E56] to-[#0E2622]" />
+            {productionImages.length > 0 ? (
+              <ProductCarousel images={productionImages} />
+            ) : (
+              <div className="aspect-[4/3] rounded-m bg-gradient-to-br from-[#2A5E56] to-[#0E2622]" />
+            )}
             <div>
               <h3 className="font-serif text-[26px] font-semibold">{product.name}</h3>
               <div className="mt-3 flex items-center gap-2 text-[14px] font-bold text-ok">
@@ -173,7 +221,10 @@ export default async function HomePage() {
       {/* HISTOIRE */}
       <section id="histoire" className="px-5 py-[72px]">
         <div className="mx-auto grid max-w-[1180px] gap-10 md:grid-cols-2 md:items-start">
-          <div className="aspect-[5/4] rounded-l bg-gradient-to-br from-gold via-[#E7B368] to-bgAlt" />
+          <div
+            className="aspect-[5/4] rounded-l bg-gradient-to-br from-gold via-[#E7B368] to-bgAlt bg-cover bg-center"
+            style={histoireImage ? { backgroundImage: `url(${histoireImage})` } : undefined}
+          />
           <div>
             <span className="mb-2.5 inline-block text-[13px] font-bold text-goldDeep">Notre histoire</span>
             <h2 className="font-serif text-[clamp(26px,4vw,36px)] font-semibold">
