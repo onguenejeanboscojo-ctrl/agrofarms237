@@ -1,6 +1,37 @@
 "use client";
 import { useEffect, useState } from "react";
 
+// Catégories proposées dans la liste déroulante. Les deux premières ("hero"
+// et "histoire") sont des emplacements spéciaux lus directement par le site
+// (diaporama d'accueil, section Notre histoire). Les suivantes servent
+// uniquement à organiser la page Galerie — elles n'ont pas d'effet spécial.
+const CATEGORY_GROUPS = [
+  {
+    label: "Emplacements spéciaux du site",
+    options: [
+      { value: "hero", label: "Diaporama d'accueil (fond du haut de page)" },
+      { value: "histoire", label: "Section « Notre histoire »" },
+    ],
+  },
+  {
+    label: "Catégories de la galerie",
+    options: [
+      { value: "equipe", label: "Équipe" },
+      { value: "bassins", label: "Bassins" },
+      { value: "silures", label: "Silures" },
+      { value: "recolte", label: "Récolte" },
+      { value: "alimentation", label: "Alimentation" },
+      { value: "livraison", label: "Livraison / commandes" },
+      { value: "ferme", label: "La ferme en général" },
+      { value: "autre", label: "Autre" },
+    ],
+  },
+];
+
+const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
+  CATEGORY_GROUPS.flatMap((g) => g.options.map((o) => [o.value, o.label]))
+);
+
 export default function MediaManager() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,8 +95,17 @@ export default function MediaManager() {
             </select>
           </div>
           <div className="field">
-            <label>Catégorie (optionnel)</label>
-            <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Ex : bassins, récolte" />
+            <label>Cette photo ira dans...</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)}>
+              <option value="">Choisir une catégorie</option>
+              {CATEGORY_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </div>
           <div className="field sm:col-span-2">
             <label>Légende (optionnel)</label>
@@ -94,7 +134,12 @@ export default function MediaManager() {
                 ) : (
                   <video src={it.url} className="aspect-square w-full rounded-s object-cover" muted />
                 )}
-                <div className="mt-2 flex items-center justify-between">
+                {it.category && (
+                  <p className="mt-1.5 text-[11.5px] font-semibold text-goldDeep">
+                    {CATEGORY_LABELS[it.category] || it.category}
+                  </p>
+                )}
+                <div className="mt-1.5 flex items-center justify-between">
                   <label className="flex items-center gap-1.5 text-[12.5px]">
                     <input type="checkbox" checked={it.published} onChange={(e) => toggle(it.id, e.target.checked)} />
                     Publié
