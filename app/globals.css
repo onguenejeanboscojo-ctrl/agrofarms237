@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html { scroll-behavior: smooth; }
+body { background: #F5F0E3; color: #14302B; }
+
+.btn {
+  @apply inline-flex items-center gap-2 rounded-s px-6 py-3.5 font-bold text-[15px] transition;
+}
+.btn-gold { @apply bg-gold text-waterDeep hover:bg-goldDeep; }
+.btn-ink { @apply bg-ink text-paper hover:bg-waterDeep; }
+.btn-outline { @apply border border-paper/40 text-paper hover:border-paper; }
+.btn-line { @apply border border-ink/15 text-ink hover:border-ink; }
+.btn-wa { @apply bg-[#1F7A5C] text-white hover:bg-[#175E46]; }
+
+.field label { @apply block text-[13.5px] font-bold text-inkSoft mb-1.5; }
+.field input, .field select, .field textarea {
+  @apply w-full rounded-s border border-ink/15 bg-bg px-3.5 py-3 text-[15.5px] text-ink outline-none focus:border-water focus:ring-2 focus:ring-water/30;
+}
+
+.status-dot { @apply inline-block h-2 w-2 rounded-full; }
+.status-disponible { @apply bg-ok; }
+.status-stock_limite { @apply bg-warn; }
+.status-indisponible { @apply bg-alert; }

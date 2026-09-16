@@ -1,0 +1,18 @@
+import { redirect } from "next/navigation";
+import { isAdminAuthed } from "@/lib/adminAuth";
+import AdminNav from "@/components/AdminNav";
+import PartnersTable from "@/components/PartnersTable";
+
+export default function AdminPartenairesPage() {
+  if (!isAdminAuthed()) redirect("/admin/login");
+  return (
+    <>
+      <AdminNav />
+      <div className="mx-auto max-w-[1180px] px-5 py-9">
+        <h1 className="mb-1 font-serif text-2xl font-semibold">Demandes partenaires</h1>
+        <p className="mb-6 text-[14.5px] text-inkSoft">Investisseurs, distributeurs, fournisseurs et acheteurs professionnels.</p>
+        <PartnersTable />
+      </div>
+    </>
+  );
+}
