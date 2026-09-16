@@ -39,12 +39,26 @@ async function getReviews() {
   }
 }
 
-// Photos publiées dans la galerie, utilisées en fond du hero. Vide tant
-// qu'aucune photo n'a été ajoutée depuis /admin/galerie — le hero garde
-// alors son fond de couleur uni.
+// Photos publiées dans la galerie, utilisées en fond du hero. Priorité aux
+// photos marquées catégorie "hero" (ajoutées depuis /admin/galerie) ; à
+// défaut, utilise les photos générales publiées. Vide tant qu'aucune photo
+// n'a été ajoutée — le hero garde alors son fond de couleur uni.
 async function getHeroImages() {
   try {
-    const { data } = await supabaseAdmin()
+    const sb = supabaseAdmin();
+    const { data: heroTagged } = await sb
+      .from("media")
+      .select("url")
+      .eq("published", true)
+      .eq("kind", "photo")
+      .eq("category", "hero")
+      .order("position")
+      .order("created_at", { ascending: false })
+      .limit(6);
+    if (heroTagged && heroTagged.length > 0) {
+      return heroTagged.map((d: any) => d.url as string);
+    }
+    const { data: general } = await sb
       .from("media")
       .select("url")
       .eq("published", true)
@@ -52,7 +66,7 @@ async function getHeroImages() {
       .order("position")
       .order("created_at", { ascending: false })
       .limit(6);
-    return (data || []).map((d: any) => d.url as string);
+    return (general || []).map((d: any) => d.url as string);
   } catch {
     return [];
   }
