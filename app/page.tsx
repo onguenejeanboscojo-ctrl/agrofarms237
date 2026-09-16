@@ -2,6 +2,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { formatFCFA } from "@/lib/whatsapp";
 import { getContent } from "@/lib/content";
+import HeroSlideshow from "@/components/HeroSlideshow";
 
 export const revalidate = 60; // re-lit les données produit/contenu toutes les 60s
 
@@ -38,6 +39,25 @@ async function getReviews() {
   }
 }
 
+// Photos publiées dans la galerie, utilisées en fond du hero. Vide tant
+// qu'aucune photo n'a été ajoutée depuis /admin/galerie — le hero garde
+// alors son fond de couleur uni.
+async function getHeroImages() {
+  try {
+    const { data } = await supabaseAdmin()
+      .from("media")
+      .select("url")
+      .eq("published", true)
+      .eq("kind", "photo")
+      .order("position")
+      .order("created_at", { ascending: false })
+      .limit(6);
+    return (data || []).map((d: any) => d.url as string);
+  } catch {
+    return [];
+  }
+}
+
 const STATUS_LABEL: Record<string, string> = {
   disponible: "Disponible",
   stock_limite: "Stock limité",
@@ -45,18 +65,27 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default async function HomePage() {
-  const [product, heroLead, histoireTexte, reviews] = await Promise.all([
+  const [product, heroLead, histoireTexte, reviews, heroImages] = await Promise.all([
     getProduct(),
     getContent("hero_lead"),
     getContent("histoire_texte"),
     getReviews(),
+    getHeroImages(),
   ]);
   const histoireParagraphs = histoireTexte.split(/\n\s*\n/).filter(Boolean);
 
   return (
     <>
       {/* HERO */}
-      <section className="relative overflow-hidden bg-[radial-gradient(120%_140%_at_15%_0%,#1D4B44_0%,#0E2622_60%,#081815_100%)] px-5 py-[150px] pb-24 text-paper">
+      <section className="relative overflow-hidden px-5 py-[150px] pb-24 text-paper">
+        {heroImages.length > 0 ? (
+          <>
+            <HeroSlideshow images={heroImages} />
+            <div className="absolute inset-0 z-[1] bg-gradient-to-b from-black/55 via-[#0E2622]/55 to-[#081815]/80" />
+          </>
+        ) : (
+          <div className="absolute inset-0 z-0 bg-[radial-gradient(120%_140%_at_15%_0%,#1D4B44_0%,#0E2622_60%,#081815_100%)]" />
+        )}
         <div className="relative z-10 mx-auto max-w-[1180px]">
           <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-paper/20 bg-paper/10 px-3.5 py-1.5 text-[13.5px] font-semibold">
             <span className={`status-dot status-${product.stock_status}`} />
