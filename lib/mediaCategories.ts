@@ -99,6 +99,29 @@ export const PRODUCT_CATEGORIES = [
 ];
 
 // ============================================================
+// CATÉGORIES — ESPACE ÉDUCATION
+// ============================================================
+
+export const EDUCATION_CATEGORIES = [
+  {
+    value: "education_pisciculture",
+    label: "Éducation — Pisciculture",
+  },
+  {
+    value: "education_porcs",
+    label: "Éducation — Élevage porcin",
+  },
+  {
+    value: "education_aviculture",
+    label: "Éducation — Aviculture",
+  },
+  {
+    value: "education_agriculture",
+    label: "Éducation — Agriculture",
+  },
+];
+
+// ============================================================
 // GROUPES POUR L'ADMIN
 // ============================================================
 
@@ -114,6 +137,10 @@ export const CATEGORY_GROUPS = [
   {
     label: "Nos produits",
     options: PRODUCT_CATEGORIES,
+  },
+  {
+    label: "Espace Éducation",
+    options: EDUCATION_CATEGORIES,
   },
   {
     label: "Catégories de la galerie",
