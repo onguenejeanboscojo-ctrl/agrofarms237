@@ -5,7 +5,7 @@ import { useState } from "react";
 
 const LINKS = [
   { href: "/", label: "Accueil" },
-  { href: "/histoire", label: "À propos" },
+  { href: "/la-vie-de-la-ferme", label: "À propos" },
   { href: "/produits", label: "Produits" },
   { href: "/notre-elevage", label: "Notre élevage" },
   { href: "/galerie", label: "Galerie" },
@@ -21,7 +21,7 @@ export default function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-[100] border-b border-ink/10 bg-bg/90 backdrop-blur-md">
       <div className="mx-auto flex min-h-[68px] max-w-[1280px] items-center justify-between px-5">
-        
+
         {/* LOGO */}
         <Link
           href="/"
@@ -30,7 +30,7 @@ export default function Header() {
           Agrofarms<span className="text-goldDeep">237</span>
         </Link>
 
-        {/* NAVIGATION DESKTOP */}
+        {/* MENU DESKTOP */}
         <nav className="hidden items-center md:flex">
           {LINKS.map((link) => (
             <Link
@@ -42,6 +42,7 @@ export default function Header() {
             </Link>
           ))}
 
+          {/* BOUTON COMMANDER */}
           <Link
             href="/commander"
             className="btn btn-gold ml-6 shrink-0 whitespace-nowrap"
@@ -82,6 +83,7 @@ export default function Header() {
       {open && (
         <div className="border-t border-ink/10 bg-paper px-5 pb-6 md:hidden">
           <nav className="flex flex-col">
+
             {LINKS.map((link) => (
               <Link
                 key={link.href}
@@ -100,6 +102,7 @@ export default function Header() {
             >
               Commander
             </Link>
+
           </nav>
         </div>
       )}
