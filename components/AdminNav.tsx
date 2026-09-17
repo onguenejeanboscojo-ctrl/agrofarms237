@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/admin/actus", label: "Actualités" },
   { href: "/admin/contenu", label: "Textes du site" },
   { href: "/admin/galerie", label: "Galerie" },
+  { href: "/admin/galerie-textes", label: "Textes galerie" },
   { href: "/admin/equipe", label: "Équipe" },
   { href: "/admin/avis", label: "Avis" },
 ];
