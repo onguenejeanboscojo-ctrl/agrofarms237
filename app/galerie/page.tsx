@@ -17,9 +17,22 @@ async function getMedia() {
   }
 }
 
+async function getCategoryDescriptions() {
+  try {
+    const { data } = await supabaseAdmin().from("gallery_categories").select("*");
+    const map: Record<string, string> = {};
+    (data || []).forEach((row: any) => {
+      map[row.category] = row.description || "";
+    });
+    return map;
+  } catch {
+    return {};
+  }
+}
+
 function MediaGrid({ items }: { items: any[] }) {
   return (
-    <div className="mt-5 grid grid-cols-2 gap-3.5 sm:grid-cols-3">
+    <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3">
       {items.map((it: any) => (
         <figure key={it.id} className="overflow-hidden rounded-m border border-ink/10 bg-bgAlt">
           {it.kind === "photo" ? (
@@ -34,15 +47,41 @@ function MediaGrid({ items }: { items: any[] }) {
   );
 }
 
+function CategoryWindow({
+  label,
+  description,
+  items,
+  reverse,
+}: {
+  label: string;
+  description: string;
+  items: any[];
+  reverse?: boolean;
+}) {
+  return (
+    <div
+      className={`flex flex-col gap-7 rounded-m border border-ink/10 bg-paper p-6 sm:p-8 lg:flex-row lg:items-center ${
+        reverse ? "lg:flex-row-reverse" : ""
+      }`}
+    >
+      <div className="lg:w-[36%] lg:shrink-0">
+        <h2 className="font-serif text-[24px] font-semibold">{label}</h2>
+        {description.trim() && <p className="mt-3 text-inkSoft">{description}</p>}
+      </div>
+      <div className="lg:flex-1">
+        <MediaGrid items={items} />
+      </div>
+    </div>
+  );
+}
+
 export default async function GaleriePage() {
-  const items = await getMedia();
+  const [items, descriptions] = await Promise.all([getMedia(), getCategoryDescriptions()]);
 
   // On ne garde ici que les photos/vidéos de la galerie classique — les
   // catégories "hero" et "histoire" ont déjà leur propre emplacement
   // ailleurs sur le site et n'apparaissent pas en double ici.
-  const galleryItems = items.filter((it: any) =>
-    GALLERY_CATEGORIES.some((c) => c.value === it.category)
-  );
+  const galleryItems = items.filter((it: any) => GALLERY_CATEGORIES.some((c) => c.value === it.category));
   const uncategorized = items.filter((it: any) => !it.category);
 
   const hasAny = galleryItems.length > 0 || uncategorized.length > 0;
@@ -60,28 +99,36 @@ export default async function GaleriePage() {
         {!hasAny ? (
           <div className="mt-11 grid grid-cols-2 gap-3.5 sm:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex aspect-square items-center justify-center rounded-m border border-ink/10 bg-bgAlt p-4 text-center">
+              <div
+                key={i}
+                className="flex aspect-square items-center justify-center rounded-m border border-ink/10 bg-bgAlt p-4 text-center"
+              >
                 <span className="text-[12.5px] font-bold text-inkSoft">Photo à venir</span>
               </div>
             ))}
           </div>
         ) : (
-          <div className="mt-11 flex flex-col gap-14">
-            {GALLERY_CATEGORIES.map((cat) => {
+          <div className="mt-11 flex flex-col gap-8">
+            {GALLERY_CATEGORIES.map((cat, i) => {
               const catItems = galleryItems.filter((it: any) => it.category === cat.value);
               if (catItems.length === 0) return null;
               return (
-                <div key={cat.value}>
-                  <h2 className="font-serif text-[22px] font-semibold">{cat.label}</h2>
-                  <MediaGrid items={catItems} />
-                </div>
+                <CategoryWindow
+                  key={cat.value}
+                  label={cat.label}
+                  description={descriptions[cat.value] || ""}
+                  items={catItems}
+                  reverse={i % 2 === 1}
+                />
               );
             })}
 
             {uncategorized.length > 0 && (
-              <div>
-                <h2 className="font-serif text-[22px] font-semibold">Autres photos</h2>
-                <MediaGrid items={uncategorized} />
+              <div className="rounded-m border border-ink/10 bg-paper p-6 sm:p-8">
+                <h2 className="font-serif text-[24px] font-semibold">Autres photos</h2>
+                <div className="mt-5">
+                  <MediaGrid items={uncategorized} />
+                </div>
               </div>
             )}
           </div>
