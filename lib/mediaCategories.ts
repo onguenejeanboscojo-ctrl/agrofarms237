@@ -1,18 +1,30 @@
-// Liste centrale des catégories de médias, utilisée à la fois par l'admin
-// (formulaire d'ajout de photo) et par la page Galerie publique (pour créer
-// une section par catégorie). Modifier cette liste met à jour les deux
-// endroits automatiquement.
+// Liste centrale des catégories de médias.
+// Ces catégories sont utilisées par l'administration pour classer les
+// photos/vidéos et par les différentes pages publiques du site.
 
-// Emplacements spéciaux : lus directement par des sections précises du site
-// (diaporama d'accueil, section "Notre histoire") plutôt que par la Galerie.
+// ============================================================
+// EMPLACEMENTS SPÉCIAUX
+// ============================================================
+
 export const SPECIAL_CATEGORIES = [
-  { value: "hero", label: "Diaporama d'accueil (fond du haut de page)" },
-  { value: "histoire", label: "Section « Notre histoire »" },
-  { value: "production", label: "Section « Notre production » (carrousel)" },
+  {
+    value: "hero",
+    label: "Diaporama d'accueil (fond du haut de page)",
+  },
+  {
+    value: "histoire",
+    label: "Section « Notre histoire »",
+  },
+  {
+    value: "production",
+    label: "Section « Notre production » (carrousel)",
+  },
 ];
 
-// Catégories de la galerie : chacune devient une section dédiée sur la page
-// Galerie publique, affichée uniquement si elle contient au moins une photo.
+// ============================================================
+// CATÉGORIES DE LA GALERIE
+// ============================================================
+
 export const GALLERY_CATEGORIES = [
   { value: "equipe", label: "Équipe" },
   { value: "bassins", label: "Bassins" },
@@ -24,11 +36,58 @@ export const GALLERY_CATEGORIES = [
   { value: "autre", label: "Autre" },
 ];
 
-export const CATEGORY_GROUPS = [
-  { label: "Emplacements spéciaux du site", options: SPECIAL_CATEGORIES },
-  { label: "Catégories de la galerie", options: GALLERY_CATEGORIES },
+// ============================================================
+// CATÉGORIES — NOTRE ÉLEVAGE
+// ============================================================
+
+export const ELEVAGE_CATEGORIES = [
+  {
+    value: "elevage_silure",
+    label: "Élevage — Silure",
+  },
+  {
+    value: "elevage_carpe",
+    label: "Élevage — Carpe",
+  },
+  {
+    value: "elevage_porcs",
+    label: "Élevage — Porcs",
+  },
+  {
+    value: "elevage_pondeuses",
+    label: "Élevage — Poules pondeuses",
+  },
+  {
+    value: "elevage_chair",
+    label: "Élevage — Poulets de chair",
+  },
 ];
 
+// ============================================================
+// GROUPES UTILISÉS PAR L'ADMIN
+// ============================================================
+
+export const CATEGORY_GROUPS = [
+  {
+    label: "Emplacements spéciaux du site",
+    options: SPECIAL_CATEGORIES,
+  },
+  {
+    label: "Notre élevage",
+    options: ELEVAGE_CATEGORIES,
+  },
+  {
+    label: "Catégories de la galerie",
+    options: GALLERY_CATEGORIES,
+  },
+];
+
+// ============================================================
+// LIBELLÉS DES CATÉGORIES
+// ============================================================
+
 export const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
-  CATEGORY_GROUPS.flatMap((g) => g.options.map((o) => [o.value, o.label]))
+  CATEGORY_GROUPS.flatMap((group) =>
+    group.options.map((option) => [option.value, option.label])
+  )
 );
