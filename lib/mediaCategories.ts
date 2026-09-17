@@ -1,9 +1,9 @@
-// Liste centrale des catégories de médias.
-// Ces catégories sont utilisées par l'administration pour classer les
-// photos/vidéos et par les différentes pages publiques du site.
+// ============================================================
+// CATÉGORIES MÉDIAS AGROFARMS237
+// ============================================================
 
 // ============================================================
-// EMPLACEMENTS SPÉCIAUX
+// EMPLACEMENTS SPÉCIAUX DU SITE
 // ============================================================
 
 export const SPECIAL_CATEGORIES = [
@@ -22,7 +22,7 @@ export const SPECIAL_CATEGORIES = [
 ];
 
 // ============================================================
-// CATÉGORIES DE LA GALERIE
+// CATÉGORIES — GALERIE
 // ============================================================
 
 export const GALLERY_CATEGORIES = [
@@ -64,7 +64,42 @@ export const ELEVAGE_CATEGORIES = [
 ];
 
 // ============================================================
-// GROUPES UTILISÉS PAR L'ADMIN
+// CATÉGORIES — NOS PRODUITS
+// ============================================================
+
+export const PRODUCT_CATEGORIES = [
+  {
+    value: "produit_poisson_fume",
+    label: "Produit — Poisson fumé",
+  },
+  {
+    value: "produit_porc_fume",
+    label: "Produit — Porc fumé",
+  },
+  {
+    value: "produit_poulet_fume",
+    label: "Produit — Poulet fumé",
+  },
+  {
+    value: "produit_poulet_frais",
+    label: "Produit — Poulet frais nettoyé",
+  },
+  {
+    value: "produit_porcelet",
+    label: "Produit — Porcelet",
+  },
+  {
+    value: "produit_poussins",
+    label: "Produit — Poussins",
+  },
+  {
+    value: "produit_alevins",
+    label: "Produit — Alevins",
+  },
+];
+
+// ============================================================
+// GROUPES POUR L'ADMIN
 // ============================================================
 
 export const CATEGORY_GROUPS = [
@@ -77,17 +112,25 @@ export const CATEGORY_GROUPS = [
     options: ELEVAGE_CATEGORIES,
   },
   {
+    label: "Nos produits",
+    options: PRODUCT_CATEGORIES,
+  },
+  {
     label: "Catégories de la galerie",
     options: GALLERY_CATEGORIES,
   },
 ];
 
 // ============================================================
-// LIBELLÉS DES CATÉGORIES
+// LIBELLÉS
 // ============================================================
 
-export const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
-  CATEGORY_GROUPS.flatMap((group) =>
-    group.options.map((option) => [option.value, option.label])
-  )
-);
+export const CATEGORY_LABELS: Record<string, string> =
+  Object.fromEntries(
+    CATEGORY_GROUPS.flatMap((group) =>
+      group.options.map((option) => [
+        option.value,
+        option.label,
+      ])
+    )
+  );
