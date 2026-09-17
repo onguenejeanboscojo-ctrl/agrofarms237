@@ -113,6 +113,7 @@ function MediaBlock({ images }: { images: string[] }) {
         <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-gold">
           Agrofarms237
         </span>
+
         <p className="mt-2 font-serif text-[22px] font-semibold text-paper">
           Photos à venir
         </p>
@@ -129,34 +130,162 @@ export default async function NotreElevagePage() {
       .filter((item) => item.category === category)
       .map((item) => item.url);
 
-  const poissons = ELEVAGE.filter((item) => item.group === "Poissons");
-  const porcs = ELEVAGE.filter((item) => item.group === "Élevage porcin");
-  const poulets = ELEVAGE.filter((item) => item.group === "Aviculture");
+  /*
+   * Photos utilisées pour le diaporama du grand bandeau.
+   *
+   * On récupère les images de la ferme et de l'élevage.
+   * Les catégories seront alimentées directement depuis l'administration.
+   */
+  const heroCategories = [
+    "ferme",
+    "bassins",
+    "silures",
+    "elevage_silure",
+    "elevage_carpe",
+    "elevage_porcs",
+    "elevage_pondeuses",
+    "elevage_chair",
+  ];
+
+  const heroImages = media
+    .filter(
+      (item) =>
+        item.category &&
+        heroCategories.includes(item.category)
+    )
+    .map((item) => item.url)
+    .filter(Boolean)
+    .slice(0, 6);
+
+  const poissons = ELEVAGE.filter(
+    (item) => item.group === "Poissons"
+  );
+
+  const porcs = ELEVAGE.filter(
+    (item) => item.group === "Élevage porcin"
+  );
+
+  const poulets = ELEVAGE.filter(
+    (item) => item.group === "Aviculture"
+  );
 
   return (
     <main>
-      {/* HERO */}
-      <section className="relative overflow-hidden bg-ink px-5 py-[100px] text-paper">
-        <div className="absolute inset-0 bg-[radial-gradient(120%_140%_at_15%_0%,#1D4B44_0%,#0E2622_60%,#081815_100%)]" />
+      {/* ===================================================== */}
+      {/* HERO / DIAPORAMA                                      */}
+      {/* ===================================================== */}
 
-        <div className="relative mx-auto max-w-[1180px]">
-          <span className="mb-3 inline-block text-[13px] font-bold text-gold">
-            Notre élevage
-          </span>
+      <section className="relative min-h-[620px] overflow-hidden bg-ink text-paper md:min-h-[680px]">
+        {/* Fond du diaporama */}
+        {heroImages.length > 0 ? (
+          <div className="absolute inset-0">
+            {heroImages.map((image, index) => (
+              <div
+                key={`${image}-${index}`}
+                className="hero-slide absolute inset-0 bg-cover bg-center"
+                style={{
+                  backgroundImage: `url("${image}")`,
+                  animationDelay: `${index * 5}s`,
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="absolute inset-0 bg-[radial-gradient(120%_140%_at_15%_0%,#1D4B44_0%,#0E2622_60%,#081815_100%)]" />
+        )}
 
-          <h1 className="max-w-[850px] font-serif text-[clamp(38px,7vw,68px)] font-semibold leading-[1.05]">
-            Une ferme qui grandit, élevage après élevage.
-          </h1>
+        {/* Voile sombre pour la lisibilité */}
+        <div className="absolute inset-0 bg-[#071916]/65" />
 
-          <p className="mt-5 max-w-[650px] text-[17px] leading-7 text-paper/75">
-            Le silure constitue aujourd’hui notre activité principale.
-            Agrofarms237 développe progressivement de nouvelles filières
-            d’élevage pour construire une ferme diversifiée et durable.
-          </p>
+        {/* Dégradé supplémentaire en bas */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#071916]/85 via-transparent to-[#071916]/20" />
+
+        {/* Contenu */}
+        <div className="relative mx-auto flex min-h-[620px] max-w-[1180px] items-center px-5 py-[100px] md:min-h-[680px]">
+          <div className="max-w-[850px]">
+            <span className="mb-4 inline-block text-[13px] font-bold text-gold">
+              Notre élevage
+            </span>
+
+            <h1 className="font-serif text-[clamp(42px,7vw,72px)] font-semibold leading-[1.02]">
+              Une ferme qui grandit,
+              <br />
+              élevage après élevage.
+            </h1>
+
+            <p className="mt-6 max-w-[650px] text-[17px] leading-7 text-paper/85">
+              Le silure constitue aujourd’hui notre activité principale.
+              Agrofarms237 développe progressivement de nouvelles filières
+              d’élevage pour construire une ferme diversifiée et durable.
+            </p>
+          </div>
         </div>
+
+        {/* Petite indication visuelle */}
+        {heroImages.length > 1 && (
+          <div className="absolute bottom-7 left-5 right-5">
+            <div className="mx-auto flex max-w-[1180px] items-center gap-2">
+              {heroImages.map((_, index) => (
+                <span
+                  key={index}
+                  className="h-1 w-8 rounded-full bg-paper/35"
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Animation du diaporama */}
+        <style>{`
+          .hero-slide {
+            opacity: 0;
+            transform: scale(1.04);
+            animation: agrofarmsHero 30s infinite;
+          }
+
+          @keyframes agrofarmsHero {
+            0% {
+              opacity: 0;
+              transform: scale(1.04);
+            }
+
+            4% {
+              opacity: 1;
+            }
+
+            22% {
+              opacity: 1;
+              transform: scale(1);
+            }
+
+            28% {
+              opacity: 0;
+              transform: scale(1);
+            }
+
+            100% {
+              opacity: 0;
+              transform: scale(1.04);
+            }
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .hero-slide {
+              animation: none;
+              opacity: 0;
+            }
+
+            .hero-slide:first-child {
+              opacity: 1;
+            }
+          }
+        `}</style>
       </section>
 
-      {/* POISSONS */}
+      {/* ===================================================== */}
+      {/* POISSONS                                              */}
+      {/* ===================================================== */}
+
       <section className="px-5 py-[72px]">
         <div className="mx-auto max-w-[1180px]">
           <div className="mb-10">
@@ -216,7 +345,10 @@ export default async function NotreElevagePage() {
         </div>
       </section>
 
-      {/* PORCS */}
+      {/* ===================================================== */}
+      {/* PORCS                                                 */}
+      {/* ===================================================== */}
+
       <section className="bg-bgAlt px-5 py-[72px]">
         <div className="mx-auto max-w-[1180px]">
           <div className="mb-10">
@@ -264,7 +396,10 @@ export default async function NotreElevagePage() {
         </div>
       </section>
 
-      {/* POULETS */}
+      {/* ===================================================== */}
+      {/* POULETS                                               */}
+      {/* ===================================================== */}
+
       <section className="px-5 py-[72px]">
         <div className="mx-auto max-w-[1180px]">
           <div className="mb-10">
@@ -314,7 +449,10 @@ export default async function NotreElevagePage() {
         </div>
       </section>
 
-      {/* VISION */}
+      {/* ===================================================== */}
+      {/* VISION                                                */}
+      {/* ===================================================== */}
+
       <section className="bg-ink px-5 py-[72px] text-paper">
         <div className="mx-auto max-w-[900px] text-center">
           <span className="text-[13px] font-bold text-gold">
