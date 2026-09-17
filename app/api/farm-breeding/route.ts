@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { isAdminAuthed } from "@/lib/adminAuth";
 
+export const runtime = "nodejs";
+
 export async function GET() {
   if (!isAdminAuthed()) {
     return NextResponse.json(
@@ -14,7 +16,7 @@ export async function GET() {
     .from("farm_breeding")
     .select("*")
     .order("position", { ascending: true })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: true });
 
   if (error) {
     return NextResponse.json(
@@ -23,7 +25,9 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json({ items: data || [] });
+  return NextResponse.json({
+    items: data || [],
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -34,93 +38,174 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const form = await req.formData();
+  try {
+    const formData = await req.formData();
 
-  const name = String(form.get("name") || "").trim();
-  const category = String(form.get("category") || "").trim();
-  const description = String(form.get("description") || "").trim();
-  const status = String(form.get("status") || "bientot").trim();
-  const position = Number(form.get("position") || 0);
-  const file = form.get("file") as File | null;
+    const name = String(formData.get("name") || "").trim();
+    const category = String(
+      formData.get("category") || ""
+    ).trim();
 
-  if (!name || !category) {
-    return NextResponse.json(
-      { error: "Le nom et la catégorie sont obligatoires." },
-      { status: 400 }
+    const description = String(
+      formData.get("description") || ""
+    ).trim();
+
+    const status = String(
+      formData.get("status") || "bientot"
+    ).trim();
+
+    const position = Number(
+      formData.get("position") || 0
     );
-  }
 
-  if (!["disponible", "bientot"].includes(status)) {
-    return NextResponse.json(
-      { error: "Statut invalide." },
-      { status: 400 }
-    );
-  }
+    const file = formData.get("file");
 
-  const sb = supabaseAdmin();
-
-  let photo_url: string | null = null;
-  let photo_storage_path: string | null = null;
-
-  if (file && file.size > 0) {
-    if (file.size > 25 * 1024 * 1024) {
+    if (!name) {
       return NextResponse.json(
-        { error: "Photo trop volumineuse (25 Mo maximum)." },
+        { error: "Le nom de l'élevage est obligatoire." },
         { status: 400 }
       );
     }
 
-    const ext = file.name.split(".").pop() || "jpg";
-
-    const path = `farm-breeding/${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 8)}.${ext}`;
-
-    const { error: uploadError } = await sb.storage
-      .from("media")
-      .upload(path, file, {
-        contentType: file.type,
-        upsert: false,
-      });
-
-    if (uploadError) {
+    if (!category) {
       return NextResponse.json(
-        { error: uploadError.message },
+        { error: "La catégorie est obligatoire." },
+        { status: 400 }
+      );
+    }
+
+    if (!["disponible", "bientot"].includes(status)) {
+      return NextResponse.json(
+        { error: "Statut invalide." },
+        { status: 400 }
+      );
+    }
+
+    let photo_url: string | null = null;
+    let photo_storage_path: string | null = null;
+
+    // ======================================================
+    // PHOTO
+    // ======================================================
+
+    if (file instanceof File && file.size > 0) {
+      const maxSize = 25 * 1024 * 1024;
+
+      if (file.size > maxSize) {
+        return NextResponse.json(
+          {
+            error:
+              "La photo est trop volumineuse. Maximum : 25 Mo.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (!file.type.startsWith("image/")) {
+        return NextResponse.json(
+          {
+            error:
+              "Le fichier doit être une image.",
+          },
+          { status: 400 }
+        );
+      }
+
+      const extension =
+        file.name.split(".").pop()?.toLowerCase() || "jpg";
+
+      const fileName = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
+
+      const storagePath = `farm-breeding/${fileName}`;
+
+      const buffer = Buffer.from(
+        await file.arrayBuffer()
+      );
+
+      const { error: uploadError } =
+        await supabaseAdmin()
+          .storage
+          .from("media")
+          .upload(storagePath, buffer, {
+            contentType: file.type,
+            upsert: false,
+          });
+
+      if (uploadError) {
+        return NextResponse.json(
+          {
+            error:
+              "Impossible d'envoyer la photo : " +
+              uploadError.message,
+          },
+          { status: 500 }
+        );
+      }
+
+      const { data: publicUrlData } =
+        supabaseAdmin()
+          .storage
+          .from("media")
+          .getPublicUrl(storagePath);
+
+      photo_url =
+        publicUrlData.publicUrl;
+
+      photo_storage_path = storagePath;
+    }
+
+    // ======================================================
+    // ENREGISTREMENT
+    // ======================================================
+
+    const { data, error } =
+      await supabaseAdmin()
+        .from("farm_breeding")
+        .insert({
+          name,
+          category,
+          description: description || null,
+          status,
+          position: Number.isFinite(position)
+            ? position
+            : 0,
+          published: true,
+          photo_url,
+          photo_storage_path,
+        })
+        .select()
+        .single();
+
+    if (error) {
+      // Si l'enregistrement échoue après l'upload,
+      // on supprime la photo pour éviter un fichier orphelin.
+      if (photo_storage_path) {
+        await supabaseAdmin()
+          .storage
+          .from("media")
+          .remove([photo_storage_path]);
+      }
+
+      return NextResponse.json(
+        { error: error.message },
         { status: 500 }
       );
     }
 
-    const { data: publicUrl } = sb.storage
-      .from("media")
-      .getPublicUrl(path);
-
-    photo_url = publicUrl.publicUrl;
-    photo_storage_path = path;
-  }
-
-  const { data, error } = await sb
-    .from("farm_breeding")
-    .insert({
-      name,
-      category,
-      description: description || null,
-      status,
-      photo_url,
-      photo_storage_path,
-      position,
-      published: true,
-    })
-    .select()
-    .single();
-
-  if (error) {
     return NextResponse.json(
-      { error: error.message },
+      {
+        item: data,
+      },
+      { status: 201 }
+    );
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        error:
+          error?.message ||
+          "Une erreur est survenue.",
+      },
       { status: 500 }
     );
   }
-
-  return NextResponse.json({
-    item: data,
-  });
 }
