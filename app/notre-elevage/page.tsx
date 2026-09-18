@@ -3,12 +3,24 @@ import ProductCarousel from "@/components/ProductCarousel";
 
 export const revalidate = 30;
 
-type MediaItem = {
+type FarmItem = {
   id: string;
+  name: string;
+  category: string;
+  description: string | null;
+  status: "disponible" | "bientot";
+  photo_url: string | null;
+  position: number;
+  published: boolean;
+};
+
+type FarmMedia = {
+  id: string;
+  farm_breeding_id: string;
   url: string;
-  kind: "photo" | "video";
-  caption?: string | null;
-  category?: string | null;
+  storage_path: string;
+  position: number;
+  created_at: string;
 };
 
 type PageContent = {
@@ -87,44 +99,6 @@ const DEFAULT_CONTENT: PageContent = {
     "Agrofarms237 avance étape par étape, avec l’ambition de développer une agriculture locale structurée, productive et durable.",
 };
 
-const ELEVAGE = [
-  {
-    name: "Silure",
-    group: "Poissons",
-    status: "disponible",
-    description:
-      "Notre production principale aujourd’hui. Des silures élevés à Yaoundé, Mimboman, pour une consommation locale et une qualité maîtrisée.",
-  },
-  {
-    name: "Carpe",
-    group: "Poissons",
-    status: "avenir",
-    description:
-      "Une prochaine espèce qui viendra compléter notre production piscicole et offrir davantage de choix à nos clients.",
-  },
-  {
-    name: "Porcs",
-    group: "Élevage porcin",
-    status: "avenir",
-    description:
-      "Un projet d’élevage porcin en développement, avec une approche progressive et orientée vers la qualité.",
-  },
-  {
-    name: "Poules pondeuses",
-    group: "Aviculture",
-    status: "avenir",
-    description:
-      "Une future activité dédiée à la production d’œufs frais, avec une ambition de production régulière et locale.",
-  },
-  {
-    name: "Poulets de chair",
-    group: "Aviculture",
-    status: "avenir",
-    description:
-      "Une future production de poulets de chair destinée à répondre à la demande locale en viande de volaille.",
-  },
-];
-
 async function getPageContent(): Promise<PageContent> {
   try {
     const supabase = supabaseAdmin();
@@ -163,44 +137,82 @@ async function getPageContent(): Promise<PageContent> {
   }
 }
 
-async function getMedia(): Promise<MediaItem[]> {
+/**
+ * Récupère les élevages publiés.
+ */
+async function getFarmItems(): Promise<FarmItem[]> {
   try {
     const supabase = supabaseAdmin();
 
     const { data, error } = await supabase
-      .from("media")
-      .select("id,url,kind,caption,category")
+      .from("farm_breeding")
+      .select(
+        "id,name,category,description,status,photo_url,position,published"
+      )
       .eq("published", true)
-      .eq("kind", "photo")
       .order("position", { ascending: true })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: true });
 
     if (error) {
-      console.error("Erreur récupération média :", error);
+      console.error(
+        "Erreur récupération élevages :",
+        error
+      );
+
       return [];
     }
 
     return data ?? [];
   } catch (error) {
-    console.error("Erreur inattendue récupération média :", error);
+    console.error(
+      "Erreur inattendue récupération élevages :",
+      error
+    );
+
     return [];
   }
 }
 
-function getMediaForCategory(
-  media: MediaItem[],
-  categories: string[]
-): MediaItem[] {
-  return media.filter((item) => {
-    const category = item.category?.toLowerCase() ?? "";
+/**
+ * Récupère toutes les photos propres à chaque élevage.
+ */
+async function getFarmMedia(): Promise<FarmMedia[]> {
+  try {
+    const supabase = supabaseAdmin();
 
-    return categories.some((value) =>
-      category.includes(value.toLowerCase())
+    const { data, error } = await supabase
+      .from("farm_breeding_media")
+      .select(
+        "id,farm_breeding_id,url,storage_path,position,created_at"
+      )
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error(
+        "Erreur récupération photos des élevages :",
+        error
+      );
+
+      return [];
+    }
+
+    return data ?? [];
+  } catch (error) {
+    console.error(
+      "Erreur inattendue récupération photos des élevages :",
+      error
     );
-  });
+
+    return [];
+  }
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({
+  status,
+}: {
+  status: "disponible" | "bientot";
+}) {
   if (status === "disponible") {
     return (
       <span className="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
@@ -220,13 +232,15 @@ function MediaBlock({
   media,
   fallback,
 }: {
-  media: MediaItem[];
+  media: FarmMedia[];
   fallback: string;
 }) {
   if (media.length === 0) {
     return (
       <div className="flex aspect-[4/3] items-center justify-center bg-black/5 px-6 text-center">
-        <p className="text-sm text-black/45">{fallback}</p>
+        <p className="text-sm text-black/45">
+          {fallback}
+        </p>
       </div>
     );
   }
@@ -239,44 +253,42 @@ function MediaBlock({
 }
 
 export default async function NotreElevagePage() {
-  const [content, media] = await Promise.all([
-    getPageContent(),
-    getMedia(),
-  ]);
+  const [content, farmItems, farmMedia] =
+    await Promise.all([
+      getPageContent(),
+      getFarmItems(),
+      getFarmMedia(),
+    ]);
 
-  const silureMedia = getMediaForCategory(media, [
-    "silure",
-    "poisson",
-    "pisciculture",
-  ]);
+  /*
+   * On associe les photos à leur élevage.
+   *
+   * Exemple :
+   * Silure → toutes les photos dont farm_breeding_id = ID du Silure
+   */
+  const mediaByFarm: Record<string, FarmMedia[]> = {};
 
-  const carpeMedia = getMediaForCategory(media, [
-    "carpe",
-  ]);
+  for (const media of farmMedia) {
+    if (!mediaByFarm[media.farm_breeding_id]) {
+      mediaByFarm[media.farm_breeding_id] = [];
+    }
 
-  const porcMedia = getMediaForCategory(media, [
-    "porc",
-    "élevage porcin",
-    "elevage porcin",
-  ]);
+    mediaByFarm[media.farm_breeding_id].push(media);
+  }
 
-  const pouletMedia = getMediaForCategory(media, [
-    "poulet",
-    "pondeuse",
-    "volaille",
-    "aviculture",
-  ]);
-
-  const poissons = ELEVAGE.filter(
-    (item) => item.group === "Poissons"
+  const poissons = farmItems.filter(
+    (item) =>
+      item.category.toLowerCase() === "poisson"
   );
 
-  const porcs = ELEVAGE.filter(
-    (item) => item.group === "Élevage porcin"
+  const porcs = farmItems.filter(
+    (item) =>
+      item.category.toLowerCase() === "porcs"
   );
 
-  const poulets = ELEVAGE.filter(
-    (item) => item.group === "Aviculture"
+  const poulets = farmItems.filter(
+    (item) =>
+      item.category.toLowerCase() === "poulets"
   );
 
   return (
@@ -368,44 +380,74 @@ export default async function NotreElevagePage() {
             </p>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-2">
-            {poissons.map((item) => {
-              const itemMedia =
-                item.name === "Silure"
-                  ? silureMedia
-                  : carpeMedia;
+          {poissons.length === 0 ? (
+            <div className="border border-black/10 bg-bgAlt p-8 text-center">
+              <p className="text-sm text-black/50">
+                Aucun élevage de poisson n’est actuellement
+                publié.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-8 lg:grid-cols-2">
+              {poissons.map((item) => {
+                const itemMedia =
+                  mediaByFarm[item.id] || [];
 
-              return (
-                <article
-                  key={item.name}
-                  className="overflow-hidden border border-black/10 bg-white"
-                >
-                  <MediaBlock
-                    media={itemMedia}
-                    fallback={`Les visuels de ${item.name.toLowerCase()} seront bientôt disponibles.`}
-                  />
+                /*
+                 * Si aucune photo multiple n'existe encore,
+                 * on utilise éventuellement l'ancienne photo
+                 * principale comme secours.
+                 */
+                const finalMedia =
+                  itemMedia.length > 0
+                    ? itemMedia
+                    : item.photo_url
+                    ? [
+                        {
+                          id: `legacy-${item.id}`,
+                          farm_breeding_id: item.id,
+                          url: item.photo_url,
+                          storage_path: "",
+                          position: 0,
+                          created_at: "",
+                        },
+                      ]
+                    : [];
 
-                  <div className="p-7">
-                    <StatusBadge status={item.status} />
+                return (
+                  <article
+                    key={item.id}
+                    className="overflow-hidden border border-black/10 bg-white"
+                  >
+                    <MediaBlock
+                      media={finalMedia}
+                      fallback={`Les visuels de ${item.name.toLowerCase()} seront bientôt disponibles.`}
+                    />
 
-                    <h3 className="mt-4 font-serif text-3xl">
-                      {item.name}
-                    </h3>
+                    <div className="p-7">
+                      <StatusBadge status={item.status} />
 
-                    <p className="mt-4 text-sm leading-7 text-black/60">
-                      {item.description}
-                    </p>
+                      <h3 className="mt-4 font-serif text-3xl">
+                        {item.name}
+                      </h3>
 
-                    {item.status === "disponible" && (
-                      <p className="mt-5 text-sm font-medium text-ink">
-                        Production actuelle
-                      </p>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                      {item.description && (
+                        <p className="mt-4 text-sm leading-7 text-black/60">
+                          {item.description}
+                        </p>
+                      )}
+
+                      {item.status === "disponible" && (
+                        <p className="mt-5 text-sm font-medium text-ink">
+                          Production actuelle
+                        </p>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -426,31 +468,62 @@ export default async function NotreElevagePage() {
             </p>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-2">
-            {porcs.map((item) => (
-              <article
-                key={item.name}
-                className="overflow-hidden border border-black/10 bg-white"
-              >
-                <MediaBlock
-                  media={porcMedia}
-                  fallback="Les visuels de cette production seront bientôt disponibles."
-                />
+          {porcs.length === 0 ? (
+            <div className="border border-black/10 bg-white p-8 text-center">
+              <p className="text-sm text-black/50">
+                Aucun élevage porcin n’est actuellement publié.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-8 lg:grid-cols-2">
+              {porcs.map((item) => {
+                const itemMedia =
+                  mediaByFarm[item.id] || [];
 
-                <div className="p-7">
-                  <StatusBadge status={item.status} />
+                const finalMedia =
+                  itemMedia.length > 0
+                    ? itemMedia
+                    : item.photo_url
+                    ? [
+                        {
+                          id: `legacy-${item.id}`,
+                          farm_breeding_id: item.id,
+                          url: item.photo_url,
+                          storage_path: "",
+                          position: 0,
+                          created_at: "",
+                        },
+                      ]
+                    : [];
 
-                  <h3 className="mt-4 font-serif text-3xl">
-                    {item.name}
-                  </h3>
+                return (
+                  <article
+                    key={item.id}
+                    className="overflow-hidden border border-black/10 bg-white"
+                  >
+                    <MediaBlock
+                      media={finalMedia}
+                      fallback="Les visuels de cette production seront bientôt disponibles."
+                    />
 
-                  <p className="mt-4 text-sm leading-7 text-black/60">
-                    {item.description}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
+                    <div className="p-7">
+                      <StatusBadge status={item.status} />
+
+                      <h3 className="mt-4 font-serif text-3xl">
+                        {item.name}
+                      </h3>
+
+                      {item.description && (
+                        <p className="mt-4 text-sm leading-7 text-black/60">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -471,31 +544,62 @@ export default async function NotreElevagePage() {
             </p>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-2">
-            {poulets.map((item) => (
-              <article
-                key={item.name}
-                className="overflow-hidden border border-black/10 bg-white"
-              >
-                <MediaBlock
-                  media={pouletMedia}
-                  fallback="Les visuels de cette production seront bientôt disponibles."
-                />
+          {poulets.length === 0 ? (
+            <div className="border border-black/10 bg-bgAlt p-8 text-center">
+              <p className="text-sm text-black/50">
+                Aucun élevage avicole n’est actuellement publié.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-8 lg:grid-cols-2">
+              {poulets.map((item) => {
+                const itemMedia =
+                  mediaByFarm[item.id] || [];
 
-                <div className="p-7">
-                  <StatusBadge status={item.status} />
+                const finalMedia =
+                  itemMedia.length > 0
+                    ? itemMedia
+                    : item.photo_url
+                    ? [
+                        {
+                          id: `legacy-${item.id}`,
+                          farm_breeding_id: item.id,
+                          url: item.photo_url,
+                          storage_path: "",
+                          position: 0,
+                          created_at: "",
+                        },
+                      ]
+                    : [];
 
-                  <h3 className="mt-4 font-serif text-3xl">
-                    {item.name}
-                  </h3>
+                return (
+                  <article
+                    key={item.id}
+                    className="overflow-hidden border border-black/10 bg-white"
+                  >
+                    <MediaBlock
+                      media={finalMedia}
+                      fallback="Les visuels de cette production seront bientôt disponibles."
+                    />
 
-                  <p className="mt-4 text-sm leading-7 text-black/60">
-                    {item.description}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
+                    <div className="p-7">
+                      <StatusBadge status={item.status} />
+
+                      <h3 className="mt-4 font-serif text-3xl">
+                        {item.name}
+                      </h3>
+
+                      {item.description && (
+                        <p className="mt-4 text-sm leading-7 text-black/60">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
