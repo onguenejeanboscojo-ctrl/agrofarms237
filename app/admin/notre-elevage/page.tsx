@@ -13,6 +13,15 @@ type FarmItem = {
   published: boolean;
 };
 
+type FarmMedia = {
+  id: string;
+  farm_breeding_id: string;
+  url: string;
+  storage_path: string;
+  position: number;
+  created_at: string;
+};
+
 type PageContent = {
   id: string;
 
@@ -110,6 +119,26 @@ export default function NotreElevageAdminPage() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  const [mediaByFarm, setMediaByFarm] = useState<
+    Record<string, FarmMedia[]>
+  >({});
+
+  const [mediaLoading, setMediaLoading] = useState<
+    Record<string, boolean>
+  >({});
+
+  const [uploadingFarmId, setUploadingFarmId] = useState<string | null>(
+    null
+  );
+
+  const [deletingMediaId, setDeletingMediaId] = useState<string | null>(
+    null
+  );
+
+  const [replacingMediaId, setReplacingMediaId] = useState<string | null>(
+    null
+  );
+
   const [loading, setLoading] = useState(true);
   const [contentLoading, setContentLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -134,11 +163,53 @@ export default function NotreElevageAdminPage() {
         );
       }
 
-      setItems(data.items || []);
+      const loadedItems: FarmItem[] = data.items || [];
+
+      setItems(loadedItems);
+
+      for (const item of loadedItems) {
+        loadMedia(item.id);
+      }
     } catch (err: any) {
       setError(err.message || "Une erreur est survenue.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadMedia(farmId: string) {
+    setMediaLoading((previous) => ({
+      ...previous,
+      [farmId]: true,
+    }));
+
+    try {
+      const response = await fetch(
+        `/api/farm-breeding-media?farm_breeding_id=${farmId}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Impossible de charger les photos."
+        );
+      }
+
+      setMediaByFarm((previous) => ({
+        ...previous,
+        [farmId]: data.media || [],
+      }));
+    } catch (err: any) {
+      setError(err.message || "Impossible de charger les photos.");
+    } finally {
+      setMediaLoading((previous) => ({
+        ...previous,
+        [farmId]: false,
+      }));
     }
   }
 
@@ -251,20 +322,26 @@ export default function NotreElevageAdminPage() {
 
     try {
       if (editingId) {
+        const formData = new FormData();
+
+        formData.append("name", form.name);
+        formData.append("category", form.category);
+        formData.append("description", form.description);
+        formData.append("status", form.status);
+        formData.append(
+          "position",
+          String(Number(form.position) || 0)
+        );
+
+        if (photo) {
+          formData.append("file", photo);
+        }
+
         const response = await fetch(
           `/api/farm-breeding/${editingId}`,
           {
             method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              name: form.name,
-              category: form.category,
-              description: form.description,
-              status: form.status,
-              position: Number(form.position) || 0,
-            }),
+            body: formData,
           }
         );
 
@@ -277,6 +354,10 @@ export default function NotreElevageAdminPage() {
         }
 
         setMessage("Élevage modifié avec succès.");
+
+        if (photo) {
+          await loadMedia(editingId);
+        }
       } else {
         const formData = new FormData();
 
@@ -315,6 +396,156 @@ export default function NotreElevageAdminPage() {
       setError(err.message || "Une erreur est survenue.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function uploadMedia(
+    farmId: string,
+    file: File,
+    replaceMediaId?: string
+  ) {
+    if (!file.type.startsWith("image/")) {
+      setError("Veuillez sélectionner une image.");
+      return;
+    }
+
+    if (file.size > 25 * 1024 * 1024) {
+      setError("La photo est trop lourde. Maximum : 25 Mo.");
+      return;
+    }
+
+    setError("");
+    setMessage("");
+
+    if (replaceMediaId) {
+      setReplacingMediaId(replaceMediaId);
+    } else {
+      setUploadingFarmId(farmId);
+    }
+
+    try {
+      /*
+       * Pour une nouvelle photo :
+       * POST /api/farm-breeding-media
+       *
+       * Pour un remplacement :
+       * on supprime l'ancienne puis on ajoute la nouvelle.
+       */
+
+      if (replaceMediaId) {
+        const deleteResponse = await fetch(
+          `/api/farm-breeding-media/${replaceMediaId}`,
+          {
+            method: "DELETE",
+          }
+        );
+
+        const deleteData = await deleteResponse.json();
+
+        if (!deleteResponse.ok) {
+          throw new Error(
+            deleteData.error || "Impossible de supprimer l'ancienne photo."
+          );
+        }
+      }
+
+      const formData = new FormData();
+
+      formData.append("farm_breeding_id", farmId);
+      formData.append("file", file);
+
+      const response = await fetch("/api/farm-breeding-media", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Impossible d'ajouter la photo."
+        );
+      }
+
+      setMessage(
+        replaceMediaId
+          ? "Photo remplacée avec succès."
+          : "Photo ajoutée avec succès."
+      );
+
+      await loadMedia(farmId);
+    } catch (err: any) {
+      setError(err.message || "Une erreur est survenue.");
+    } finally {
+      setUploadingFarmId(null);
+      setReplacingMediaId(null);
+    }
+  }
+
+  async function handleAddMedia(
+    farmId: string,
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+
+    event.target.value = "";
+
+    if (!file) return;
+
+    await uploadMedia(farmId, file);
+  }
+
+  async function handleReplaceMedia(
+    farmId: string,
+    mediaId: string,
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+
+    event.target.value = "";
+
+    if (!file) return;
+
+    await uploadMedia(farmId, file, mediaId);
+  }
+
+  async function deleteMedia(
+    farmId: string,
+    media: FarmMedia
+  ) {
+    const confirmed = window.confirm(
+      "Voulez-vous vraiment supprimer cette photo ?"
+    );
+
+    if (!confirmed) return;
+
+    setDeletingMediaId(media.id);
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        `/api/farm-breeding-media/${media.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Impossible de supprimer la photo."
+        );
+      }
+
+      setMessage("Photo supprimée avec succès.");
+
+      await loadMedia(farmId);
+    } catch (err: any) {
+      setError(err.message || "Une erreur est survenue.");
+    } finally {
+      setDeletingMediaId(null);
     }
   }
 
@@ -413,13 +644,13 @@ export default function NotreElevageAdminPage() {
             Administration
           </p>
 
-          <h1 className="mt-2 font-serif text-3xl font-semibold md:text-4xl">
+          <h1 className="mt-2 whitespace-nowrap font-serif text-3xl font-semibold md:text-4xl">
             Notre élevage
           </h1>
 
           <p className="mt-3 max-w-3xl text-sm leading-7 text-inkSoft">
-            Gérez ici le contenu de la page Notre élevage ainsi que les
-            différents élevages présentés sur le site.
+            Gérez ici le contenu de la page Notre élevage ainsi que
+            les différents élevages et leurs photos.
           </p>
         </div>
 
@@ -445,7 +676,7 @@ export default function NotreElevageAdminPage() {
               Éditeur
             </p>
 
-            <h2 className="mt-2 font-serif text-2xl font-semibold">
+            <h2 className="mt-2 whitespace-nowrap font-serif text-2xl font-semibold">
               Contenu de la page
             </h2>
 
@@ -894,7 +1125,7 @@ export default function NotreElevageAdminPage() {
               Gestion
             </p>
 
-            <h2 className="mt-2 font-serif text-2xl font-semibold">
+            <h2 className="mt-2 whitespace-nowrap font-serif text-2xl font-semibold">
               {editingId
                 ? "Modifier un élevage"
                 : "Ajouter un élevage"}
@@ -1017,14 +1248,14 @@ export default function NotreElevageAdminPage() {
               </div>
             </div>
 
-            {/* PHOTO */}
+            {/* PHOTO PRINCIPALE */}
             {!editingId && (
               <div>
                 <label
                   htmlFor="farm-photo"
                   className="mb-2 block text-sm font-semibold"
                 >
-                  Photo
+                  Photo principale
                 </label>
 
                 <input
@@ -1039,6 +1270,20 @@ export default function NotreElevageAdminPage() {
 
                 <p className="mt-2 text-xs text-inkSoft">
                   JPG, PNG ou WEBP — 25 Mo maximum.
+                </p>
+              </div>
+            )}
+
+            {editingId && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                <p className="text-sm font-semibold text-blue-900">
+                  Gestion des photos
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-blue-800">
+                  Les photos de cet élevage se gèrent directement
+                  dans sa fiche ci-dessous. Vous pouvez en ajouter
+                  plusieurs, les remplacer ou les supprimer.
                 </p>
               </div>
             )}
@@ -1070,10 +1315,12 @@ export default function NotreElevageAdminPage() {
           </form>
         </section>
 
-        {/* LISTE DES ÉLEVAGES */}
+        {/* =========================================
+            LISTE DES ÉLEVAGES
+        ========================================= */}
         <section>
           <div className="mb-6">
-            <h2 className="font-serif text-2xl font-semibold">
+            <h2 className="whitespace-nowrap font-serif text-2xl font-semibold">
               Élevages enregistrés
             </h2>
 
@@ -1094,90 +1341,227 @@ export default function NotreElevageAdminPage() {
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2">
-              {items.map((item) => (
-                <article
-                  key={item.id}
-                  className="overflow-hidden rounded-2xl border border-ink/10 bg-paper shadow-sm"
-                >
-                  {/* PHOTO */}
-                  <div className="aspect-[16/9] bg-bgAlt">
-                    {item.photo_url ? (
-                      <img
-                        src={item.photo_url}
-                        alt={item.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-inkSoft">
-                        Aucune photo
-                      </div>
-                    )}
-                  </div>
+              {items.map((item) => {
+                const media = mediaByFarm[item.id] || [];
+                const isMediaLoading =
+                  mediaLoading[item.id] || false;
+                const isUploading =
+                  uploadingFarmId === item.id;
 
-                  {/* CONTENU */}
-                  <div className="p-6">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-goldDeep">
-                          {item.category}
+                return (
+                  <article
+                    key={item.id}
+                    className="overflow-hidden rounded-2xl border border-ink/10 bg-paper shadow-sm"
+                  >
+                    {/* PHOTO PRINCIPALE */}
+                    <div className="aspect-[16/9] bg-bgAlt">
+                      {item.photo_url ? (
+                        <img
+                          src={item.photo_url}
+                          alt={item.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : media.length > 0 ? (
+                        <img
+                          src={media[0].url}
+                          alt={item.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-sm text-inkSoft">
+                          Aucune photo
+                        </div>
+                      )}
+                    </div>
+
+                    {/* CONTENU */}
+                    <div className="p-6">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-goldDeep">
+                            {item.category}
+                          </p>
+
+                          <h3 className="mt-1 whitespace-nowrap font-serif text-xl font-semibold">
+                            {item.name}
+                          </h3>
+                        </div>
+
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            item.status === "disponible"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          {item.status === "disponible"
+                            ? "Disponible"
+                            : "Bientôt disponible"}
+                        </span>
+                      </div>
+
+                      {item.description && (
+                        <p className="mt-4 text-sm leading-6 text-inkSoft">
+                          {item.description}
                         </p>
+                      )}
 
-                        <h3 className="mt-1 font-serif text-xl font-semibold">
-                          {item.name}
-                        </h3>
+                      {/* =========================================
+                          GALERIE PROPRE À L'ÉLEVAGE
+                      ========================================= */}
+                      <div className="mt-7 border-t border-ink/10 pt-6">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <h4 className="text-sm font-semibold">
+                              Photos de {item.name}
+                            </h4>
+
+                            <p className="mt-1 text-xs text-inkSoft">
+                              {media.length} photo
+                              {media.length > 1 ? "s" : ""}
+                            </p>
+                          </div>
+
+                          <label
+                            className={`cursor-pointer rounded-lg bg-ink px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90 ${
+                              isUploading
+                                ? "pointer-events-none opacity-50"
+                                : ""
+                            }`}
+                          >
+                            {isUploading
+                              ? "Ajout..."
+                              : "+ Ajouter une photo"}
+
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={isUploading}
+                              onChange={(e) =>
+                                handleAddMedia(item.id, e)
+                              }
+                            />
+                          </label>
+                        </div>
+
+                        {isMediaLoading ? (
+                          <div className="mt-5 rounded-xl border border-ink/10 bg-white p-6 text-center text-xs text-inkSoft">
+                            Chargement des photos...
+                          </div>
+                        ) : media.length === 0 ? (
+                          <div className="mt-5 rounded-xl border border-dashed border-ink/15 bg-white p-6 text-center">
+                            <p className="text-xs text-inkSoft">
+                              Aucune photo supplémentaire.
+                            </p>
+
+                            <p className="mt-1 text-xs text-inkSoft">
+                              Ajoutez plusieurs photos pour créer le
+                              carrousel de cet élevage.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                            {media.map((mediaItem) => (
+                              <div
+                                key={mediaItem.id}
+                                className="group relative overflow-hidden rounded-xl border border-ink/10 bg-white"
+                              >
+                                <div className="aspect-square">
+                                  <img
+                                    src={mediaItem.url}
+                                    alt={`${item.name} photo`}
+                                    className="h-full w-full object-cover"
+                                  />
+                                </div>
+
+                                {/* ACTIONS PHOTO */}
+                                <div className="absolute inset-x-0 bottom-0 flex gap-1 bg-black/65 p-2 opacity-0 transition group-hover:opacity-100">
+                                  <label className="flex-1 cursor-pointer rounded-md bg-white px-2 py-2 text-center text-[11px] font-semibold text-ink">
+                                    Remplacer
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      disabled={
+                                        replacingMediaId ===
+                                        mediaItem.id
+                                      }
+                                      onChange={(e) =>
+                                        handleReplaceMedia(
+                                          item.id,
+                                          mediaItem.id,
+                                          e
+                                        )
+                                      }
+                                    />
+                                  </label>
+
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      deletingMediaId ===
+                                      mediaItem.id
+                                    }
+                                    onClick={() =>
+                                      deleteMedia(
+                                        item.id,
+                                        mediaItem
+                                      )
+                                    }
+                                    className="rounded-md bg-red-600 px-2 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
+                                  >
+                                    {deletingMediaId ===
+                                    mediaItem.id
+                                      ? "..."
+                                      : "Supprimer"}
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <p className="mt-3 text-[11px] leading-5 text-inkSoft">
+                          Survolez une photo pour afficher les
+                          actions « Remplacer » et « Supprimer ».
+                        </p>
                       </div>
 
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          item.status === "disponible"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-amber-100 text-amber-800"
-                        }`}
-                      >
-                        {item.status === "disponible"
-                          ? "Disponible"
-                          : "Bientôt disponible"}
-                      </span>
+                      {/* ACTIONS ÉLEVAGE */}
+                      <div className="mt-6 flex flex-wrap gap-2 border-t border-ink/10 pt-5">
+                        <button
+                          type="button"
+                          onClick={() => editItem(item)}
+                          className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-semibold hover:bg-bgAlt"
+                        >
+                          Modifier
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            togglePublished(item)
+                          }
+                          className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-semibold hover:bg-bgAlt"
+                        >
+                          {item.published
+                            ? "Masquer"
+                            : "Publier"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => deleteItem(item)}
+                          className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
                     </div>
-
-                    {item.description && (
-                      <p className="mt-4 text-sm leading-6 text-inkSoft">
-                        {item.description}
-                      </p>
-                    )}
-
-                    <div className="mt-6 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => editItem(item)}
-                        className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-semibold hover:bg-bgAlt"
-                      >
-                        Modifier
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          togglePublished(item)
-                        }
-                        className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-semibold hover:bg-bgAlt"
-                      >
-                        {item.published
-                          ? "Masquer"
-                          : "Publier"}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => deleteItem(item)}
-                        className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
-                      >
-                        Supprimer
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
