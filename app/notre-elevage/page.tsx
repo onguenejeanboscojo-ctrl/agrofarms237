@@ -11,23 +11,81 @@ type MediaItem = {
   category?: string | null;
 };
 
-const STEPS = [
-  {
-    label: "Aujourd’hui",
-    title: "Silure frais",
-    text: "Production active à Yaoundé, Mimboman, vendue directement aux familles et professionnels.",
-  },
-  {
-    label: "Prochaine étape",
-    title: "Produits fumés",
-    text: "Une gamme de silure fumé, pensée pour la conservation et pour étendre la livraison au-delà de Yaoundé.",
-  },
-  {
-    label: "Développement",
-    title: "Porcs, poulets de chair, poules pondeuses",
-    text: "Une diversification progressive.",
-  },
-];
+type PageContent = {
+  hero_label: string;
+  hero_title: string;
+  hero_description: string;
+
+  step1_label: string;
+  step1_title: string;
+  step1_text: string;
+
+  step2_label: string;
+  step2_title: string;
+  step2_text: string;
+
+  step3_label: string;
+  step3_title: string;
+  step3_text: string;
+
+  fish_label: string;
+  fish_title: string;
+  fish_description: string;
+
+  pigs_label: string;
+  pigs_title: string;
+  pigs_description: string;
+
+  poultry_label: string;
+  poultry_title: string;
+  poultry_description: string;
+
+  vision_label: string;
+  vision_title: string;
+  vision_text: string;
+};
+
+const DEFAULT_CONTENT: PageContent = {
+  hero_label: "Notre élevage",
+  hero_title: "Une ferme qui grandit, élevage après élevage.",
+  hero_description:
+    "Le silure constitue aujourd’hui notre activité principale, produite à Yaoundé, Mimboman. Demain, notre ferme accueillera progressivement d’autres productions pour construire un modèle agricole plus complet, local et durable.",
+
+  step1_label: "Aujourd’hui",
+  step1_title: "Silure frais",
+  step1_text:
+    "Production active à Yaoundé, Mimboman, vendue directement aux familles et professionnels.",
+
+  step2_label: "Prochaine étape",
+  step2_title: "Produits fumés",
+  step2_text:
+    "Une gamme de silure fumé, pensée pour la conservation et pour étendre la livraison au-delà de Yaoundé.",
+
+  step3_label: "Développement",
+  step3_title: "Porcs, poulets de chair, poules pondeuses",
+  step3_text: "Une diversification progressive.",
+
+  fish_label: "Notre production",
+  fish_title: "Poissons",
+  fish_description:
+    "Une production piscicole qui commence avec le silure et s’élargira progressivement à d’autres espèces.",
+
+  pigs_label: "Développement",
+  pigs_title: "Élevage porcin",
+  pigs_description:
+    "Notre projet d’élevage porcin s’inscrit dans une logique de diversification progressive de la ferme.",
+
+  poultry_label: "Aviculture",
+  poultry_title: "Poulets",
+  poultry_description:
+    "Une future activité avicole qui regroupera progressivement poules pondeuses et poulets de chair.",
+
+  vision_label: "Notre vision",
+  vision_title:
+    "Construire une ferme capable de nourrir, de créer et de transmettre.",
+  vision_text:
+    "Agrofarms237 avance étape par étape, avec l’ambition de développer une agriculture locale structurée, productive et durable.",
+};
 
 const ELEVAGE = [
   {
@@ -67,23 +125,66 @@ const ELEVAGE = [
   },
 ];
 
+async function getPageContent(): Promise<PageContent> {
+  try {
+    const supabase = supabaseAdmin();
+
+    const { data, error } = await supabase
+      .from("farm_breeding_content")
+      .select("*")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error(
+        "Erreur récupération contenu Notre élevage :",
+        error
+      );
+
+      return DEFAULT_CONTENT;
+    }
+
+    if (!data) {
+      return DEFAULT_CONTENT;
+    }
+
+    return {
+      ...DEFAULT_CONTENT,
+      ...data,
+    };
+  } catch (error) {
+    console.error(
+      "Erreur inattendue récupération contenu :",
+      error
+    );
+
+    return DEFAULT_CONTENT;
+  }
+}
+
 async function getMedia(): Promise<MediaItem[]> {
-  const supabase = supabaseAdmin();
+  try {
+    const supabase = supabaseAdmin();
 
-  const { data, error } = await supabase
-    .from("media")
-    .select("id,url,kind,caption,category")
-    .eq("published", true)
-    .eq("kind", "photo")
-    .order("position", { ascending: true })
-    .order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("media")
+      .select("id,url,kind,caption,category")
+      .eq("published", true)
+      .eq("kind", "photo")
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("Erreur récupération média :", error);
+    if (error) {
+      console.error("Erreur récupération média :", error);
+      return [];
+    }
+
+    return data ?? [];
+  } catch (error) {
+    console.error("Erreur inattendue récupération média :", error);
     return [];
   }
-
-  return data ?? [];
 }
 
 function getMediaForCategory(
@@ -94,7 +195,7 @@ function getMediaForCategory(
     const category = item.category?.toLowerCase() ?? "";
 
     return categories.some((value) =>
-      category.toLowerCase().includes(value.toLowerCase())
+      category.includes(value.toLowerCase())
     );
   });
 }
@@ -138,7 +239,10 @@ function MediaBlock({
 }
 
 export default async function NotreElevagePage() {
-  const media = await getMedia();
+  const [content, media] = await Promise.all([
+    getPageContent(),
+    getMedia(),
+  ]);
 
   const silureMedia = getMediaForCategory(media, [
     "silure",
@@ -146,7 +250,9 @@ export default async function NotreElevagePage() {
     "pisciculture",
   ]);
 
-  const carpeMedia = getMediaForCategory(media, ["carpe"]);
+  const carpeMedia = getMediaForCategory(media, [
+    "carpe",
+  ]);
 
   const porcMedia = getMediaForCategory(media, [
     "porc",
@@ -182,20 +288,15 @@ export default async function NotreElevagePage() {
         <div className="relative mx-auto max-w-7xl px-6 py-24 lg:px-8 lg:py-32">
           <div className="max-w-4xl">
             <p className="mb-5 text-sm font-medium uppercase tracking-[0.25em] text-gold">
-              Notre élevage
+              {content.hero_label}
             </p>
 
             <h1 className="font-serif text-4xl leading-tight sm:text-5xl lg:text-6xl">
-              Une ferme qui grandit,
-              <br />
-              élevage après élevage.
+              {content.hero_title}
             </h1>
 
             <p className="mt-7 max-w-3xl text-base leading-8 text-white/75 sm:text-lg">
-              Le silure constitue aujourd’hui notre activité principale,
-              produite à Yaoundé, Mimboman. Demain, notre ferme accueillera
-              progressivement d’autres productions pour construire un modèle
-              agricole plus complet, local et durable.
+              {content.hero_description}
             </p>
           </div>
         </div>
@@ -205,21 +306,47 @@ export default async function NotreElevagePage() {
       <section className="border-b border-black/10 bg-white">
         <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
           <div className="grid gap-10 md:grid-cols-3">
-            {STEPS.map((step) => (
-              <div key={step.title}>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
-                  {step.label}
-                </p>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                {content.step1_label}
+              </p>
 
-                <h2 className="mt-3 font-serif text-2xl">
-                  {step.title}
-                </h2>
+              <h2 className="mt-3 font-serif text-2xl">
+                {content.step1_title}
+              </h2>
 
-                <p className="mt-3 text-sm leading-7 text-black/60">
-                  {step.text}
-                </p>
-              </div>
-            ))}
+              <p className="mt-3 text-sm leading-7 text-black/60">
+                {content.step1_text}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                {content.step2_label}
+              </p>
+
+              <h2 className="mt-3 font-serif text-2xl">
+                {content.step2_title}
+              </h2>
+
+              <p className="mt-3 text-sm leading-7 text-black/60">
+                {content.step2_text}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                {content.step3_label}
+              </p>
+
+              <h2 className="mt-3 font-serif text-2xl">
+                {content.step3_title}
+              </h2>
+
+              <p className="mt-3 text-sm leading-7 text-black/60">
+                {content.step3_text}
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -229,16 +356,15 @@ export default async function NotreElevagePage() {
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
           <div className="mb-12 max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
-              Notre production
+              {content.fish_label}
             </p>
 
             <h2 className="mt-3 font-serif text-4xl">
-              Poissons
+              {content.fish_title}
             </h2>
 
             <p className="mt-4 text-base leading-8 text-black/60">
-              Une production piscicole qui commence avec le silure et
-              s’élargira progressivement à d’autres espèces.
+              {content.fish_description}
             </p>
           </div>
 
@@ -288,16 +414,15 @@ export default async function NotreElevagePage() {
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
           <div className="mb-12 max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
-              Développement
+              {content.pigs_label}
             </p>
 
             <h2 className="mt-3 font-serif text-4xl">
-              Élevage porcin
+              {content.pigs_title}
             </h2>
 
             <p className="mt-4 text-base leading-8 text-black/60">
-              Notre projet d’élevage porcin s’inscrit dans une logique de
-              diversification progressive de la ferme.
+              {content.pigs_description}
             </p>
           </div>
 
@@ -334,16 +459,15 @@ export default async function NotreElevagePage() {
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
           <div className="mb-12 max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
-              Aviculture
+              {content.poultry_label}
             </p>
 
             <h2 className="mt-3 font-serif text-4xl">
-              Poulets
+              {content.poultry_title}
             </h2>
 
             <p className="mt-4 text-base leading-8 text-black/60">
-              Une future activité avicole qui regroupera progressivement
-              poules pondeuses et poulets de chair.
+              {content.poultry_description}
             </p>
           </div>
 
@@ -379,19 +503,15 @@ export default async function NotreElevagePage() {
       <section className="bg-[#18352B] text-white">
         <div className="mx-auto max-w-5xl px-6 py-20 text-center lg:px-8 lg:py-28">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold">
-            Notre vision
+            {content.vision_label}
           </p>
 
           <h2 className="mt-5 font-serif text-3xl leading-tight sm:text-4xl lg:text-5xl">
-            Construire une ferme capable de nourrir,
-            <br className="hidden sm:block" />
-            de créer et de transmettre.
+            {content.vision_title}
           </h2>
 
           <p className="mx-auto mt-7 max-w-3xl text-base leading-8 text-white/70">
-            Agrofarms237 avance étape par étape, avec l’ambition de
-            développer une agriculture locale structurée, productive et
-            durable.
+            {content.vision_text}
           </p>
         </div>
       </section>
