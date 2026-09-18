@@ -13,6 +13,42 @@ type FarmItem = {
   published: boolean;
 };
 
+type PageContent = {
+  id: string;
+
+  hero_label: string;
+  hero_title: string;
+  hero_description: string;
+
+  step1_label: string;
+  step1_title: string;
+  step1_text: string;
+
+  step2_label: string;
+  step2_title: string;
+  step2_text: string;
+
+  step3_label: string;
+  step3_title: string;
+  step3_text: string;
+
+  fish_label: string;
+  fish_title: string;
+  fish_description: string;
+
+  pigs_label: string;
+  pigs_title: string;
+  pigs_description: string;
+
+  poultry_label: string;
+  poultry_title: string;
+  poultry_description: string;
+
+  vision_label: string;
+  vision_title: string;
+  vision_text: string;
+};
+
 const EMPTY_FORM = {
   name: "",
   category: "Poisson",
@@ -21,21 +57,69 @@ const EMPTY_FORM = {
   position: "0",
 };
 
+const EMPTY_CONTENT: PageContent = {
+  id: "",
+
+  hero_label: "Notre élevage",
+  hero_title: "Une ferme qui grandit, élevage après élevage.",
+  hero_description:
+    "Le silure constitue aujourd’hui notre activité principale, produite à Yaoundé, Mimboman. Demain, notre ferme accueillera progressivement d’autres productions pour construire un modèle agricole plus complet, local et durable.",
+
+  step1_label: "Aujourd’hui",
+  step1_title: "Silure frais",
+  step1_text:
+    "Production active à Yaoundé, Mimboman, vendue directement aux familles et professionnels.",
+
+  step2_label: "Prochaine étape",
+  step2_title: "Produits fumés",
+  step2_text:
+    "Une gamme de silure fumé, pensée pour la conservation et pour étendre la livraison au-delà de Yaoundé.",
+
+  step3_label: "Développement",
+  step3_title: "Porcs, poulets de chair, poules pondeuses",
+  step3_text: "Une diversification progressive.",
+
+  fish_label: "Notre production",
+  fish_title: "Poissons",
+  fish_description:
+    "Une production piscicole qui commence avec le silure et s’élargira progressivement à d’autres espèces.",
+
+  pigs_label: "Développement",
+  pigs_title: "Élevage porcin",
+  pigs_description:
+    "Notre projet d’élevage porcin s’inscrit dans une logique de diversification progressive de la ferme.",
+
+  poultry_label: "Aviculture",
+  poultry_title: "Poulets",
+  poultry_description:
+    "Une future activité avicole qui regroupera progressivement poules pondeuses et poulets de chair.",
+
+  vision_label: "Notre vision",
+  vision_title:
+    "Construire une ferme capable de nourrir, de créer et de transmettre.",
+  vision_text:
+    "Agrofarms237 avance étape par étape, avec l’ambition de développer une agriculture locale structurée, productive et durable.",
+};
+
 export default function NotreElevageAdminPage() {
   const [items, setItems] = useState<FarmItem[]>([]);
+  const [content, setContent] = useState<PageContent>(EMPTY_CONTENT);
+
   const [form, setForm] = useState(EMPTY_FORM);
   const [photo, setPhoto] = useState<File | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const [contentLoading, setContentLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingContent, setSavingContent] = useState(false);
+
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   async function loadItems() {
     setLoading(true);
-    setError("");
 
     try {
       const response = await fetch("/api/farm-breeding", {
@@ -45,7 +129,9 @@ export default function NotreElevageAdminPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Impossible de charger les élevages.");
+        throw new Error(
+          data.error || "Impossible de charger les élevages."
+        );
       }
 
       setItems(data.items || []);
@@ -56,8 +142,35 @@ export default function NotreElevageAdminPage() {
     }
   }
 
+  async function loadContent() {
+    setContentLoading(true);
+
+    try {
+      const response = await fetch("/api/farm-breeding-content", {
+        cache: "no-store",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Impossible de charger le contenu."
+        );
+      }
+
+      if (data.content) {
+        setContent(data.content);
+      }
+    } catch (err: any) {
+      setError(err.message || "Impossible de charger le contenu.");
+    } finally {
+      setContentLoading(false);
+    }
+  }
+
   useEffect(() => {
     loadItems();
+    loadContent();
   }, []);
 
   function resetForm() {
@@ -88,9 +201,45 @@ export default function NotreElevageAdminPage() {
     setPhoto(null);
 
     window.scrollTo({
-      top: 0,
+      top: document.body.scrollHeight,
       behavior: "smooth",
     });
+  }
+
+  async function saveContent(e: React.FormEvent) {
+    e.preventDefault();
+
+    setSavingContent(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const response = await fetch("/api/farm-breeding-content", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(content),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Impossible d'enregistrer le contenu."
+        );
+      }
+
+      if (data.content) {
+        setContent(data.content);
+      }
+
+      setMessage("Le contenu de la page a été enregistré avec succès.");
+    } catch (err: any) {
+      setError(err.message || "Une erreur est survenue.");
+    } finally {
+      setSavingContent(false);
+    }
   }
 
   async function saveItem(e: React.FormEvent) {
@@ -245,10 +394,19 @@ export default function NotreElevageAdminPage() {
     }
   }
 
+  function updateContent(
+    field: keyof PageContent,
+    value: string
+  ) {
+    setContent((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
+  }
+
   return (
     <main className="min-h-screen bg-bgAlt px-5 py-10">
       <div className="mx-auto max-w-6xl">
-
         {/* EN-TÊTE */}
         <div className="mb-10">
           <p className="text-sm font-semibold text-goldDeep">
@@ -259,9 +417,9 @@ export default function NotreElevageAdminPage() {
             Notre élevage
           </h1>
 
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-inkSoft">
-            Gérez ici les différents élevages présentés sur le site :
-            poissons, porcs et poulets.
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-inkSoft">
+            Gérez ici le contenu de la page Notre élevage ainsi que les
+            différents élevages présentés sur le site.
           </p>
         </div>
 
@@ -278,24 +436,477 @@ export default function NotreElevageAdminPage() {
           </div>
         )}
 
-        {/* FORMULAIRE */}
+        {/* =========================================
+            CONTENU DE LA PAGE
+        ========================================= */}
+        <section className="mb-12 rounded-2xl border border-ink/10 bg-paper p-6 shadow-sm md:p-8">
+          <div className="mb-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-goldDeep">
+              Éditeur
+            </p>
+
+            <h2 className="mt-2 font-serif text-2xl font-semibold">
+              Contenu de la page
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-inkSoft">
+              Modifiez les textes affichés sur la page publique
+              « Notre élevage ».
+            </p>
+          </div>
+
+          {contentLoading ? (
+            <div className="rounded-xl border border-ink/10 bg-white p-8 text-center text-sm text-inkSoft">
+              Chargement du contenu...
+            </div>
+          ) : (
+            <form onSubmit={saveContent} className="space-y-10">
+              {/* HERO */}
+              <div className="border-b border-ink/10 pb-10">
+                <h3 className="mb-5 font-serif text-xl font-semibold">
+                  1. Hero
+                </h3>
+
+                <div className="space-y-5">
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Petit titre
+                    </label>
+
+                    <input
+                      type="text"
+                      value={content.hero_label}
+                      onChange={(e) =>
+                        updateContent(
+                          "hero_label",
+                          e.target.value
+                        )
+                      }
+                      className="w-full rounded-lg border border-ink/15 bg-white px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Grand titre
+                    </label>
+
+                    <input
+                      type="text"
+                      value={content.hero_title}
+                      onChange={(e) =>
+                        updateContent(
+                          "hero_title",
+                          e.target.value
+                        )
+                      }
+                      className="w-full rounded-lg border border-ink/15 bg-white px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Description
+                    </label>
+
+                    <textarea
+                      value={content.hero_description}
+                      onChange={(e) =>
+                        updateContent(
+                          "hero_description",
+                          e.target.value
+                        )
+                      }
+                      rows={5}
+                      className="w-full rounded-lg border border-ink/15 bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-goldDeep"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* LES 3 ÉTAPES */}
+              <div className="border-b border-ink/10 pb-10">
+                <h3 className="mb-6 font-serif text-xl font-semibold">
+                  2. Les trois étapes
+                </h3>
+
+                <div className="grid gap-8 lg:grid-cols-3">
+                  {/* ÉTAPE 1 */}
+                  <div className="rounded-xl border border-ink/10 bg-white p-5">
+                    <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-goldDeep">
+                      Étape 1
+                    </p>
+
+                    <div className="space-y-4">
+                      <input
+                        type="text"
+                        value={content.step1_label}
+                        onChange={(e) =>
+                          updateContent(
+                            "step1_label",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Label"
+                        className="w-full rounded-lg border border-ink/15 px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                      />
+
+                      <input
+                        type="text"
+                        value={content.step1_title}
+                        onChange={(e) =>
+                          updateContent(
+                            "step1_title",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Titre"
+                        className="w-full rounded-lg border border-ink/15 px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                      />
+
+                      <textarea
+                        value={content.step1_text}
+                        onChange={(e) =>
+                          updateContent(
+                            "step1_text",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Description"
+                        rows={5}
+                        className="w-full rounded-lg border border-ink/15 px-4 py-3 text-sm leading-6 outline-none focus:border-goldDeep"
+                      />
+                    </div>
+                  </div>
+
+                  {/* ÉTAPE 2 */}
+                  <div className="rounded-xl border border-ink/10 bg-white p-5">
+                    <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-goldDeep">
+                      Étape 2
+                    </p>
+
+                    <div className="space-y-4">
+                      <input
+                        type="text"
+                        value={content.step2_label}
+                        onChange={(e) =>
+                          updateContent(
+                            "step2_label",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Label"
+                        className="w-full rounded-lg border border-ink/15 px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                      />
+
+                      <input
+                        type="text"
+                        value={content.step2_title}
+                        onChange={(e) =>
+                          updateContent(
+                            "step2_title",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Titre"
+                        className="w-full rounded-lg border border-ink/15 px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                      />
+
+                      <textarea
+                        value={content.step2_text}
+                        onChange={(e) =>
+                          updateContent(
+                            "step2_text",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Description"
+                        rows={5}
+                        className="w-full rounded-lg border border-ink/15 px-4 py-3 text-sm leading-6 outline-none focus:border-goldDeep"
+                      />
+                    </div>
+                  </div>
+
+                  {/* ÉTAPE 3 */}
+                  <div className="rounded-xl border border-ink/10 bg-white p-5">
+                    <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-goldDeep">
+                      Étape 3
+                    </p>
+
+                    <div className="space-y-4">
+                      <input
+                        type="text"
+                        value={content.step3_label}
+                        onChange={(e) =>
+                          updateContent(
+                            "step3_label",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Label"
+                        className="w-full rounded-lg border border-ink/15 px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                      />
+
+                      <input
+                        type="text"
+                        value={content.step3_title}
+                        onChange={(e) =>
+                          updateContent(
+                            "step3_title",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Titre"
+                        className="w-full rounded-lg border border-ink/15 px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                      />
+
+                      <textarea
+                        value={content.step3_text}
+                        onChange={(e) =>
+                          updateContent(
+                            "step3_text",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Description"
+                        rows={5}
+                        className="w-full rounded-lg border border-ink/15 px-4 py-3 text-sm leading-6 outline-none focus:border-goldDeep"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* POISSONS */}
+              <div className="border-b border-ink/10 pb-10">
+                <h3 className="mb-5 font-serif text-xl font-semibold">
+                  3. Section Poissons
+                </h3>
+
+                <div className="space-y-5">
+                  <input
+                    type="text"
+                    value={content.fish_label}
+                    onChange={(e) =>
+                      updateContent(
+                        "fish_label",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Petit titre"
+                    className="w-full rounded-lg border border-ink/15 bg-white px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                  />
+
+                  <input
+                    type="text"
+                    value={content.fish_title}
+                    onChange={(e) =>
+                      updateContent(
+                        "fish_title",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Titre"
+                    className="w-full rounded-lg border border-ink/15 bg-white px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                  />
+
+                  <textarea
+                    value={content.fish_description}
+                    onChange={(e) =>
+                      updateContent(
+                        "fish_description",
+                        e.target.value
+                      )
+                    }
+                    rows={4}
+                    placeholder="Description"
+                    className="w-full rounded-lg border border-ink/15 bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-goldDeep"
+                  />
+                </div>
+              </div>
+
+              {/* PORCS */}
+              <div className="border-b border-ink/10 pb-10">
+                <h3 className="mb-5 font-serif text-xl font-semibold">
+                  4. Section Élevage porcin
+                </h3>
+
+                <div className="space-y-5">
+                  <input
+                    type="text"
+                    value={content.pigs_label}
+                    onChange={(e) =>
+                      updateContent(
+                        "pigs_label",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Petit titre"
+                    className="w-full rounded-lg border border-ink/15 bg-white px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                  />
+
+                  <input
+                    type="text"
+                    value={content.pigs_title}
+                    onChange={(e) =>
+                      updateContent(
+                        "pigs_title",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Titre"
+                    className="w-full rounded-lg border border-ink/15 bg-white px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                  />
+
+                  <textarea
+                    value={content.pigs_description}
+                    onChange={(e) =>
+                      updateContent(
+                        "pigs_description",
+                        e.target.value
+                      )
+                    }
+                    rows={4}
+                    placeholder="Description"
+                    className="w-full rounded-lg border border-ink/15 bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-goldDeep"
+                  />
+                </div>
+              </div>
+
+              {/* AVICULTURE */}
+              <div className="border-b border-ink/10 pb-10">
+                <h3 className="mb-5 font-serif text-xl font-semibold">
+                  5. Section Aviculture
+                </h3>
+
+                <div className="space-y-5">
+                  <input
+                    type="text"
+                    value={content.poultry_label}
+                    onChange={(e) =>
+                      updateContent(
+                        "poultry_label",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Petit titre"
+                    className="w-full rounded-lg border border-ink/15 bg-white px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                  />
+
+                  <input
+                    type="text"
+                    value={content.poultry_title}
+                    onChange={(e) =>
+                      updateContent(
+                        "poultry_title",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Titre"
+                    className="w-full rounded-lg border border-ink/15 bg-white px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                  />
+
+                  <textarea
+                    value={content.poultry_description}
+                    onChange={(e) =>
+                      updateContent(
+                        "poultry_description",
+                        e.target.value
+                      )
+                    }
+                    rows={4}
+                    placeholder="Description"
+                    className="w-full rounded-lg border border-ink/15 bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-goldDeep"
+                  />
+                </div>
+              </div>
+
+              {/* VISION */}
+              <div>
+                <h3 className="mb-5 font-serif text-xl font-semibold">
+                  6. Notre vision
+                </h3>
+
+                <div className="space-y-5">
+                  <input
+                    type="text"
+                    value={content.vision_label}
+                    onChange={(e) =>
+                      updateContent(
+                        "vision_label",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Petit titre"
+                    className="w-full rounded-lg border border-ink/15 bg-white px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                  />
+
+                  <input
+                    type="text"
+                    value={content.vision_title}
+                    onChange={(e) =>
+                      updateContent(
+                        "vision_title",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Titre"
+                    className="w-full rounded-lg border border-ink/15 bg-white px-4 py-3 text-sm outline-none focus:border-goldDeep"
+                  />
+
+                  <textarea
+                    value={content.vision_text}
+                    onChange={(e) =>
+                      updateContent(
+                        "vision_text",
+                        e.target.value
+                      )
+                    }
+                    rows={5}
+                    placeholder="Texte"
+                    className="w-full rounded-lg border border-ink/15 bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-goldDeep"
+                  />
+                </div>
+              </div>
+
+              {/* ENREGISTRER */}
+              <div className="border-t border-ink/10 pt-6">
+                <button
+                  type="submit"
+                  disabled={savingContent}
+                  className="rounded-lg bg-ink px-7 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                >
+                  {savingContent
+                    ? "Enregistrement..."
+                    : "Enregistrer le contenu de la page"}
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
+
+        {/* =========================================
+            GESTION DES ÉLEVAGES
+        ========================================= */}
         <section className="mb-12 rounded-2xl border border-ink/10 bg-paper p-6 shadow-sm md:p-8">
           <div className="mb-6">
-            <h2 className="font-serif text-2xl font-semibold">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-goldDeep">
+              Gestion
+            </p>
+
+            <h2 className="mt-2 font-serif text-2xl font-semibold">
               {editingId
                 ? "Modifier un élevage"
                 : "Ajouter un élevage"}
             </h2>
 
             <p className="mt-2 text-sm text-inkSoft">
-              {editingId
-                ? "Modifiez les informations puis enregistrez."
-                : "Créez une nouvelle fiche d'élevage."}
+              Ajoutez ou modifiez les différentes productions de la
+              ferme.
             </p>
           </div>
 
           <form onSubmit={saveItem} className="space-y-6">
-
             {/* NOM + CATÉGORIE */}
             <div className="grid gap-5 md:grid-cols-2">
               <div>
@@ -459,7 +1070,7 @@ export default function NotreElevageAdminPage() {
           </form>
         </section>
 
-        {/* LISTE */}
+        {/* LISTE DES ÉLEVAGES */}
         <section>
           <div className="mb-6">
             <h2 className="font-serif text-2xl font-semibold">
@@ -546,7 +1157,9 @@ export default function NotreElevageAdminPage() {
 
                       <button
                         type="button"
-                        onClick={() => togglePublished(item)}
+                        onClick={() =>
+                          togglePublished(item)
+                        }
                         className="rounded-lg border border-ink/15 px-4 py-2 text-sm font-semibold hover:bg-bgAlt"
                       >
                         {item.published
