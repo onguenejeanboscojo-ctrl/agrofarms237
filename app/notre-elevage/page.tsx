@@ -25,7 +25,7 @@ const STEPS = [
   {
     label: "Développement",
     title: "Porcs, poulets de chair, poules pondeuses",
-    text: "Une diversification progressive pour construire une ferme intégrée et durable.",
+    text: "Une diversification progressive.",
   },
 ];
 
@@ -68,7 +68,9 @@ const ELEVAGE = [
 ];
 
 async function getMedia(): Promise<MediaItem[]> {
-  const { data, error } = await supabaseAdmin
+  const supabase = supabaseAdmin();
+
+  const { data, error } = await supabase
     .from("media")
     .select("id,url,kind,caption,category")
     .eq("published", true)
@@ -194,10 +196,10 @@ export default async function NotreElevagePage() {
             </h1>
 
             <p className="mt-7 max-w-3xl text-base leading-8 text-white/75 sm:text-lg">
-              Le silure constitue aujourd’hui notre activité principale.
-              Demain, notre ferme accueillera progressivement d’autres
-              productions pour construire un modèle agricole plus complet,
-              local et durable.
+              Le silure constitue aujourd’hui notre activité principale,
+              produite à Yaoundé, Mimboman. Demain, notre ferme accueillera
+              progressivement d’autres productions pour construire un modèle
+              agricole plus complet, local et durable.
             </p>
           </div>
         </div>
