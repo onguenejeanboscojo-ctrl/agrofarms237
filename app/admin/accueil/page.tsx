@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import HomeStoryMediaManager from "@/components/HomeStoryMediaManager";
 
 type HomeContent = {
   hero_label: string;
@@ -2123,6 +2124,10 @@ export default function AccueilAdminPage() {
                 }
               />
 
+            </div>
+
+            <div className="mt-8 border-t border-black/10 pt-8">
+              <HomeStoryMediaManager />
             </div>
 
           </div>
