@@ -26,24 +26,18 @@ function getExtension(type: string) {
 
 /**
  * GET
- * Récupère toutes les photos d'un produit.
- *
- * Exemple :
- * /api/home-product-media?home_product_id=UUID
+ * Récupère une photo précise.
  */
-export async function GET(request: Request) {
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    const { searchParams } = new URL(request.url);
+    const { id } = await context.params;
 
-    const homeProductId =
-      searchParams.get("home_product_id");
-
-    if (!homeProductId) {
+    if (!id) {
       return NextResponse.json(
-        {
-          error:
-            "home_product_id est obligatoire.",
-        },
+        { error: "Identifiant de la photo obligatoire." },
         { status: 400 }
       );
     }
@@ -55,29 +49,32 @@ export async function GET(request: Request) {
       .select(
         "id,home_product_id,url,storage_path,position,created_at"
       )
-      .eq("home_product_id", homeProductId)
-      .order("position", { ascending: true })
-      .order("created_at", { ascending: true });
+      .eq("id", id)
+      .maybeSingle();
 
     if (error) {
       console.error(
-        "Erreur récupération photos produit Accueil :",
+        "Erreur récupération photo produit :",
         error
       );
 
       return NextResponse.json(
-        {
-          error:
-            "Impossible de récupérer les photos.",
-        },
+        { error: "Impossible de récupérer la photo." },
         { status: 500 }
       );
     }
 
-    return NextResponse.json(data ?? []);
+    if (!data) {
+      return NextResponse.json(
+        { error: "Photo introuvable." },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error(
-      "Erreur inattendue récupération photos produit Accueil :",
+      "Erreur inattendue récupération photo produit :",
       error
     );
 
@@ -89,10 +86,17 @@ export async function GET(request: Request) {
 }
 
 /**
- * POST
- * Ajoute une photo à un produit.
+ * PATCH
+ * Remplace une photo existante.
+ *
+ * La nouvelle photo est envoyée avec :
+ * multipart/form-data
+ * file = nouvelle image
  */
-export async function POST(request: Request) {
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     if (!(await isAdminAuthed())) {
       return NextResponse.json(
@@ -101,31 +105,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const formData = await request.formData();
+    const { id } = await context.params;
 
-    const homeProductId =
-      formData.get("home_product_id");
-
-    const file = formData.get("file");
-
-    if (
-      typeof homeProductId !== "string" ||
-      !homeProductId
-    ) {
+    if (!id) {
       return NextResponse.json(
-        {
-          error:
-            "home_product_id est obligatoire.",
-        },
+        { error: "Identifiant de la photo obligatoire." },
         { status: 400 }
       );
     }
 
+    const formData = await request.formData();
+    const file = formData.get("file");
+
     if (!(file instanceof File)) {
       return NextResponse.json(
-        {
-          error: "Aucune photo fournie.",
-        },
+        { error: "Aucune nouvelle photo fournie." },
         { status: 400 }
       );
     }
@@ -153,55 +147,38 @@ export async function POST(request: Request) {
     const supabase = supabaseAdmin();
 
     /*
-     * Vérifie que le produit existe.
+     * Récupère l'ancienne photo.
      */
-    const { data: product, error: productError } =
+    const { data: existing, error: existingError } =
       await supabase
-        .from("home_products")
-        .select("id")
-        .eq("id", homeProductId)
+        .from("home_product_media")
+        .select(
+          "id,home_product_id,storage_path,position"
+        )
+        .eq("id", id)
         .maybeSingle();
 
-    if (productError) {
+    if (existingError) {
       console.error(
-        "Erreur vérification produit Accueil :",
-        productError
+        "Erreur recherche ancienne photo :",
+        existingError
       );
 
       return NextResponse.json(
         {
           error:
-            "Impossible de vérifier le produit.",
+            "Impossible de rechercher l'ancienne photo.",
         },
         { status: 500 }
       );
     }
 
-    if (!product) {
+    if (!existing) {
       return NextResponse.json(
-        {
-          error: "Produit introuvable.",
-        },
+        { error: "Photo introuvable." },
         { status: 404 }
       );
     }
-
-    /*
-     * Détermine automatiquement la prochaine position.
-     */
-    const { data: lastMedia } = await supabase
-      .from("home_product_media")
-      .select("position")
-      .eq("home_product_id", homeProductId)
-      .order("position", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const nextPosition =
-      lastMedia?.position !== undefined &&
-      lastMedia?.position !== null
-        ? Number(lastMedia.position) + 1
-        : 0;
 
     const extension = getExtension(file.type);
 
@@ -210,7 +187,7 @@ export async function POST(request: Request) {
       .slice(2, 10);
 
     const storagePath =
-      `home-products/${homeProductId}/` +
+      `home-products/${existing.home_product_id}/` +
       `${Date.now()}-${randomPart}.${extension}`;
 
     const buffer = Buffer.from(
@@ -218,7 +195,7 @@ export async function POST(request: Request) {
     );
 
     /*
-     * Upload dans Supabase Storage.
+     * Upload de la nouvelle photo.
      */
     const { error: uploadError } =
       await supabase.storage
@@ -230,14 +207,14 @@ export async function POST(request: Request) {
 
     if (uploadError) {
       console.error(
-        "Erreur upload photo produit Accueil :",
+        "Erreur upload nouvelle photo :",
         uploadError
       );
 
       return NextResponse.json(
         {
           error:
-            "Impossible d'envoyer la photo.",
+            "Impossible d'envoyer la nouvelle photo.",
         },
         { status: 500 }
       );
@@ -260,23 +237,23 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Impossible de récupérer l'URL de la photo.",
+            "Impossible de récupérer l'URL de la nouvelle photo.",
         },
         { status: 500 }
       );
     }
 
     /*
-     * Enregistre la photo dans la base.
+     * Met à jour la ligne en conservant
+     * le produit et la position.
      */
     const { data, error } = await supabase
       .from("home_product_media")
-      .insert({
-        home_product_id: homeProductId,
+      .update({
         url,
         storage_path: storagePath,
-        position: nextPosition,
       })
+      .eq("id", id)
       .select(
         "id,home_product_id,url,storage_path,position,created_at"
       )
@@ -284,13 +261,13 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error(
-        "Erreur enregistrement photo produit Accueil :",
+        "Erreur mise à jour photo produit :",
         error
       );
 
       /*
-       * Nettoyage du fichier si l'insertion
-       * en base échoue.
+       * Nettoyage de la nouvelle photo
+       * si la base échoue.
        */
       await supabase.storage
         .from(BUCKET)
@@ -299,18 +276,141 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Impossible d'enregistrer la photo.",
+            "Impossible de mettre à jour la photo.",
         },
         { status: 500 }
       );
     }
 
-    return NextResponse.json(data, {
-      status: 201,
+    /*
+     * Supprime l'ancienne photo du Storage.
+     */
+    if (existing.storage_path) {
+      await supabase.storage
+        .from(BUCKET)
+        .remove([existing.storage_path]);
+    }
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error(
+      "Erreur inattendue remplacement photo produit :",
+      error
+    );
+
+    return NextResponse.json(
+      { error: "Erreur serveur." },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE
+ * Supprime une photo existante.
+ */
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    if (!(await isAdminAuthed())) {
+      return NextResponse.json(
+        { error: "Non autorisé." },
+        { status: 401 }
+      );
+    }
+
+    const { id } = await context.params;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Identifiant de la photo obligatoire." },
+        { status: 400 }
+      );
+    }
+
+    const supabase = supabaseAdmin();
+
+    /*
+     * Récupère la photo avant suppression.
+     */
+    const { data: existing, error: existingError } =
+      await supabase
+        .from("home_product_media")
+        .select("id,storage_path")
+        .eq("id", id)
+        .maybeSingle();
+
+    if (existingError) {
+      console.error(
+        "Erreur recherche photo à supprimer :",
+        existingError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Impossible de rechercher la photo.",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Photo introuvable." },
+        { status: 404 }
+      );
+    }
+
+    /*
+     * Supprime le fichier du Storage.
+     */
+    if (existing.storage_path) {
+      const { error: storageError } =
+        await supabase.storage
+          .from(BUCKET)
+          .remove([existing.storage_path]);
+
+      if (storageError) {
+        console.error(
+          "Erreur suppression fichier Storage :",
+          storageError
+        );
+      }
+    }
+
+    /*
+     * Supprime l'enregistrement en base.
+     */
+    const { error: deleteError } =
+      await supabase
+        .from("home_product_media")
+        .delete()
+        .eq("id", id);
+
+    if (deleteError) {
+      console.error(
+        "Erreur suppression photo produit :",
+        deleteError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Impossible de supprimer la photo.",
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
     });
   } catch (error) {
     console.error(
-      "Erreur inattendue upload photo produit Accueil :",
+      "Erreur inattendue suppression photo produit :",
       error
     );
 
