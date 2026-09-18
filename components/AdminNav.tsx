@@ -9,6 +9,10 @@ const ADMIN_LINKS = [
     label: "Tableau de bord",
   },
   {
+    href: "/admin/accueil",
+    label: "Accueil",
+  },
+  {
     href: "/admin/commandes",
     label: "Commandes",
   },
