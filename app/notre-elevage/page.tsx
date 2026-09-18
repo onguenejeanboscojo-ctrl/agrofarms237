@@ -3,435 +3,400 @@ import ProductCarousel from "@/components/ProductCarousel";
 
 export const revalidate = 30;
 
-type FarmItem = {
-  id: string;
-  name: string;
-  category: string;
-  description: string | null;
-  status: "disponible" | "bientot";
-  photo_url: string | null;
-  position: number;
-  published: boolean;
-};
-
 type MediaItem = {
   id: string;
   url: string;
   kind: "photo" | "video";
-  caption: string | null;
-  category: string | null;
+  caption?: string | null;
+  category?: string | null;
 };
 
-async function getFarmItems(): Promise<FarmItem[]> {
-  try {
-    const { data } = await supabaseAdmin()
-      .from("farm_breeding")
-      .select("*")
-      .eq("published", true)
-      .order("position", { ascending: true })
-      .order("created_at", { ascending: true });
+const STEPS = [
+  {
+    label: "Aujourd’hui",
+    title: "Silure frais",
+    text: "Production active à Yaoundé, Mimboman, vendue directement aux familles et professionnels.",
+  },
+  {
+    label: "Prochaine étape",
+    title: "Produits fumés",
+    text: "Une gamme de silure fumé, pensée pour la conservation et pour étendre la livraison au-delà de Yaoundé.",
+  },
+  {
+    label: "Développement",
+    title: "Porcs, poulets de chair, poules pondeuses",
+    text: "Une diversification progressive pour construire une ferme intégrée et durable.",
+  },
+];
 
-    return (data || []) as FarmItem[];
-  } catch {
-    return [];
-  }
-}
+const ELEVAGE = [
+  {
+    name: "Silure",
+    group: "Poissons",
+    status: "disponible",
+    description:
+      "Notre production principale aujourd’hui. Des silures élevés à Yaoundé, Mimboman, pour une consommation locale et une qualité maîtrisée.",
+  },
+  {
+    name: "Carpe",
+    group: "Poissons",
+    status: "avenir",
+    description:
+      "Une prochaine espèce qui viendra compléter notre production piscicole et offrir davantage de choix à nos clients.",
+  },
+  {
+    name: "Porcs",
+    group: "Élevage porcin",
+    status: "avenir",
+    description:
+      "Un projet d’élevage porcin en développement, avec une approche progressive et orientée vers la qualité.",
+  },
+  {
+    name: "Poules pondeuses",
+    group: "Aviculture",
+    status: "avenir",
+    description:
+      "Une future activité dédiée à la production d’œufs frais, avec une ambition de production régulière et locale.",
+  },
+  {
+    name: "Poulets de chair",
+    group: "Aviculture",
+    status: "avenir",
+    description:
+      "Une future production de poulets de chair destinée à répondre à la demande locale en viande de volaille.",
+  },
+];
 
 async function getMedia(): Promise<MediaItem[]> {
-  try {
-    const { data } = await supabaseAdmin()
-      .from("media")
-      .select("id,url,kind,caption,category")
-      .eq("published", true)
-      .order("position", { ascending: true })
-      .order("created_at", { ascending: false });
+  const { data, error } = await supabaseAdmin
+    .from("media")
+    .select("id,url,kind,caption,category")
+    .eq("published", true)
+    .eq("kind", "photo")
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: false });
 
-    return (data || []) as MediaItem[];
-  } catch {
+  if (error) {
+    console.error("Erreur récupération média :", error);
     return [];
   }
+
+  return data ?? [];
 }
 
-function StatusBadge({
-  status,
-}: {
-  status: "disponible" | "bientot";
-}) {
-  const available = status === "disponible";
+function getMediaForCategory(
+  media: MediaItem[],
+  categories: string[]
+): MediaItem[] {
+  return media.filter((item) => {
+    const category = item.category?.toLowerCase() ?? "";
+
+    return categories.some((value) =>
+      category.includes(value.toLowerCase())
+    );
+  });
+}
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === "disponible") {
+    return (
+      <span className="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
+        Disponible
+      </span>
+    );
+  }
 
   return (
-    <span
-      className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12.5px] font-bold ${
-        available
-          ? "border-ink/20 bg-ink/10 text-ink"
-          : "border-gold/25 bg-gold/10 text-goldDeep"
-      }`}
-    >
-      <span
-        className={`h-2 w-2 rounded-full ${
-          available ? "bg-ink" : "bg-gold"
-        }`}
-      />
-
-      {available ? "Disponible" : "Bientôt disponible"}
+    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+      Bientôt disponible
     </span>
   );
 }
 
 function MediaBlock({
-  images,
+  media,
+  fallback,
 }: {
-  images: string[];
+  media: MediaItem[];
+  fallback: string;
 }) {
-  if (images.length > 0) {
-    return <ProductCarousel images={images} />;
+  if (media.length === 0) {
+    return (
+      <div className="flex aspect-[4/3] items-center justify-center bg-black/5 px-6 text-center">
+        <p className="text-sm text-black/45">{fallback}</p>
+      </div>
+    );
   }
 
   return (
-    <div className="flex aspect-[4/3] items-center justify-center bg-[radial-gradient(circle_at_30%_20%,#2A5E56_0%,#0E2622_60%,#081815_100%)]">
-      <div className="text-center">
-        <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-gold">
-          Agrofarms237
-        </span>
-
-        <p className="mt-2 font-serif text-[22px] font-semibold text-paper">
-          Photo à venir
-        </p>
-      </div>
-    </div>
+    <ProductCarousel
+      items={media.map((item) => ({
+        id: item.id,
+        url: item.url,
+        caption: item.caption,
+      }))}
+    />
   );
 }
 
 export default async function NotreElevagePage() {
-  const [farmItems, media] = await Promise.all([
-    getFarmItems(),
-    getMedia(),
+  const media = await getMedia();
+
+  const silureMedia = getMediaForCategory(media, [
+    "silure",
+    "poisson",
+    "pisciculture",
   ]);
 
-  const getImages = (categories: string[]) =>
-    media
-      .filter(
-        (item) =>
-          item.kind === "photo" &&
-          item.category &&
-          categories.includes(item.category)
-      )
-      .map((item) => item.url)
-      .filter(Boolean)
-      .slice(0, 6);
+  const carpeMedia = getMediaForCategory(media, ["carpe"]);
 
-  const poissons = farmItems.filter((item) =>
-    ["poisson", "poissons"].includes(
-      item.category.toLowerCase()
-    )
-  );
-
-  const porcs = farmItems.filter((item) =>
-    ["porcs", "élevage porcin"].includes(
-      item.category.toLowerCase()
-    )
-  );
-
-  const poulets = farmItems.filter((item) =>
-    ["poulets", "aviculture"].includes(
-      item.category.toLowerCase()
-    )
-  );
-
-  const heroImages = getImages([
-    "ferme",
-    "bassins",
-    "silures",
-    "elevage_silure",
-    "elevage_carpe",
-    "elevage_porcs",
-    "elevage_pondeuses",
-    "elevage_chair",
+  const porcMedia = getMediaForCategory(media, [
+    "porc",
+    "élevage porcin",
+    "elevage porcin",
   ]);
 
-  const renderFarmCard = (item: FarmItem) => {
-    const mediaCategories: Record<string, string[]> = {
-      Silure: ["elevage_silure", "silures"],
-      Carpe: ["elevage_carpe"],
-      Porcs: ["elevage_porcs"],
-      "Poules pondeuses": ["elevage_pondeuses"],
-      "Poulets de chair": ["elevage_chair"],
-    };
+  const pouletMedia = getMediaForCategory(media, [
+    "poulet",
+    "pondeuse",
+    "volaille",
+    "aviculture",
+  ]);
 
-    const images = item.photo_url
-      ? [item.photo_url]
-      : getImages(mediaCategories[item.name] || []);
+  const poissons = ELEVAGE.filter(
+    (item) => item.group === "Poissons"
+  );
 
-    const canOrder =
-      item.name.toLowerCase() === "silure" &&
-      item.status === "disponible";
+  const porcs = ELEVAGE.filter(
+    (item) => item.group === "Élevage porcin"
+  );
 
-    return (
-      <article
-        key={item.id}
-        className="grid overflow-hidden rounded-2xl border border-ink/10 bg-paper md:grid-cols-2"
-      >
-        <MediaBlock images={images} />
-
-        <div className="flex flex-col justify-center p-7 md:p-10">
-          <StatusBadge status={item.status} />
-
-          <h3 className="mt-5 font-serif text-[30px] font-semibold">
-            {item.name}
-          </h3>
-
-          {item.description && (
-            <p className="mt-4 max-w-[560px] text-[15px] leading-7 text-inkSoft">
-              {item.description}
-            </p>
-          )}
-
-          {canOrder && (
-            <a
-              href="/commander"
-              className="mt-7 inline-flex w-fit items-center justify-center rounded-lg bg-ink px-6 py-3 text-sm font-bold text-white transition hover:opacity-90"
-            >
-              Commander
-            </a>
-          )}
-        </div>
-      </article>
-    );
-  };
+  const poulets = ELEVAGE.filter(
+    (item) => item.group === "Aviculture"
+  );
 
   return (
-    <main>
+    <main className="bg-white text-ink">
       {/* HERO */}
+      <section className="relative overflow-hidden bg-[#18352B] text-white">
+        <div className="absolute inset-0 bg-black/10" />
 
-      <section className="relative min-h-[620px] overflow-hidden bg-ink text-paper md:min-h-[680px]">
-        {heroImages.length > 0 ? (
-          <div className="absolute inset-0">
-            {heroImages.map((image, index) => (
-              <div
-                key={`${image}-${index}`}
-                className="hero-slide absolute inset-0 bg-cover bg-center"
-                style={{
-                  backgroundImage: `url("${image}")`,
-                  animationDelay: `${index * 5}s`,
-                }}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,#2A5E56_0%,#0E2622_60%,#081815_100%)]" />
-        )}
-
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(20,68,64,.45),rgba(8,24,21,.88)_65%,rgba(7,25,22,.98))]" />
-
-        <div className="absolute inset-0 bg-[#071916]/50" />
-
-        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-[#071916] via-[#071916]/75 to-transparent" />
-
-        <div className="relative mx-auto flex min-h-[620px] max-w-[1180px] items-center px-5 py-24 md:min-h-[680px]">
-          <div className="max-w-[800px]">
-            <span className="mb-4 inline-block text-[13px] font-bold uppercase tracking-[0.12em] text-gold">
+        <div className="relative mx-auto max-w-7xl px-6 py-24 lg:px-8 lg:py-32">
+          <div className="max-w-4xl">
+            <p className="mb-5 text-sm font-medium uppercase tracking-[0.25em] text-gold">
               Notre élevage
-            </span>
+            </p>
 
-            <h1 className="font-serif text-[clamp(42px,7vw,72px)] font-semibold leading-[1.02]">
+            <h1 className="font-serif text-4xl leading-tight sm:text-5xl lg:text-6xl">
               Une ferme qui grandit,
               <br />
               élevage après élevage.
             </h1>
 
-            <p className="mt-7 max-w-[650px] text-[17px] leading-7 text-paper/85">
-              Agrofarms237 développe progressivement plusieurs filières
-              d’élevage pour construire une ferme diversifiée, durable et
-              capable de proposer des produits issus directement de notre
-              production.
+            <p className="mt-7 max-w-3xl text-base leading-8 text-white/75 sm:text-lg">
+              Le silure constitue aujourd’hui notre activité principale.
+              Demain, notre ferme accueillera progressivement d’autres
+              productions pour construire un modèle agricole plus complet,
+              local et durable.
             </p>
           </div>
         </div>
+      </section>
 
-        {heroImages.length > 1 && (
-          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-2">
-            {heroImages.map((_, index) => (
-              <span
-                key={index}
-                className="h-1.5 w-8 rounded-full bg-paper/40"
-              />
+      {/* ÉTAPES */}
+      <section className="border-b border-black/10 bg-white">
+        <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+          <div className="grid gap-10 md:grid-cols-3">
+            {STEPS.map((step) => (
+              <div key={step.title}>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                  {step.label}
+                </p>
+
+                <h2 className="mt-3 font-serif text-2xl">
+                  {step.title}
+                </h2>
+
+                <p className="mt-3 text-sm leading-7 text-black/60">
+                  {step.text}
+                </p>
+              </div>
             ))}
           </div>
-        )}
+        </div>
       </section>
 
       {/* POISSONS */}
+      <section className="bg-white">
+        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+          <div className="mb-12 max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+              Notre production
+            </p>
 
-      {poissons.length > 0 && (
-        <section className="px-5 py-20 md:py-24">
-          <div className="mx-auto max-w-[1180px]">
-            <div className="mb-10">
-              <span className="mb-2 inline-block text-[13px] font-bold text-goldDeep">
-                01 — Pisciculture
-              </span>
-
-              <h2 className="font-serif text-[clamp(30px,5vw,44px)] font-semibold">
-                Poissons
-              </h2>
-
-              <p className="mt-3 max-w-[650px] text-[15px] leading-7 text-inkSoft">
-                Une production piscicole centrée aujourd’hui sur le
-                silure, avec une diversification progressive de notre
-                élevage.
-              </p>
-            </div>
-
-            <div className="grid gap-7">
-              {poissons.map(renderFarmCard)}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* PORCS */}
-
-      {porcs.length > 0 && (
-        <section className="bg-bgAlt px-5 py-20 md:py-24">
-          <div className="mx-auto max-w-[1180px]">
-            <div className="mb-10">
-              <span className="mb-2 inline-block text-[13px] font-bold text-goldDeep">
-                02 — Élevage porcin
-              </span>
-
-              <h2 className="font-serif text-[clamp(30px,5vw,44px)] font-semibold">
-                Porcs
-              </h2>
-
-              <p className="mt-3 max-w-[650px] text-[15px] leading-7 text-inkSoft">
-                Une nouvelle filière en préparation dans le développement
-                progressif de la ferme.
-              </p>
-            </div>
-
-            <div className="grid gap-7">
-              {porcs.map(renderFarmCard)}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* POULETS */}
-
-      {poulets.length > 0 && (
-        <section className="px-5 py-20 md:py-24">
-          <div className="mx-auto max-w-[1180px]">
-            <div className="mb-10">
-              <span className="mb-2 inline-block text-[13px] font-bold text-goldDeep">
-                03 — Aviculture
-              </span>
-
-              <h2 className="font-serif text-[clamp(30px,5vw,44px)] font-semibold">
-                Poulets
-              </h2>
-
-              <p className="mt-3 max-w-[650px] text-[15px] leading-7 text-inkSoft">
-                Le développement de l’aviculture viendra compléter
-                progressivement notre activité agricole.
-              </p>
-            </div>
-
-            <div className="grid gap-7">
-              {poulets.map(renderFarmCard)}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* AUCUN ÉLEVAGE */}
-
-      {farmItems.length === 0 && (
-        <section className="px-5 py-20">
-          <div className="mx-auto max-w-[760px] rounded-2xl border border-dashed border-ink/15 bg-paper p-10 text-center">
-            <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-goldDeep">
-              Agrofarms237
-            </span>
-
-            <h2 className="mt-3 font-serif text-3xl font-semibold">
-              Notre élevage
+            <h2 className="mt-3 font-serif text-4xl">
+              Poissons
             </h2>
 
-            <p className="mt-4 text-[15px] leading-7 text-inkSoft">
-              Les informations sur nos différents élevages seront bientôt
-              disponibles.
+            <p className="mt-4 text-base leading-8 text-black/60">
+              Une production piscicole qui commence avec le silure et
+              s’élargira progressivement à d’autres espèces.
             </p>
           </div>
-        </section>
-      )}
 
-      {/* VISION */}
+          <div className="grid gap-8 lg:grid-cols-2">
+            {poissons.map((item) => {
+              const itemMedia =
+                item.name === "Silure"
+                  ? silureMedia
+                  : carpeMedia;
 
-      <section className="bg-paper px-5 py-20 text-center md:py-24">
-        <div className="mx-auto max-w-[900px]">
-          <span className="text-[13px] font-bold text-gold">
-            Notre vision
-          </span>
+              return (
+                <article
+                  key={item.name}
+                  className="overflow-hidden border border-black/10 bg-white"
+                >
+                  <MediaBlock
+                    media={itemMedia}
+                    fallback={`Les visuels de ${item.name.toLowerCase()} seront bientôt disponibles.`}
+                  />
 
-          <h2 className="mt-3 font-serif text-[clamp(30px,5vw,46px)] font-semibold">
-            Construire progressivement une ferme complète.
-          </h2>
+                  <div className="p-7">
+                    <StatusBadge status={item.status} />
 
-          <p className="mx-auto mt-5 max-w-[650px] text-[16px] leading-7 text-ink/70">
-            Chaque nouvelle activité sera développée étape par étape,
-            avec une attention particulière portée à la qualité de
-            l’élevage, au suivi de la production et à la satisfaction
-            de nos clients.
-          </p>
+                    <h3 className="mt-4 font-serif text-3xl">
+                      {item.name}
+                    </h3>
+
+                    <p className="mt-4 text-sm leading-7 text-black/60">
+                      {item.description}
+                    </p>
+
+                    {item.status === "disponible" && (
+                      <p className="mt-5 text-sm font-medium text-ink">
+                        Production actuelle
+                      </p>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         </div>
       </section>
 
-      <style>{`
-        .hero-slide {
-          opacity: 0;
-          transform: scale(1.04);
-          animation: agrofarmsHero 30s infinite;
-        }
+      {/* PORCS */}
+      <section className="bg-bgAlt">
+        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+          <div className="mb-12 max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+              Développement
+            </p>
 
-        @keyframes agrofarmsHero {
-          0% {
-            opacity: 0;
-            transform: scale(1.04);
-          }
+            <h2 className="mt-3 font-serif text-4xl">
+              Élevage porcin
+            </h2>
 
-          4% {
-            opacity: 1;
-          }
+            <p className="mt-4 text-base leading-8 text-black/60">
+              Notre projet d’élevage porcin s’inscrit dans une logique de
+              diversification progressive de la ferme.
+            </p>
+          </div>
 
-          22% {
-            opacity: 1;
-            transform: scale(1);
-          }
+          <div className="grid gap-8 lg:grid-cols-2">
+            {porcs.map((item) => (
+              <article
+                key={item.name}
+                className="overflow-hidden border border-black/10 bg-white"
+              >
+                <MediaBlock
+                  media={porcMedia}
+                  fallback="Les visuels de cette production seront bientôt disponibles."
+                />
 
-          28% {
-            opacity: 0;
-            transform: scale(1);
-          }
+                <div className="p-7">
+                  <StatusBadge status={item.status} />
 
-          100% {
-            opacity: 0;
-            transform: scale(1.04);
-          }
-        }
+                  <h3 className="mt-4 font-serif text-3xl">
+                    {item.name}
+                  </h3>
 
-        .hero-slide:first-child {
-          opacity: 1;
-        }
+                  <p className="mt-4 text-sm leading-7 text-black/60">
+                    {item.description}
+                  </p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
 
-        @media (prefers-reduced-motion: reduce) {
-          .hero-slide {
-            animation: none;
-            opacity: 0;
-          }
+      {/* POULETS */}
+      <section className="bg-white">
+        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+          <div className="mb-12 max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+              Aviculture
+            </p>
 
-          .hero-slide:first-child {
-            opacity: 1;
-          }
-        }
-      `}</style>
+            <h2 className="mt-3 font-serif text-4xl">
+              Poulets
+            </h2>
+
+            <p className="mt-4 text-base leading-8 text-black/60">
+              Une future activité avicole qui regroupera progressivement
+              poules pondeuses et poulets de chair.
+            </p>
+          </div>
+
+          <div className="grid gap-8 lg:grid-cols-2">
+            {poulets.map((item) => (
+              <article
+                key={item.name}
+                className="overflow-hidden border border-black/10 bg-white"
+              >
+                <MediaBlock
+                  media={pouletMedia}
+                  fallback="Les visuels de cette production seront bientôt disponibles."
+                />
+
+                <div className="p-7">
+                  <StatusBadge status={item.status} />
+
+                  <h3 className="mt-4 font-serif text-3xl">
+                    {item.name}
+                  </h3>
+
+                  <p className="mt-4 text-sm leading-7 text-black/60">
+                    {item.description}
+                  </p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* VISION */}
+      <section className="bg-[#18352B] text-white">
+        <div className="mx-auto max-w-5xl px-6 py-20 text-center lg:px-8 lg:py-28">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold">
+            Notre vision
+          </p>
+
+          <h2 className="mt-5 font-serif text-3xl leading-tight sm:text-4xl lg:text-5xl">
+            Construire une ferme capable de nourrir,
+            <br className="hidden sm:block" />
+            de créer et de transmettre.
+          </h2>
+
+          <p className="mx-auto mt-7 max-w-3xl text-base leading-8 text-white/70">
+            Agrofarms237 avance étape par étape, avec l’ambition de
+            développer une agriculture locale structurée, productive et
+            durable.
+          </p>
+        </div>
+      </section>
     </main>
   );
 }
