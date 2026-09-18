@@ -44,6 +44,14 @@ type HomeContent = {
   cta_button_secondary_url: string;
 };
 
+type OrderOption = {
+  id: string;
+  label: string;
+  type: "single" | "select" | "number";
+  values?: string[];
+  required?: boolean;
+};
+
 type Product = {
   id: string;
   name: string;
@@ -58,6 +66,7 @@ type Product = {
   order_enabled: boolean;
   position: number;
   published: boolean;
+  order_options: OrderOption[];
 };
 
 type ProductMedia = {
@@ -110,6 +119,21 @@ const emptyContent: HomeContent = {
   cta_button_secondary_url: "",
 };
 
+const emptyProductForm = {
+  name: "",
+  description: "",
+  status: "bientot" as Product["status"],
+  price: "",
+  price_unit: "kg",
+  price_1_label: "",
+  price_1: "",
+  price_2_label: "",
+  price_2: "",
+  order_enabled: false,
+  position: "0",
+  published: true,
+};
+
 const inputClass =
   "w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#1D4B44] focus:ring-2 focus:ring-[#1D4B44]/10";
 
@@ -132,20 +156,11 @@ export default function AccueilAdminPage() {
   const [editingProduct, setEditingProduct] =
     useState<Product | null>(null);
 
-  const [productForm, setProductForm] = useState({
-    name: "",
-    description: "",
-    status: "bientot" as Product["status"],
-    price: "",
-    price_unit: "kg",
-    price_1_label: "",
-    price_1: "",
-    price_2_label: "",
-    price_2: "",
-    order_enabled: false,
-    position: "0",
-    published: true,
-  });
+  const [productForm, setProductForm] =
+    useState(emptyProductForm);
+
+  const [orderOptions, setOrderOptions] =
+    useState<OrderOption[]>([]);
 
   useEffect(() => {
     loadAll();
@@ -155,13 +170,17 @@ export default function AccueilAdminPage() {
     try {
       setLoading(true);
 
-      const [contentRes, productsRes] = await Promise.all([
-        fetch("/api/home-content"),
-        fetch("/api/home-products"),
-      ]);
+      const [contentRes, productsRes] =
+        await Promise.all([
+          fetch("/api/home-content"),
+          fetch("/api/home-products"),
+        ]);
 
-      const contentData = await contentRes.json();
-      const productsData = await productsRes.json();
+      const contentData =
+        await contentRes.json();
+
+      const productsData =
+        await productsRes.json();
 
       if (contentData) {
         setContent({
@@ -170,34 +189,44 @@ export default function AccueilAdminPage() {
         });
       }
 
-      const loadedProducts = Array.isArray(productsData)
+      const loadedProducts = Array.isArray(
+        productsData
+      )
         ? productsData
         : productsData.products || [];
 
       setProducts(loadedProducts);
 
-      const mediaMap: Record<string, ProductMedia[]> = {};
+      const mediaMap: Record<
+        string,
+        ProductMedia[]
+      > = {};
 
       await Promise.all(
-        loadedProducts.map(async (product: Product) => {
-          const res = await fetch(
-            `/api/home-product-media?home_product_id=${product.id}`
-          );
+        loadedProducts.map(
+          async (product: Product) => {
+            const res = await fetch(
+              `/api/home-product-media?home_product_id=${product.id}`
+            );
 
-          if (!res.ok) return;
+            if (!res.ok) return;
 
-          const data = await res.json();
+            const data = await res.json();
 
-          mediaMap[product.id] = Array.isArray(data)
-            ? data
-            : data.media || [];
-        })
+            mediaMap[product.id] =
+              Array.isArray(data)
+                ? data
+                : data.media || [];
+          }
+        )
       );
 
       setMedia(mediaMap);
     } catch (error) {
       console.error(error);
-      setMessage("Une erreur est survenue lors du chargement.");
+      setMessage(
+        "Une erreur est survenue lors du chargement."
+      );
     } finally {
       setLoading(false);
     }
@@ -218,25 +247,32 @@ export default function AccueilAdminPage() {
       setSavingContent(true);
       setMessage("");
 
-      const response = await fetch("/api/home-content", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(content),
-      });
+      const response = await fetch(
+        "/api/home-content",
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(content),
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data?.error || "Impossible d'enregistrer."
+          data?.error ||
+            "Impossible d'enregistrer."
         );
       }
 
-      setMessage("✓ Contenu de l'accueil enregistré.");
+      setMessage(
+        "✓ Contenu de l'accueil enregistré."
+      );
     } catch (error) {
       console.error(error);
+
       setMessage(
         error instanceof Error
           ? error.message
@@ -249,20 +285,11 @@ export default function AccueilAdminPage() {
 
   function resetProductForm() {
     setProductForm({
-      name: "",
-      description: "",
-      status: "bientot",
-      price: "",
-      price_unit: "kg",
-      price_1_label: "",
-      price_1: "",
-      price_2_label: "",
-      price_2: "",
-      order_enabled: false,
+      ...emptyProductForm,
       position: String(products.length),
-      published: true,
     });
 
+    setOrderOptions([]);
     setEditingProduct(null);
     setShowProductForm(false);
   }
@@ -278,69 +305,323 @@ export default function AccueilAdminPage() {
         product.price !== null
           ? String(product.price)
           : "",
-      price_unit: product.price_unit || "kg",
-      price_1_label: product.price_1_label || "",
+      price_unit:
+        product.price_unit || "kg",
+      price_1_label:
+        product.price_1_label || "",
       price_1:
         product.price_1 !== null
           ? String(product.price_1)
           : "",
-      price_2_label: product.price_2_label || "",
+      price_2_label:
+        product.price_2_label || "",
       price_2:
         product.price_2 !== null
           ? String(product.price_2)
           : "",
-      order_enabled: product.order_enabled,
-      position: String(product.position ?? 0),
+      order_enabled:
+        product.order_enabled,
+      position: String(
+        product.position ?? 0
+      ),
       published: product.published,
     });
 
+    setOrderOptions(
+      Array.isArray(product.order_options)
+        ? product.order_options
+        : []
+    );
+
     setShowProductForm(true);
+
+    window.scrollTo({
+      top: document.body.scrollHeight,
+      behavior: "smooth",
+    });
+  }
+
+  function addOrderOption() {
+    setOrderOptions((previous) => [
+      ...previous,
+      {
+        id:
+          Date.now().toString() +
+          Math.random()
+            .toString(36)
+            .slice(2),
+        label: "",
+        type: "select",
+        values: [],
+        required: true,
+      },
+    ]);
+  }
+
+  function updateOrderOption(
+    id: string,
+    field: keyof OrderOption,
+    value: any
+  ) {
+    setOrderOptions((previous) =>
+      previous.map((option) =>
+        option.id === id
+          ? {
+              ...option,
+              [field]: value,
+            }
+          : option
+      )
+    );
+  }
+
+  function removeOrderOption(id: string) {
+    setOrderOptions((previous) =>
+      previous.filter(
+        (option) => option.id !== id
+      )
+    );
+  }
+
+  function addOptionValue(id: string) {
+    setOrderOptions((previous) =>
+      previous.map((option) =>
+        option.id === id
+          ? {
+              ...option,
+              values: [
+                ...(option.values || []),
+                "",
+              ],
+            }
+          : option
+      )
+    );
+  }
+
+  function updateOptionValue(
+    optionId: string,
+    index: number,
+    value: string
+  ) {
+    setOrderOptions((previous) =>
+      previous.map((option) => {
+        if (option.id !== optionId) {
+          return option;
+        }
+
+        const values = [
+          ...(option.values || []),
+        ];
+
+        values[index] = value;
+
+        return {
+          ...option,
+          values,
+        };
+      })
+    );
+  }
+
+  function removeOptionValue(
+    optionId: string,
+    index: number
+  ) {
+    setOrderOptions((previous) =>
+      previous.map((option) => {
+        if (option.id !== optionId) {
+          return option;
+        }
+
+        return {
+          ...option,
+          values: (option.values || []).filter(
+            (_, valueIndex) =>
+              valueIndex !== index
+          ),
+        };
+      })
+    );
+  }
+
+  function applySuggestedOptions(
+    productName: string
+  ) {
+    const name = productName
+      .trim()
+      .toLowerCase();
+
+    if (name.includes("silure")) {
+      setOrderOptions([
+        {
+          id: "silure-type",
+          label: "Préparation",
+          type: "select",
+          values: ["Frais", "Fumé"],
+          required: true,
+        },
+      ]);
+
+      return;
+    }
+
+    if (
+      name.includes("porc") ||
+      name.includes("porcs")
+    ) {
+      setOrderOptions([
+        {
+          id: "porc-format",
+          label: "Format",
+          type: "select",
+          values: ["Entier", "Au kg"],
+          required: true,
+        },
+        {
+          id: "porc-preparation",
+          label: "Préparation",
+          type: "select",
+          values: ["Frais", "Fumé"],
+          required: true,
+        },
+      ]);
+
+      return;
+    }
+
+    if (
+      name.includes("poulet") ||
+      name.includes("chair")
+    ) {
+      setOrderOptions([
+        {
+          id: "poulet-nettoyage",
+          label: "Préparation",
+          type: "select",
+          values: [
+            "Nettoyé",
+            "Non nettoyé",
+          ],
+          required: true,
+        },
+        {
+          id: "poulet-etat",
+          label: "État",
+          type: "select",
+          values: ["Frais", "Fumé"],
+          required: true,
+        },
+      ]);
+
+      return;
+    }
+
+    if (
+      name.includes("œuf") ||
+      name.includes("oeuf")
+    ) {
+      setOrderOptions([
+        {
+          id: "oeufs-alveoles",
+          label: "Nombre d'alvéoles",
+          type: "number",
+          values: [],
+          required: true,
+        },
+      ]);
+
+      return;
+    }
+
+    setOrderOptions([]);
   }
 
   async function saveProduct() {
     try {
       setMessage("");
 
+      if (!productForm.name.trim()) {
+        setMessage(
+          "Le nom du produit est obligatoire."
+        );
+        return;
+      }
+
+      const cleanOptions =
+        orderOptions
+          .map((option) => ({
+            ...option,
+            label:
+              option.label.trim(),
+            values:
+              option.values
+                ?.map((value) =>
+                  value.trim()
+                )
+                .filter(Boolean) || [],
+          }))
+          .filter(
+            (option) =>
+              option.label.length > 0
+          );
+
       const payload = {
         name: productForm.name.trim(),
-        description: productForm.description.trim(),
+        description:
+          productForm.description.trim(),
         status: productForm.status,
+
         price:
           productForm.price !== ""
             ? Number(productForm.price)
             : null,
-        price_unit: productForm.price_unit,
+
+        price_unit:
+          productForm.price_unit,
+
         price_1_label:
-          productForm.price_1_label.trim() || null,
+          productForm.price_1_label.trim() ||
+          null,
+
         price_1:
           productForm.price_1 !== ""
             ? Number(productForm.price_1)
             : null,
+
         price_2_label:
-          productForm.price_2_label.trim() || null,
+          productForm.price_2_label.trim() ||
+          null,
+
         price_2:
           productForm.price_2 !== ""
             ? Number(productForm.price_2)
             : null,
+
         order_enabled:
-          productForm.status === "disponible"
+          productForm.status ===
+          "disponible"
             ? productForm.order_enabled
             : false,
-        position: Number(productForm.position) || 0,
-        published: productForm.published,
-      };
 
-      if (!payload.name) {
-        setMessage("Le nom du produit est obligatoire.");
-        return;
-      }
+        position:
+          Number(productForm.position) || 0,
+
+        published:
+          productForm.published,
+
+        order_options:
+          cleanOptions,
+      };
 
       const response = await fetch(
         editingProduct
           ? `/api/home-products/${editingProduct.id}`
           : "/api/home-products",
         {
-          method: editingProduct ? "PATCH" : "POST",
+          method: editingProduct
+            ? "PATCH"
+            : "POST",
           headers: {
             "Content-Type": "application/json",
           },
@@ -348,21 +629,24 @@ export default function AccueilAdminPage() {
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data?.error || "Impossible d'enregistrer le produit."
+          data?.error ||
+            "Impossible d'enregistrer le produit."
         );
       }
 
       await loadAll();
+
       resetProductForm();
 
       setMessage(
         editingProduct
-          ? "✓ Produit modifié."
-          : "✓ Produit ajouté."
+          ? "✓ Produit modifié avec ses options."
+          : "✓ Produit ajouté avec ses options."
       );
     } catch (error) {
       console.error(error);
@@ -370,15 +654,18 @@ export default function AccueilAdminPage() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "Erreur lors de l'enregistrement du produit."
+          : "Erreur lors de l'enregistrement."
       );
     }
   }
 
-  async function deleteProduct(product: Product) {
-    const confirmed = window.confirm(
-      `Supprimer définitivement « ${product.name} » ?`
-    );
+  async function deleteProduct(
+    product: Product
+  ) {
+    const confirmed =
+      window.confirm(
+        `Supprimer définitivement « ${product.name} » ?`
+      );
 
     if (!confirmed) return;
 
@@ -390,17 +677,21 @@ export default function AccueilAdminPage() {
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data?.error || "Impossible de supprimer le produit."
+          data?.error ||
+            "Impossible de supprimer le produit."
         );
       }
 
       await loadAll();
 
-      setMessage("✓ Produit supprimé.");
+      setMessage(
+        "✓ Produit supprimé."
+      );
     } catch (error) {
       console.error(error);
 
@@ -417,9 +708,14 @@ export default function AccueilAdminPage() {
     file: File
   ) {
     try {
-      const formData = new FormData();
+      const formData =
+        new FormData();
 
-      formData.append("file", file);
+      formData.append(
+        "file",
+        file
+      );
+
       formData.append(
         "home_product_id",
         productId
@@ -433,7 +729,8 @@ export default function AccueilAdminPage() {
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -444,7 +741,9 @@ export default function AccueilAdminPage() {
 
       await loadAll();
 
-      setMessage("✓ Photo ajoutée.");
+      setMessage(
+        "✓ Photo ajoutée."
+      );
     } catch (error) {
       console.error(error);
 
@@ -456,10 +755,13 @@ export default function AccueilAdminPage() {
     }
   }
 
-  async function deletePhoto(photo: ProductMedia) {
-    const confirmed = window.confirm(
-      "Supprimer cette photo ?"
-    );
+  async function deletePhoto(
+    photo: ProductMedia
+  ) {
+    const confirmed =
+      window.confirm(
+        "Supprimer cette photo ?"
+      );
 
     if (!confirmed) return;
 
@@ -471,7 +773,8 @@ export default function AccueilAdminPage() {
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -482,7 +785,9 @@ export default function AccueilAdminPage() {
 
       await loadAll();
 
-      setMessage("✓ Photo supprimée.");
+      setMessage(
+        "✓ Photo supprimée."
+      );
     } catch (error) {
       console.error(error);
 
@@ -494,13 +799,23 @@ export default function AccueilAdminPage() {
     }
   }
 
-  function statusLabel(status: Product["status"]) {
-    if (status === "disponible") return "Disponible";
-    if (status === "rupture") return "Rupture de stock";
+  function statusLabel(
+    status: Product["status"]
+  ) {
+    if (status === "disponible") {
+      return "Disponible";
+    }
+
+    if (status === "rupture") {
+      return "Rupture de stock";
+    }
+
     return "Bientôt disponible";
   }
 
-  function statusClass(status: Product["status"]) {
+  function statusClass(
+    status: Product["status"]
+  ) {
     if (status === "disponible") {
       return "bg-green-50 text-green-700";
     }
@@ -527,7 +842,9 @@ export default function AccueilAdminPage() {
   return (
     <main className="min-h-screen bg-[#F7F5EF] px-5 py-10">
       <div className="mx-auto max-w-[1250px] space-y-8">
+
         {/* HEADER */}
+
         <header>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#1D4B44]">
             Administration
@@ -540,8 +857,7 @@ export default function AccueilAdminPage() {
               </h1>
 
               <p className="mt-2 text-sm text-black/60">
-                Gérez ici tout le contenu visible sur la page
-                d’accueil d’Agrofarms237.
+                Gérez ici tout le contenu visible sur la page d’accueil d’Agrofarms237.
               </p>
             </div>
 
@@ -564,6 +880,7 @@ export default function AccueilAdminPage() {
         </header>
 
         {/* HERO */}
+
         <section className={sectionClass}>
           <SectionTitle
             number="01"
@@ -576,7 +893,10 @@ export default function AccueilAdminPage() {
               label="Petit label"
               value={content.hero_label}
               onChange={(value) =>
-                updateContent("hero_label", value)
+                updateContent(
+                  "hero_label",
+                  value
+                )
               }
             />
 
@@ -584,7 +904,10 @@ export default function AccueilAdminPage() {
               label="Titre principal"
               value={content.hero_title}
               onChange={(value) =>
-                updateContent("hero_title", value)
+                updateContent(
+                  "hero_title",
+                  value
+                )
               }
             />
 
@@ -656,6 +979,7 @@ export default function AccueilAdminPage() {
         </section>
 
         {/* ENGAGEMENTS */}
+
         <section className={sectionClass}>
           <SectionTitle
             number="02"
@@ -752,11 +1076,12 @@ export default function AccueilAdminPage() {
         </section>
 
         {/* PRODUITS */}
+
         <section className={sectionClass}>
           <SectionTitle
             number="03"
             title="De la ferme à votre table"
-            description="Produits commercialisés, prix, disponibilité et photos."
+            description="Produits commercialisés, prix, disponibilité, options et photos."
           />
 
           <div className="mt-6 grid gap-5">
@@ -795,14 +1120,15 @@ export default function AccueilAdminPage() {
           </div>
 
           <div className="mt-8 border-t border-black/10 pt-8">
+
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
               <div>
                 <h3 className="text-lg font-semibold text-[#0E2622]">
                   Produits
                 </h3>
+
                 <p className="mt-1 text-sm text-black/50">
-                  Chaque produit possède ses propres prix,
-                  statut et photos.
+                  Chaque produit possède ses propres prix, statut, options et photos.
                 </p>
               </div>
 
@@ -817,8 +1143,11 @@ export default function AccueilAdminPage() {
               </button>
             </div>
 
+            {/* FORMULAIRE PRODUIT */}
+
             {showProductForm && (
               <div className="mt-6 rounded-2xl border border-[#1D4B44]/20 bg-[#F7F5EF] p-5">
+
                 <h3 className="text-lg font-semibold text-[#0E2622]">
                   {editingProduct
                     ? "Modifier le produit"
@@ -826,14 +1155,17 @@ export default function AccueilAdminPage() {
                 </h3>
 
                 <div className="mt-5 grid gap-5">
+
                   <Field
                     label="Nom du produit"
                     value={productForm.name}
                     onChange={(value) =>
-                      setProductForm((p) => ({
-                        ...p,
-                        name: value,
-                      }))
+                      setProductForm(
+                        (p) => ({
+                          ...p,
+                          name: value,
+                        })
+                      )
                     }
                   />
 
@@ -841,40 +1173,53 @@ export default function AccueilAdminPage() {
                     label="Description"
                     value={productForm.description}
                     onChange={(value) =>
-                      setProductForm((p) => ({
-                        ...p,
-                        description: value,
-                      }))
+                      setProductForm(
+                        (p) => ({
+                          ...p,
+                          description:
+                            value,
+                        })
+                      )
                     }
                   />
 
                   <div className="grid gap-5 md:grid-cols-3">
+
                     <SelectField
                       label="Statut"
                       value={productForm.status}
                       onChange={(value) =>
-                        setProductForm((p) => ({
-                          ...p,
-                          status:
-                            value as Product["status"],
-                          order_enabled:
-                            value === "disponible"
-                              ? p.order_enabled
-                              : false,
-                        }))
+                        setProductForm(
+                          (p) => ({
+                            ...p,
+                            status:
+                              value as Product["status"],
+                            order_enabled:
+                              value ===
+                              "disponible"
+                                ? p.order_enabled
+                                : false,
+                          })
+                        )
                       }
                       options={[
                         {
-                          value: "disponible",
-                          label: "Disponible",
+                          value:
+                            "disponible",
+                          label:
+                            "Disponible",
                         },
                         {
-                          value: "bientot",
-                          label: "Bientôt disponible",
+                          value:
+                            "bientot",
+                          label:
+                            "Bientôt disponible",
                         },
                         {
-                          value: "rupture",
-                          label: "Rupture de stock",
+                          value:
+                            "rupture",
+                          label:
+                            "Rupture de stock",
                         },
                       ]}
                     />
@@ -884,10 +1229,12 @@ export default function AccueilAdminPage() {
                       type="number"
                       value={productForm.price}
                       onChange={(value) =>
-                        setProductForm((p) => ({
-                          ...p,
-                          price: value,
-                        }))
+                        setProductForm(
+                          (p) => ({
+                            ...p,
+                            price: value,
+                          })
+                        )
                       }
                     />
 
@@ -895,25 +1242,31 @@ export default function AccueilAdminPage() {
                       label="Unité"
                       value={productForm.price_unit}
                       onChange={(value) =>
-                        setProductForm((p) => ({
-                          ...p,
-                          price_unit: value,
-                        }))
+                        setProductForm(
+                          (p) => ({
+                            ...p,
+                            price_unit:
+                              value,
+                          })
+                        )
                       }
                     />
                   </div>
 
+                  {/* TARIFS */}
+
                   <div className="rounded-xl border border-black/10 bg-white p-4">
+
                     <p className="text-sm font-semibold text-[#0E2622]">
                       Tarification spéciale
                     </p>
 
                     <p className="mt-1 text-xs text-black/50">
-                      Utile notamment pour le Silure : deux
-                      niveaux de prix.
+                      Utile notamment pour le Silure : deux niveaux de prix.
                     </p>
 
                     <div className="mt-4 grid gap-5 md:grid-cols-2">
+
                       <div>
                         <Field
                           label="Libellé prix 1"
@@ -921,10 +1274,13 @@ export default function AccueilAdminPage() {
                             productForm.price_1_label
                           }
                           onChange={(value) =>
-                            setProductForm((p) => ({
-                              ...p,
-                              price_1_label: value,
-                            }))
+                            setProductForm(
+                              (p) => ({
+                                ...p,
+                                price_1_label:
+                                  value,
+                              })
+                            )
                           }
                         />
 
@@ -932,12 +1288,17 @@ export default function AccueilAdminPage() {
                           <Field
                             label="Prix 1"
                             type="number"
-                            value={productForm.price_1}
+                            value={
+                              productForm.price_1
+                            }
                             onChange={(value) =>
-                              setProductForm((p) => ({
-                                ...p,
-                                price_1: value,
-                              }))
+                              setProductForm(
+                                (p) => ({
+                                  ...p,
+                                  price_1:
+                                    value,
+                                })
+                              )
                             }
                           />
                         </div>
@@ -950,10 +1311,13 @@ export default function AccueilAdminPage() {
                             productForm.price_2_label
                           }
                           onChange={(value) =>
-                            setProductForm((p) => ({
-                              ...p,
-                              price_2_label: value,
-                            }))
+                            setProductForm(
+                              (p) => ({
+                                ...p,
+                                price_2_label:
+                                  value,
+                              })
+                            )
                           }
                         />
 
@@ -961,29 +1325,359 @@ export default function AccueilAdminPage() {
                           <Field
                             label="Prix 2"
                             type="number"
-                            value={productForm.price_2}
+                            value={
+                              productForm.price_2
+                            }
                             onChange={(value) =>
-                              setProductForm((p) => ({
-                                ...p,
-                                price_2: value,
-                              }))
+                              setProductForm(
+                                (p) => ({
+                                  ...p,
+                                  price_2:
+                                    value,
+                                })
+                              )
                             }
                           />
                         </div>
                       </div>
+
                     </div>
                   </div>
 
+                  {/* OPTIONS DE COMMANDE */}
+
+                  <div className="rounded-2xl border border-[#1D4B44]/15 bg-white p-5">
+
+                    <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+
+                      <div>
+                        <p className="text-sm font-semibold text-[#0E2622]">
+                          Options de commande
+                        </p>
+
+                        <p className="mt-1 max-w-2xl text-xs leading-5 text-black/50">
+                          Configurez les choix que le client devra faire lorsqu’il sélectionnera ce produit.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          addOrderOption()
+                        }
+                        disabled={
+                          productForm.status !==
+                          "disponible"
+                        }
+                        className="rounded-xl bg-[#1D4B44] px-4 py-2.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        + Ajouter une option
+                      </button>
+                    </div>
+
+                    {/* SUGGESTIONS */}
+
+                    <div className="mt-5 rounded-xl border border-dashed border-black/10 bg-[#F7F5EF] p-4">
+
+                      <p className="text-xs font-semibold uppercase tracking-wide text-black/50">
+                        Configuration rapide
+                      </p>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            applySuggestedOptions(
+                              "Silure"
+                            )
+                          }
+                          className="rounded-lg border border-black/10 bg-white px-3 py-2 text-xs font-semibold"
+                        >
+                          Silure
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            applySuggestedOptions(
+                              "Porc"
+                            )
+                          }
+                          className="rounded-lg border border-black/10 bg-white px-3 py-2 text-xs font-semibold"
+                        >
+                          Porc
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            applySuggestedOptions(
+                              "Poulet de chair"
+                            )
+                          }
+                          className="rounded-lg border border-black/10 bg-white px-3 py-2 text-xs font-semibold"
+                        >
+                          Poulet de chair
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            applySuggestedOptions(
+                              "Œufs"
+                            )
+                          }
+                          className="rounded-lg border border-black/10 bg-white px-3 py-2 text-xs font-semibold"
+                        >
+                          Œufs
+                        </button>
+
+                      </div>
+                    </div>
+
+                    {/* LISTE DES OPTIONS */}
+
+                    <div className="mt-5 space-y-4">
+
+                      {orderOptions.length === 0 && (
+                        <div className="rounded-xl border border-dashed border-black/15 px-5 py-8 text-center">
+                          <p className="text-sm text-black/45">
+                            Aucune option configurée pour ce produit.
+                          </p>
+                        </div>
+                      )}
+
+                      {orderOptions.map(
+                        (
+                          option,
+                          optionIndex
+                        ) => (
+                          <div
+                            key={option.id}
+                            className="rounded-xl border border-black/10 bg-[#F7F5EF] p-4"
+                          >
+
+                            <div className="flex items-start gap-3">
+
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1D4B44] text-xs font-semibold text-white">
+                                {optionIndex +
+                                  1}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+
+                                <div className="grid gap-4 md:grid-cols-2">
+
+                                  <Field
+                                    label="Nom de l'option"
+                                    value={
+                                      option.label
+                                    }
+                                    onChange={(
+                                      value
+                                    ) =>
+                                      updateOrderOption(
+                                        option.id,
+                                        "label",
+                                        value
+                                      )
+                                    }
+                                  />
+
+                                  <SelectField
+                                    label="Type"
+                                    value={
+                                      option.type
+                                    }
+                                    onChange={(
+                                      value
+                                    ) =>
+                                      updateOrderOption(
+                                        option.id,
+                                        "type",
+                                        value
+                                      )
+                                    }
+                                    options={[
+                                      {
+                                        value:
+                                          "select",
+                                        label:
+                                          "Choix dans une liste",
+                                      },
+                                      {
+                                        value:
+                                          "number",
+                                        label:
+                                          "Nombre",
+                                      },
+                                      {
+                                        value:
+                                          "single",
+                                        label:
+                                          "Choix simple",
+                                      },
+                                    ]}
+                                  />
+
+                                </div>
+
+                                {option.type ===
+                                  "select" && (
+                                  <div className="mt-4 rounded-xl border border-black/10 bg-white p-4">
+
+                                    <div className="flex items-center justify-between gap-4">
+
+                                      <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-black/50">
+                                          Choix disponibles
+                                        </p>
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          addOptionValue(
+                                            option.id
+                                          )
+                                        }
+                                        className="rounded-lg border border-black/10 bg-[#F7F5EF] px-3 py-2 text-xs font-semibold"
+                                      >
+                                        + Ajouter
+                                      </button>
+
+                                    </div>
+
+                                    <div className="mt-3 space-y-2">
+
+                                      {(option.values ||
+                                        []).map(
+                                        (
+                                          value,
+                                          valueIndex
+                                        ) => (
+                                          <div
+                                            key={
+                                              valueIndex
+                                            }
+                                            className="flex gap-2"
+                                          >
+
+                                            <input
+                                              value={
+                                                value
+                                              }
+                                              onChange={(
+                                                e
+                                              ) =>
+                                                updateOptionValue(
+                                                  option.id,
+                                                  valueIndex,
+                                                  e.target
+                                                    .value
+                                                )
+                                              }
+                                              placeholder="Ex. Frais"
+                                              className={
+                                                inputClass
+                                              }
+                                            />
+
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                removeOptionValue(
+                                                  option.id,
+                                                  valueIndex
+                                                )
+                                              }
+                                              className="rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700"
+                                            >
+                                              ×
+                                            </button>
+
+                                          </div>
+                                        )
+                                      )}
+
+                                    </div>
+                                  </div>
+                                )}
+
+                                {option.type ===
+                                  "number" && (
+                                  <div className="mt-4 rounded-xl bg-white p-4 text-xs text-black/50">
+                                    Le client pourra saisir un nombre.
+                                    <br />
+                                    Exemple : nombre d’alvéoles.
+                                  </div>
+                                )}
+
+                                <label className="mt-4 flex items-center gap-3 text-xs">
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      option.required !==
+                                      false
+                                    }
+                                    onChange={(
+                                      e
+                                    ) =>
+                                      updateOrderOption(
+                                        option.id,
+                                        "required",
+                                        e.target
+                                          .checked
+                                      )
+                                    }
+                                  />
+
+                                  <span>
+                                    Choix obligatoire
+                                  </span>
+                                </label>
+
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  removeOrderOption(
+                                    option.id
+                                  )
+                                }
+                                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700"
+                              >
+                                Supprimer
+                              </button>
+
+                            </div>
+                          </div>
+                        )
+                      )}
+
+                    </div>
+
+                  </div>
+
+                  {/* PUBLICATION */}
+
                   <div className="grid gap-5 md:grid-cols-3">
+
                     <Field
                       label="Position"
                       type="number"
-                      value={productForm.position}
+                      value={
+                        productForm.position
+                      }
                       onChange={(value) =>
-                        setProductForm((p) => ({
-                          ...p,
-                          position: value,
-                        }))
+                        setProductForm(
+                          (p) => ({
+                            ...p,
+                            position: value,
+                          })
+                        )
                       }
                     />
 
@@ -994,11 +1688,14 @@ export default function AccueilAdminPage() {
                           productForm.published
                         }
                         onChange={(e) =>
-                          setProductForm((p) => ({
-                            ...p,
-                            published:
-                              e.target.checked,
-                          }))
+                          setProductForm(
+                            (p) => ({
+                              ...p,
+                              published:
+                                e.target
+                                  .checked,
+                            })
+                          )
                         }
                       />
 
@@ -1025,11 +1722,14 @@ export default function AccueilAdminPage() {
                           "disponible"
                         }
                         onChange={(e) =>
-                          setProductForm((p) => ({
-                            ...p,
-                            order_enabled:
-                              e.target.checked,
-                          }))
+                          setProductForm(
+                            (p) => ({
+                              ...p,
+                              order_enabled:
+                                e.target
+                                  .checked,
+                            })
+                          )
                         }
                       />
 
@@ -1037,17 +1737,25 @@ export default function AccueilAdminPage() {
                         Autoriser Commander
                       </span>
                     </label>
+
                   </div>
 
+                  {/* BOUTONS */}
+
                   <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+
                     <button
-                      onClick={resetProductForm}
+                      type="button"
+                      onClick={
+                        resetProductForm
+                      }
                       className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold"
                     >
                       Annuler
                     </button>
 
                     <button
+                      type="button"
                       onClick={saveProduct}
                       className="rounded-xl bg-[#1D4B44] px-5 py-3 text-sm font-semibold text-white"
                     >
@@ -1055,192 +1763,296 @@ export default function AccueilAdminPage() {
                         ? "Enregistrer les modifications"
                         : "Créer le produit"}
                     </button>
+
                   </div>
+
                 </div>
               </div>
             )}
 
+            {/* LISTE DES PRODUITS */}
+
             <div className="mt-6 space-y-5">
+
               {products.length === 0 && (
                 <div className="rounded-xl border border-dashed border-black/20 bg-[#F7F5EF] p-8 text-center text-sm text-black/50">
                   Aucun produit configuré.
                 </div>
               )}
 
-              {products.map((product) => (
-                <div
-                  key={product.id}
-                  className="rounded-2xl border border-black/10 bg-[#F7F5EF] p-5"
-                >
-                  <div className="flex flex-col justify-between gap-4 lg:flex-row">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h4 className="text-xl font-semibold text-[#0E2622]">
-                          {product.name}
-                        </h4>
+              {products.map(
+                (product) => (
+                  <div
+                    key={product.id}
+                    className="rounded-2xl border border-black/10 bg-[#F7F5EF] p-5"
+                  >
 
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(
-                            product.status
-                          )}`}
-                        >
-                          {statusLabel(
-                            product.status
-                          )}
-                        </span>
+                    <div className="flex flex-col justify-between gap-4 lg:flex-row">
 
-                        {!product.published && (
-                          <span className="rounded-full bg-black/5 px-3 py-1 text-xs font-semibold text-black/50">
-                            Masqué
-                          </span>
-                        )}
-                      </div>
-
-                      {product.description && (
-                        <p className="mt-2 max-w-2xl text-sm leading-6 text-black/60">
-                          {product.description}
-                        </p>
-                      )}
-
-                      <div className="mt-4 flex flex-wrap gap-3 text-sm">
-                        {product.price !== null && (
-                          <span className="rounded-lg bg-white px-3 py-2">
-                            {product.price.toLocaleString(
-                              "fr-FR"
-                            )}{" "}
-                            FCFA /{" "}
-                            {product.price_unit ||
-                              "unité"}
-                          </span>
-                        )}
-
-                        {product.price_1 !==
-                          null && (
-                          <span className="rounded-lg bg-white px-3 py-2">
-                            {product.price_1_label ||
-                              "Prix 1"}{" "}
-                            :{" "}
-                            {product.price_1.toLocaleString(
-                              "fr-FR"
-                            )}{" "}
-                            FCFA
-                          </span>
-                        )}
-
-                        {product.price_2 !==
-                          null && (
-                          <span className="rounded-lg bg-white px-3 py-2">
-                            {product.price_2_label ||
-                              "Prix 2"}{" "}
-                            :{" "}
-                            {product.price_2.toLocaleString(
-                              "fr-FR"
-                            )}{" "}
-                            FCFA
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() =>
-                          editProduct(product)
-                        }
-                        className="rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-semibold"
-                      >
-                        Modifier
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          deleteProduct(product)
-                        }
-                        className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700"
-                      >
-                        Supprimer
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* PHOTOS */}
-                  <div className="mt-6 border-t border-black/10 pt-5">
-                    <div className="flex items-center justify-between gap-4">
                       <div>
-                        <p className="text-sm font-semibold text-[#0E2622]">
-                          Photos du produit
-                        </p>
 
-                        <p className="mt-1 text-xs text-black/50">
-                          Ces photos appartiennent uniquement
-                          à ce produit.
-                        </p>
+                        <div className="flex flex-wrap items-center gap-3">
+
+                          <h4 className="text-xl font-semibold text-[#0E2622]">
+                            {product.name}
+                          </h4>
+
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(
+                              product.status
+                            )}`}
+                          >
+                            {statusLabel(
+                              product.status
+                            )}
+                          </span>
+
+                          {!product.published && (
+                            <span className="rounded-full bg-black/5 px-3 py-1 text-xs font-semibold text-black/50">
+                              Masqué
+                            </span>
+                          )}
+
+                        </div>
+
+                        {product.description && (
+                          <p className="mt-2 max-w-2xl text-sm leading-6 text-black/60">
+                            {
+                              product.description
+                            }
+                          </p>
+                        )}
+
+                        <div className="mt-4 flex flex-wrap gap-3 text-sm">
+
+                          {product.price !==
+                            null && (
+                            <span className="rounded-lg bg-white px-3 py-2">
+                              {product.price.toLocaleString(
+                                "fr-FR"
+                              )}{" "}
+                              FCFA /{" "}
+                              {product.price_unit ||
+                                "unité"}
+                            </span>
+                          )}
+
+                          {product.price_1 !==
+                            null && (
+                            <span className="rounded-lg bg-white px-3 py-2">
+                              {product.price_1_label ||
+                                "Prix 1"}{" "}
+                              :{" "}
+                              {product.price_1.toLocaleString(
+                                "fr-FR"
+                              )}{" "}
+                              FCFA
+                            </span>
+                          )}
+
+                          {product.price_2 !==
+                            null && (
+                            <span className="rounded-lg bg-white px-3 py-2">
+                              {product.price_2_label ||
+                                "Prix 2"}{" "}
+                              :{" "}
+                              {product.price_2.toLocaleString(
+                                "fr-FR"
+                              )}{" "}
+                              FCFA
+                            </span>
+                          )}
+
+                        </div>
+
+                        {/* OPTIONS AFFICHÉES */}
+
+                        {product.order_options &&
+                          product.order_options
+                            .length > 0 && (
+                            <div className="mt-4">
+
+                              <p className="text-xs font-semibold uppercase tracking-wide text-black/40">
+                                Options de commande
+                              </p>
+
+                              <div className="mt-2 flex flex-wrap gap-2">
+
+                                {product.order_options.map(
+                                  (
+                                    option
+                                  ) => (
+                                    <span
+                                      key={
+                                        option.id
+                                      }
+                                      className="rounded-lg border border-black/10 bg-white px-3 py-2 text-xs"
+                                    >
+                                      <strong>
+                                        {
+                                          option.label
+                                        }
+                                      </strong>
+
+                                      {option.values &&
+                                        option
+                                          .values
+                                          .length >
+                                          0 && (
+                                          <>
+                                            {" "}
+                                            :
+                                            {" "}
+                                            {option.values.join(
+                                              " / "
+                                            )}
+                                          </>
+                                        )}
+                                    </span>
+                                  )
+                                )}
+
+                              </div>
+                            </div>
+                          )}
+
                       </div>
 
-                      <label className="cursor-pointer rounded-xl bg-white px-4 py-2 text-sm font-semibold shadow-sm">
-                        + Ajouter
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file =
-                              e.target.files?.[0];
+                      <div className="flex flex-wrap gap-2">
 
-                            if (file) {
-                              uploadProductPhoto(
-                                product.id,
-                                file
-                              );
-                            }
+                        <button
+                          onClick={() =>
+                            editProduct(
+                              product
+                            )
+                          }
+                          className="rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-semibold"
+                        >
+                          Modifier
+                        </button>
 
-                            e.currentTarget.value =
-                              "";
-                          }}
-                        />
-                      </label>
+                        <button
+                          onClick={() =>
+                            deleteProduct(
+                              product
+                            )
+                          }
+                          className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700"
+                        >
+                          Supprimer
+                        </button>
+
+                      </div>
+
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                      {(media[product.id] || []).map(
-                        (photo) => (
-                          <div
-                            key={photo.id}
-                            className="group relative aspect-square overflow-hidden rounded-xl bg-black/5"
-                          >
-                            <img
-                              src={photo.url}
-                              alt={product.name}
-                              className="h-full w-full object-cover"
-                            />
+                    {/* PHOTOS */}
 
-                            <button
-                              onClick={() =>
-                                deletePhoto(photo)
-                              }
-                              className="absolute right-2 top-2 rounded-lg bg-black/70 px-2 py-1 text-xs font-semibold text-white opacity-0 transition group-hover:opacity-100"
-                            >
-                              Supprimer
-                            </button>
-                          </div>
-                        )
-                      )}
+                    <div className="mt-6 border-t border-black/10 pt-5">
 
-                      {(media[product.id] || [])
-                        .length === 0 && (
-                        <div className="col-span-full rounded-xl border border-dashed border-black/15 p-6 text-center text-xs text-black/40">
-                          Aucune photo pour ce produit.
+                      <div className="flex items-center justify-between gap-4">
+
+                        <div>
+                          <p className="text-sm font-semibold text-[#0E2622]">
+                            Photos du produit
+                          </p>
+
+                          <p className="mt-1 text-xs text-black/50">
+                            Ces photos appartiennent uniquement à ce produit.
+                          </p>
                         </div>
-                      )}
+
+                        <label className="cursor-pointer rounded-xl bg-white px-4 py-2 text-sm font-semibold shadow-sm">
+                          + Ajouter
+
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={(
+                              e
+                            ) => {
+                              const file =
+                                e.target
+                                  .files?.[0];
+
+                              if (file) {
+                                uploadProductPhoto(
+                                  product.id,
+                                  file
+                                );
+                              }
+
+                              e.currentTarget.value =
+                                "";
+                            }}
+                          />
+                        </label>
+
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+
+                        {(media[
+                          product.id
+                        ] || []).map(
+                          (photo) => (
+                            <div
+                              key={
+                                photo.id
+                              }
+                              className="group relative aspect-square overflow-hidden rounded-xl bg-black/5"
+                            >
+
+                              <img
+                                src={
+                                  photo.url
+                                }
+                                alt={
+                                  product.name
+                                }
+                                className="h-full w-full object-cover"
+                              />
+
+                              <button
+                                onClick={() =>
+                                  deletePhoto(
+                                    photo
+                                  )
+                                }
+                                className="absolute right-2 top-2 rounded-lg bg-black/70 px-2 py-1 text-xs font-semibold text-white opacity-0 transition group-hover:opacity-100"
+                              >
+                                Supprimer
+                              </button>
+
+                            </div>
+                          )
+                        )}
+
+                        {(media[
+                          product.id
+                        ] || []).length ===
+                          0 && (
+                          <div className="col-span-full rounded-xl border border-dashed border-black/15 p-6 text-center text-xs text-black/40">
+                            Aucune photo pour ce produit.
+                          </div>
+                        )}
+
+                      </div>
+
                     </div>
+
                   </div>
-                </div>
-              ))}
+                )
+              )}
+
             </div>
+
           </div>
         </section>
 
         {/* HISTOIRE */}
+
         <section className={sectionClass}>
           <SectionTitle
             number="04"
@@ -1249,6 +2061,7 @@ export default function AccueilAdminPage() {
           />
 
           <div className="mt-6 grid gap-5">
+
             <Field
               label="Petit label"
               value={content.story_label}
@@ -1283,9 +2096,12 @@ export default function AccueilAdminPage() {
             />
 
             <div className="grid gap-5 md:grid-cols-2">
+
               <Field
                 label="Texte du bouton"
-                value={content.story_button_label}
+                value={
+                  content.story_button_label
+                }
                 onChange={(value) =>
                   updateContent(
                     "story_button_label",
@@ -1296,7 +2112,9 @@ export default function AccueilAdminPage() {
 
               <Field
                 label="URL du bouton"
-                value={content.story_button_url}
+                value={
+                  content.story_button_url
+                }
                 onChange={(value) =>
                   updateContent(
                     "story_button_url",
@@ -1304,11 +2122,14 @@ export default function AccueilAdminPage() {
                   )
                 }
               />
+
             </div>
+
           </div>
         </section>
 
         {/* AVENIR */}
+
         <section className={sectionClass}>
           <SectionTitle
             number="05"
@@ -1317,9 +2138,12 @@ export default function AccueilAdminPage() {
           />
 
           <div className="mt-6 grid gap-5">
+
             <Field
               label="Petit label"
-              value={content.future_label}
+              value={
+                content.future_label
+              }
               onChange={(value) =>
                 updateContent(
                   "future_label",
@@ -1330,7 +2154,9 @@ export default function AccueilAdminPage() {
 
             <Field
               label="Titre"
-              value={content.future_title}
+              value={
+                content.future_title
+              }
               onChange={(value) =>
                 updateContent(
                   "future_title",
@@ -1341,7 +2167,9 @@ export default function AccueilAdminPage() {
 
             <TextArea
               label="Texte"
-              value={content.future_text}
+              value={
+                content.future_text
+              }
               onChange={(value) =>
                 updateContent(
                   "future_text",
@@ -1349,10 +2177,12 @@ export default function AccueilAdminPage() {
                 )
               }
             />
+
           </div>
         </section>
 
         {/* CTA */}
+
         <section className={sectionClass}>
           <SectionTitle
             number="06"
@@ -1361,6 +2191,7 @@ export default function AccueilAdminPage() {
           />
 
           <div className="mt-6 grid gap-5">
+
             <Field
               label="Petit label"
               value={content.cta_label}
@@ -1395,6 +2226,7 @@ export default function AccueilAdminPage() {
             />
 
             <div className="grid gap-5 md:grid-cols-2">
+
               <Field
                 label="Bouton principal"
                 value={
@@ -1446,11 +2278,14 @@ export default function AccueilAdminPage() {
                   )
                 }
               />
+
             </div>
+
           </div>
         </section>
 
         {/* SAVE */}
+
         <div className="flex justify-end pb-10">
           <button
             onClick={saveContent}
@@ -1462,6 +2297,7 @@ export default function AccueilAdminPage() {
               : "Enregistrer tout le contenu"}
           </button>
         </div>
+
       </div>
     </main>
   );
@@ -1482,6 +2318,7 @@ function SectionTitle({
 }) {
   return (
     <div className="flex gap-4">
+
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1D4B44] text-xs font-semibold text-white">
         {number}
       </div>
@@ -1495,6 +2332,7 @@ function SectionTitle({
           {description}
         </p>
       </div>
+
     </div>
   );
 }
@@ -1512,6 +2350,7 @@ function Field({
 }) {
   return (
     <label className="block">
+
       <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-black/50">
         {label}
       </span>
@@ -1524,6 +2363,7 @@ function Field({
         }
         className={inputClass}
       />
+
     </label>
   );
 }
@@ -1539,6 +2379,7 @@ function TextArea({
 }) {
   return (
     <label className="block">
+
       <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-black/50">
         {label}
       </span>
@@ -1550,6 +2391,7 @@ function TextArea({
         }
         className={textareaClass}
       />
+
     </label>
   );
 }
@@ -1570,6 +2412,7 @@ function SelectField({
 }) {
   return (
     <label className="block">
+
       <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-black/50">
         {label}
       </span>
@@ -1581,15 +2424,18 @@ function SelectField({
         }
         className={inputClass}
       >
-        {options.map((option) => (
-          <option
-            key={option.value}
-            value={option.value}
-          >
-            {option.label}
-          </option>
-        ))}
+        {options.map(
+          (option) => (
+            <option
+              key={option.value}
+              value={option.value}
+            >
+              {option.label}
+            </option>
+          )
+        )}
       </select>
+
     </label>
   );
 }
@@ -1609,7 +2455,9 @@ function CommitmentEditor({
 }) {
   return (
     <div className="rounded-xl border border-black/10 bg-[#F7F5EF] p-4">
+
       <div className="mb-4 flex items-center gap-3">
+
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1D4B44] text-xs font-semibold text-white">
           {number}
         </span>
@@ -1617,6 +2465,7 @@ function CommitmentEditor({
         <span className="text-sm font-semibold text-[#0E2622]">
           Engagement {number}
         </span>
+
       </div>
 
       <Field
@@ -1632,6 +2481,7 @@ function CommitmentEditor({
           onChange={onTextChange}
         />
       </div>
+
     </div>
   );
 }
