@@ -261,6 +261,33 @@ async function getFarmMedia(): Promise<FarmMedia[]> {
   }
 }
 
+type StoryMedia = {
+  id: string;
+  url: string;
+  created_at: string;
+};
+
+async function getStoryMedia(): Promise<StoryMedia[]> {
+  try {
+    const { data, error } = await supabaseAdmin()
+      .from("home_story_media")
+      .select("id,url,created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(
+        "Erreur récupération photo Notre histoire :",
+        error
+      );
+      return [];
+    }
+
+    return (data || []) as StoryMedia[];
+  } catch {
+    return [];
+  }
+}
+
 async function getGeneralMedia(): Promise<GeneralMedia[]> {
   try {
     const { data } = await supabaseAdmin()
@@ -416,6 +443,7 @@ export default async function HomePage() {
     farmItems,
     farmMedia,
     generalMedia,
+    storyMedia,
     reviews,
   ] = await Promise.all([
     getHomeContent(),
@@ -424,6 +452,7 @@ export default async function HomePage() {
     getFarmItems(),
     getFarmMedia(),
     getGeneralMedia(),
+    getStoryMedia(),
     getReviews(),
   ]);
 
@@ -773,18 +802,23 @@ export default async function HomePage() {
       >
         <div className="mx-auto grid max-w-[1280px] gap-12 md:grid-cols-2 md:items-center">
           <div className="overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_30%_20%,#2A5E56_0%,#0E2622_60%,#081815_100%)]">
-            {generalMedia.length >
-            0 ? (
+            {storyMedia.length > 0 ? (
               <img
-                src={
-                  generalMedia[0]
-                    .url
-                }
-                alt="Agrofarms237"
+                src={storyMedia[0].url}
+                alt="Notre histoire — Agrofarms237"
                 className="aspect-[5/4] h-full w-full object-cover"
               />
             ) : (
-              <div className="aspect-[5/4]" />
+              <div className="flex aspect-[5/4] items-center justify-center px-6 text-center">
+                <div>
+                  <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-gold">
+                    Agrofarms237
+                  </span>
+                  <p className="mt-2 font-serif text-lg text-paper/80">
+                    Photo à venir
+                  </p>
+                </div>
+              </div>
             )}
           </div>
 
