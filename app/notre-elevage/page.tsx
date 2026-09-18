@@ -94,7 +94,7 @@ function getMediaForCategory(
     const category = item.category?.toLowerCase() ?? "";
 
     return categories.some((value) =>
-      category.includes(value.toLowerCase())
+      category.toLowerCase().includes(value.toLowerCase())
     );
   });
 }
@@ -132,11 +132,7 @@ function MediaBlock({
 
   return (
     <ProductCarousel
-      items={media.map((item) => ({
-        id: item.id,
-        url: item.url,
-        caption: item.caption,
-      }))}
+      images={media.map((item) => item.url)}
     />
   );
 }
