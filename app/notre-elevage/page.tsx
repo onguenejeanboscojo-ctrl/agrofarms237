@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import ProductCarousel from "@/components/ProductCarousel";
+import HeroSlideshow from "@/components/HeroSlideshow";
 
 export const revalidate = 30;
 
@@ -276,6 +277,30 @@ export default async function NotreElevagePage() {
     mediaByFarm[media.farm_breeding_id].push(media);
   }
 
+  /*
+   * HERO :
+   * Toutes les photos de tous les élevages publiés
+   * de la page Notre élevage sont regroupées dans
+   * un seul diaporama.
+   *
+   * L'ordre suit l'ordre des élevages défini dans
+   * l'administration.
+   */
+  const heroImages = Array.from(
+    new Set(
+      farmItems.flatMap((item) => {
+        const ownMedia = mediaByFarm[item.id] || [];
+
+        if (ownMedia.length > 0) {
+          return ownMedia.map((media) => media.url);
+        }
+
+        // Ancienne photo principale utilisée comme secours
+        return item.photo_url ? [item.photo_url] : [];
+      })
+    )
+  );
+
   const poissons = farmItems.filter(
     (item) =>
       item.category.toLowerCase() === "poisson"
@@ -293,23 +318,33 @@ export default async function NotreElevagePage() {
 
   return (
     <main className="bg-white text-ink">
-      {/* HERO */}
-      <section className="relative overflow-hidden bg-[#18352B] text-white">
-        <div className="absolute inset-0 bg-black/10" />
 
-        <div className="relative mx-auto max-w-7xl px-6 py-24 lg:px-8 lg:py-32">
+      {/* HERO */}
+      <section className="relative min-h-[520px] overflow-hidden bg-[#18352B] text-white">
+
+        {/* Diaporama de toutes les photos de Notre élevage */}
+        {heroImages.length > 0 && (
+          <HeroSlideshow images={heroImages} />
+        )}
+
+        {/* Voile sombre pour garantir la lisibilité du texte */}
+        <div className="absolute inset-0 z-[1] bg-gradient-to-r from-black/70 via-black/50 to-black/30" />
+
+        <div className="relative z-10 mx-auto flex min-h-[520px] max-w-7xl items-center px-6 py-24 lg:px-8 lg:py-32">
           <div className="max-w-4xl">
+
             <p className="mb-5 text-sm font-medium uppercase tracking-[0.25em] text-gold">
               {content.hero_label}
             </p>
 
-            <h1 className="font-serif text-4xl leading-tight sm:text-5xl lg:text-6xl">
+            <h1 className="whitespace-nowrap font-serif text-4xl leading-tight sm:text-5xl lg:text-6xl">
               {content.hero_title}
             </h1>
 
-            <p className="mt-7 max-w-3xl text-base leading-8 text-white/75 sm:text-lg">
+            <p className="mt-7 max-w-3xl text-base leading-8 text-white/80 sm:text-lg">
               {content.hero_description}
             </p>
+
           </div>
         </div>
       </section>
@@ -318,6 +353,7 @@ export default async function NotreElevagePage() {
       <section className="border-b border-black/10 bg-white">
         <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
           <div className="grid gap-10 md:grid-cols-3">
+
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
                 {content.step1_label}
@@ -351,7 +387,7 @@ export default async function NotreElevagePage() {
                 {content.step3_label}
               </p>
 
-              <h2 className="mt-3 font-serif text-2xl">
+              <h2 className="mt-3 whitespace-nowrap font-serif text-2xl">
                 {content.step3_title}
               </h2>
 
@@ -359,6 +395,7 @@ export default async function NotreElevagePage() {
                 {content.step3_text}
               </p>
             </div>
+
           </div>
         </div>
       </section>
@@ -366,6 +403,7 @@ export default async function NotreElevagePage() {
       {/* POISSONS */}
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+
           <div className="mb-12 max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
               {content.fish_label}
@@ -383,21 +421,16 @@ export default async function NotreElevagePage() {
           {poissons.length === 0 ? (
             <div className="border border-black/10 bg-bgAlt p-8 text-center">
               <p className="text-sm text-black/50">
-                Aucun élevage de poisson n’est actuellement
-                publié.
+                Aucun élevage de poisson n’est actuellement publié.
               </p>
             </div>
           ) : (
             <div className="grid gap-8 lg:grid-cols-2">
+
               {poissons.map((item) => {
                 const itemMedia =
                   mediaByFarm[item.id] || [];
 
-                /*
-                 * Si aucune photo multiple n'existe encore,
-                 * on utilise éventuellement l'ancienne photo
-                 * principale comme secours.
-                 */
                 const finalMedia =
                   itemMedia.length > 0
                     ? itemMedia
@@ -419,12 +452,14 @@ export default async function NotreElevagePage() {
                     key={item.id}
                     className="overflow-hidden border border-black/10 bg-white"
                   >
+
                     <MediaBlock
                       media={finalMedia}
                       fallback={`Les visuels de ${item.name.toLowerCase()} seront bientôt disponibles.`}
                     />
 
                     <div className="p-7">
+
                       <StatusBadge status={item.status} />
 
                       <h3 className="mt-4 font-serif text-3xl">
@@ -442,18 +477,22 @@ export default async function NotreElevagePage() {
                           Production actuelle
                         </p>
                       )}
+
                     </div>
                   </article>
                 );
               })}
+
             </div>
           )}
+
         </div>
       </section>
 
       {/* PORCS */}
       <section className="bg-bgAlt">
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+
           <div className="mb-12 max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
               {content.pigs_label}
@@ -476,6 +515,7 @@ export default async function NotreElevagePage() {
             </div>
           ) : (
             <div className="grid gap-8 lg:grid-cols-2">
+
               {porcs.map((item) => {
                 const itemMedia =
                   mediaByFarm[item.id] || [];
@@ -501,12 +541,14 @@ export default async function NotreElevagePage() {
                     key={item.id}
                     className="overflow-hidden border border-black/10 bg-white"
                   >
+
                     <MediaBlock
                       media={finalMedia}
                       fallback="Les visuels de cette production seront bientôt disponibles."
                     />
 
                     <div className="p-7">
+
                       <StatusBadge status={item.status} />
 
                       <h3 className="mt-4 font-serif text-3xl">
@@ -518,18 +560,22 @@ export default async function NotreElevagePage() {
                           {item.description}
                         </p>
                       )}
+
                     </div>
                   </article>
                 );
               })}
+
             </div>
           )}
+
         </div>
       </section>
 
       {/* POULETS */}
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+
           <div className="mb-12 max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
               {content.poultry_label}
@@ -552,6 +598,7 @@ export default async function NotreElevagePage() {
             </div>
           ) : (
             <div className="grid gap-8 lg:grid-cols-2">
+
               {poulets.map((item) => {
                 const itemMedia =
                   mediaByFarm[item.id] || [];
@@ -577,12 +624,14 @@ export default async function NotreElevagePage() {
                     key={item.id}
                     className="overflow-hidden border border-black/10 bg-white"
                   >
+
                     <MediaBlock
                       media={finalMedia}
                       fallback="Les visuels de cette production seront bientôt disponibles."
                     />
 
                     <div className="p-7">
+
                       <StatusBadge status={item.status} />
 
                       <h3 className="mt-4 font-serif text-3xl">
@@ -594,18 +643,22 @@ export default async function NotreElevagePage() {
                           {item.description}
                         </p>
                       )}
+
                     </div>
                   </article>
                 );
               })}
+
             </div>
           )}
+
         </div>
       </section>
 
       {/* VISION */}
       <section className="bg-[#18352B] text-white">
         <div className="mx-auto max-w-5xl px-6 py-20 text-center lg:px-8 lg:py-28">
+
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold">
             {content.vision_label}
           </p>
@@ -617,8 +670,10 @@ export default async function NotreElevagePage() {
           <p className="mx-auto mt-7 max-w-3xl text-base leading-8 text-white/70">
             {content.vision_text}
           </p>
+
         </div>
       </section>
+
     </main>
   );
 }
