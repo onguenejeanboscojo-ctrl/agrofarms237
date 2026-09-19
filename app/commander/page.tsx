@@ -3,10 +3,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatFCFA } from "@/lib/whatsapp";
 
-type OrderOption = {
+type OrderOptionValue = {
+  id?: string;
   label: string;
-  values?: string[];
-  type?: string;
+  available?: boolean;
+  price_unit?: string;
+  price_1_label?: string;
+  price_1?: number | null;
+  price_2_label?: string;
+  price_2?: number | null;
+  children?: OrderOption[];
+};
+
+type OrderOption = {
+  id?: string;
+  label: string;
+  values?: Array<OrderOptionValue | string>;
+  type?: "single" | "select" | "number" | string;
+  required?: boolean;
 };
 
 type HomeProduct = {
@@ -92,12 +106,65 @@ function getDefaultOptions(name: string): OrderOption[] {
   return [];
 }
 
-function getOptionValues(option: OrderOption): string[] {
-  if (Array.isArray(option.values)) {
-    return option.values.filter(Boolean);
+function normalizeOptionValue(value: OrderOptionValue | string): OrderOptionValue {
+  if (typeof value === "string") {
+    return { label: value, available: true };
   }
+  return {
+    ...value,
+    label: typeof value?.label === "string" ? value.label : "",
+    available: value?.available !== false,
+    children: Array.isArray(value?.children) ? value.children : [],
+  };
+}
 
-  return [];
+function getOptionValues(option: OrderOption): OrderOptionValue[] {
+  if (!Array.isArray(option.values)) return [];
+  return option.values
+    .map(normalizeOptionValue)
+    .filter((value) => value.label.trim().length > 0);
+}
+
+function getVisibleOptions(
+  roots: OrderOption[],
+  selected: Record<string, string>
+): OrderOption[] {
+  const visible: OrderOption[] = [];
+  for (const option of roots) {
+    visible.push(option);
+    const chosen = getOptionValues(option).find(
+      (value) => value.label === selected[option.id || option.label]
+    );
+    if (chosen?.children?.length) {
+      visible.push(...getVisibleOptions(chosen.children, selected));
+    }
+  }
+  return visible;
+}
+
+function getSelectedPricedValue(
+  roots: OrderOption[],
+  selected: Record<string, string>
+): OrderOptionValue | null {
+  for (const option of roots) {
+    const chosen = getOptionValues(option).find(
+      (value) => value.label === selected[option.id || option.label]
+    );
+    if (chosen) {
+      const nested = chosen.children?.length
+        ? getSelectedPricedValue(chosen.children, selected)
+        : null;
+      if (nested && (typeof nested.price_1 === "number" || typeof nested.price_2 === "number")) return nested;
+      if (typeof chosen.price_1 === "number" || typeof chosen.price_2 === "number") return chosen;
+    }
+  }
+  return null;
+}
+
+function getTierThreshold(label?: string | null): number | null {
+  if (!label) return null;
+  const match = label.match(/(?:à\s*partir\s*de|dès)\s*(\d+)/i);
+  return match ? Number(match[1]) : null;
 }
 
 function getProductPrice(product: HomeProduct | null) {
@@ -217,7 +284,23 @@ export default function CommanderPage() {
     [selectedProduct]
   );
 
-  const unitPrice = getProductPrice(selectedProduct);
+  const visibleOptions = useMemo(
+    () => getVisibleOptions(selectedOptions, options),
+    [selectedOptions, options]
+  );
+
+  const selectedPricedValue = getSelectedPricedValue(selectedOptions, options);
+  const tierThreshold = getTierThreshold(selectedPricedValue?.price_2_label);
+  const optionPrice = selectedPricedValue
+    ? (tierThreshold !== null && quantity >= tierThreshold && typeof selectedPricedValue.price_2 === "number"
+        ? selectedPricedValue.price_2
+        : typeof selectedPricedValue.price_1 === "number"
+        ? selectedPricedValue.price_1
+        : typeof selectedPricedValue.price_2 === "number"
+        ? selectedPricedValue.price_2
+        : null)
+    : null;
+  const unitPrice = optionPrice ?? getProductPrice(selectedProduct);
 
   const total =
     typeof unitPrice === "number"
@@ -239,13 +322,30 @@ export default function CommanderPage() {
   }
 
   function selectOption(
-    label: string,
+    option: OrderOption,
     value: string
   ) {
-    setOptions((current) => ({
-      ...current,
-      [label]: value,
-    }));
+    const key = option.id || option.label;
+    setOptions((current) => {
+      const next = { ...current, [key]: value };
+      // Clear dependent choices when their parent selection changes.
+      const clearChildren = (items: OrderOption[]) => {
+        for (const item of items) {
+          delete next[item.id || item.label];
+          for (const itemValue of getOptionValues(item)) {
+            if (itemValue.children?.length) clearChildren(itemValue.children);
+          }
+        }
+      };
+      const chosenValue = getOptionValues(option).find((item) => item.label === value);
+      for (const itemValue of getOptionValues(option)) {
+        if (itemValue.children?.length && itemValue.label !== value) clearChildren(itemValue.children);
+      }
+      if (chosenValue?.children?.length) {
+        // Keep the selected branch; unrelated nested selections are cleared above.
+      }
+      return next;
+    });
   }
 
   function validateOptions() {
@@ -257,14 +357,20 @@ export default function CommanderPage() {
       return null;
     }
 
-    for (const option of selectedOptions) {
+    for (const option of visibleOptions) {
       const values = getOptionValues(option);
-
-      if (
-        values.length > 0 &&
-        !options[option.label]
-      ) {
+      if (option.type === "number") {
+        if (option.required !== false && !options[option.id || option.label]) {
+          return `Merci de renseigner : ${option.label}.`;
+        }
+        continue;
+      }
+      if (values.length > 0 && option.required !== false && !options[option.id || option.label]) {
         return `Merci de choisir : ${option.label}.`;
+      }
+      const selectedValue = values.find((value) => value.label === options[option.id || option.label]);
+      if (selectedValue && !selectedValue.available) {
+        return `${selectedValue.label} : pas encore disponible.`;
       }
     }
 
@@ -557,70 +663,60 @@ export default function CommanderPage() {
 
                 {selectedOptions.length > 0 && (
                   <div className="mt-9 border-t border-ink/10 pt-8">
-                    <h3 className="font-serif text-xl font-semibold">
-                      Choisir les options
-                    </h3>
-
+                    <h3 className="font-serif text-xl font-semibold">Choisir les options</h3>
                     <div className="mt-6 grid gap-6">
-                      {selectedOptions.map(
-                        (option) => {
-                          const values =
-                            getOptionValues(
-                              option
-                            );
-
-                          if (
-                            values.length === 0
-                          ) {
-                            return null;
-                          }
-
+                      {visibleOptions.map((option) => {
+                        const optionKey = option.id || option.label;
+                        const values = getOptionValues(option);
+                        if (option.type === "number") {
                           return (
-                            <div
-                              key={option.label}
-                            >
-                              <label className="mb-3 block text-sm font-bold">
-                                {option.label}
-                              </label>
-
-                              <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
-                                {values.map(
-                                  (value) => {
-                                    const active =
-                                      options[
-                                        option
-                                          .label
-                                      ] ===
-                                      value;
-
-                                    return (
-                                      <button
-                                        type="button"
-                                        key={
-                                          value
-                                        }
-                                        onClick={() =>
-                                          selectOption(
-                                            option.label,
-                                            value
-                                          )
-                                        }
-                                        className={`rounded-lg border px-4 py-3 text-sm font-semibold transition ${
-                                          active
-                                            ? "border-ink bg-ink text-white"
-                                            : "border-ink/15 bg-bg hover:border-ink/40"
-                                        }`}
-                                      >
-                                        {value}
-                                      </button>
-                                    );
-                                  }
-                                )}
-                              </div>
+                            <div key={optionKey}>
+                              <label className="mb-3 block text-sm font-bold">{option.label}</label>
+                              <input
+                                type="number"
+                                min={1}
+                                value={options[optionKey] || ""}
+                                onChange={(e) => setOptions((current) => ({ ...current, [optionKey]: e.target.value }))}
+                                className="w-full max-w-[280px] rounded-lg border border-ink/15 bg-bg px-4 py-3"
+                              />
                             </div>
                           );
                         }
-                      )}
+                        if (values.length === 0) return null;
+                        return (
+                          <div key={optionKey}>
+                            <label className="mb-3 block text-sm font-bold">{option.label}</label>
+                            <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+                              {values.map((value) => {
+                                const active = options[optionKey] === value.label;
+                                const unavailable = !value.available;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={value.id || value.label}
+                                    disabled={unavailable}
+                                    onClick={() => selectOption(option, value.label)}
+                                    className={`rounded-lg border px-4 py-3 text-left text-sm font-semibold transition ${
+                                      active ? "border-ink bg-ink text-white" : "border-ink/15 bg-bg hover:border-ink/40"
+                                    } ${unavailable ? "cursor-not-allowed opacity-50" : ""}`}
+                                  >
+                                    <span className="block">{value.label}</span>
+                                    {unavailable && <span className="mt-1 block text-xs font-medium">Pas encore disponible</span>}
+                                    {(typeof value.price_1 === "number" || typeof value.price_2 === "number") && (
+                                      <span className="mt-1 block text-xs font-medium">
+                                        {value.price_1_label ? `${value.price_1_label} : ` : ""}
+                                        {typeof value.price_1 === "number" ? formatFCFA(value.price_1) : ""}
+                                        {typeof value.price_2 === "number" ? ` · ${value.price_2_label ? `${value.price_2_label} : ` : ""}${formatFCFA(value.price_2)}` : ""}
+                                        {value.price_unit ? ` / ${value.price_unit}` : ""}
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -665,8 +761,8 @@ export default function CommanderPage() {
                     <p className="mt-1 text-xs text-paper/60">
                       {quantity} ×{" "}
                       {formatFCFA(unitPrice)}
-                      {selectedProduct.price_unit
-                        ? ` / ${selectedProduct.price_unit}`
+                      {(selectedPricedValue?.price_unit || selectedProduct.price_unit)
+                        ? ` / ${selectedPricedValue?.price_unit || selectedProduct.price_unit}`
                         : ""}
                     </p>
                   </div>
@@ -827,20 +923,25 @@ export default function CommanderPage() {
                 </strong>
               </div>
 
-              {Object.entries(options).map(
-                ([label, value]) => (
-                  <div
-                    key={label}
-                    className="flex justify-between gap-5 p-4"
-                  >
-                    <span className="text-sm text-inkSoft">
-                      {label}
-                    </span>
-
-                    <strong>{value}</strong>
+              {Object.entries(options).map(([key, value]) => {
+                const findLabel = (items: OrderOption[]): string | null => {
+                  for (const item of items) {
+                    if ((item.id || item.label) === key) return item.label;
+                    for (const itemValue of getOptionValues(item)) {
+                      const nested = itemValue.children?.length ? findLabel(itemValue.children) : null;
+                      if (nested) return nested;
+                    }
+                  }
+                  return null;
+                };
+                const optionLabel = findLabel(selectedOptions) || key;
+                return (
+                  <div key={key} className="flex justify-between gap-5 p-4">
+                    <span className="text-sm text-inkSoft">{optionLabel}</span>
+                    <strong>{String(value)}</strong>
                   </div>
-                )
-              )}
+                );
+              })}
 
               <div className="flex justify-between gap-5 p-4">
                 <span className="text-sm text-inkSoft">
