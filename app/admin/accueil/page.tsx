@@ -45,11 +45,23 @@ type HomeContent = {
   cta_button_secondary_url: string;
 };
 
+type OrderOptionValue = {
+  id: string;
+  label: string;
+  available: boolean;
+  price_unit: string;
+  price_1_label: string;
+  price_1: number | null;
+  price_2_label: string;
+  price_2: number | null;
+  children?: OrderOption[];
+};
+
 type OrderOption = {
   id: string;
   label: string;
   type: "single" | "select" | "number";
-  values?: string[];
+  values?: OrderOptionValue[];
   required?: boolean;
 };
 
@@ -329,9 +341,9 @@ export default function AccueilAdminPage() {
     });
 
     setOrderOptions(
-      Array.isArray(product.order_options)
-        ? product.order_options
-        : []
+      normalizeOrderOptions(
+        product.order_options
+      )
     );
 
     setShowProductForm(true);
@@ -342,18 +354,149 @@ export default function AccueilAdminPage() {
     });
   }
 
+  function makeOptionValue(
+    label = ""
+  ): OrderOptionValue {
+    return {
+      id:
+        Date.now().toString() +
+        Math.random().toString(36).slice(2),
+      label,
+      available: true,
+      price_unit: "",
+      price_1_label: "",
+      price_1: null,
+      price_2_label: "",
+      price_2: null,
+      children: [],
+    };
+  }
+
+  function normalizeOrderOptions(
+    raw: unknown
+  ): OrderOption[] {
+    if (!Array.isArray(raw)) return [];
+
+    return raw.map((rawOption: any, optionIndex) => {
+      const values = Array.isArray(rawOption?.values)
+        ? rawOption.values.map((rawValue: any, valueIndex: number) => {
+            if (typeof rawValue === "string") {
+              return {
+                ...makeOptionValue(rawValue),
+                id:
+                  `${rawOption?.id || optionIndex}-value-${valueIndex}`,
+              };
+            }
+
+            return {
+              ...makeOptionValue(
+                rawValue?.label ||
+                  rawValue?.name ||
+                  ""
+              ),
+              ...rawValue,
+              id:
+                rawValue?.id ||
+                `${rawOption?.id || optionIndex}-value-${valueIndex}`,
+              label:
+                rawValue?.label ||
+                rawValue?.name ||
+                "",
+              available:
+                rawValue?.available !== false,
+              price_unit:
+                rawValue?.price_unit || "",
+              price_1_label:
+                rawValue?.price_1_label || "",
+              price_1:
+                typeof rawValue?.price_1 === "number"
+                  ? rawValue.price_1
+                  : rawValue?.price_1 !== null &&
+                    rawValue?.price_1 !== undefined &&
+                    rawValue?.price_1 !== ""
+                  ? Number(rawValue.price_1)
+                  : null,
+              price_2_label:
+                rawValue?.price_2_label || "",
+              price_2:
+                typeof rawValue?.price_2 === "number"
+                  ? rawValue.price_2
+                  : rawValue?.price_2 !== null &&
+                    rawValue?.price_2 !== undefined &&
+                    rawValue?.price_2 !== ""
+                  ? Number(rawValue.price_2)
+                  : null,
+              children:
+                Array.isArray(rawValue?.children)
+                  ? normalizeOrderOptions(
+                      rawValue.children
+                    )
+                  : [],
+            };
+          })
+        : [];
+
+      return {
+        id:
+          rawOption?.id ||
+          `option-${optionIndex}`,
+        label:
+          rawOption?.label ||
+          rawOption?.name ||
+          "",
+        type:
+          rawOption?.type === "number" ||
+          rawOption?.type === "single"
+            ? rawOption.type
+            : "select",
+        values,
+        required:
+          rawOption?.required !== false,
+      };
+    });
+  }
+
+  function createSuggestedValue(
+    label: string,
+    price1Label = "",
+    price1: number | null = null,
+    price2Label = "",
+    price2: number | null = null
+  ): OrderOptionValue {
+    return {
+      ...makeOptionValue(label),
+      price_unit: "kg",
+      price_1_label: price1Label,
+      price_1: price1,
+      price_2_label: price2Label,
+      price_2: price2,
+    };
+  }
+
+  function createSelectOption(
+    id: string,
+    label: string,
+    values: OrderOptionValue[]
+  ): OrderOption {
+    return {
+      id,
+      label,
+      type: "select",
+      values,
+      required: true,
+    };
+  }
+
   function addOrderOption() {
     setOrderOptions((previous) => [
       ...previous,
       {
         id:
           Date.now().toString() +
-          Math.random()
-            .toString(36)
-            .slice(2),
+          Math.random().toString(36).slice(2),
         label: "",
         type: "select",
-        values: [],
+        values: [makeOptionValue()],
         required: true,
       },
     ]);
@@ -392,7 +535,7 @@ export default function AccueilAdminPage() {
               ...option,
               values: [
                 ...(option.values || []),
-                "",
+                makeOptionValue(),
               ],
             }
           : option
@@ -403,7 +546,8 @@ export default function AccueilAdminPage() {
   function updateOptionValue(
     optionId: string,
     index: number,
-    value: string
+    field: keyof OrderOptionValue,
+    value: any
   ) {
     setOrderOptions((previous) =>
       previous.map((option) => {
@@ -415,7 +559,10 @@ export default function AccueilAdminPage() {
           ...(option.values || []),
         ];
 
-        values[index] = value;
+        values[index] = {
+          ...values[index],
+          [field]: value,
+        };
 
         return {
           ...option,
@@ -437,10 +584,128 @@ export default function AccueilAdminPage() {
 
         return {
           ...option,
-          values: (option.values || []).filter(
+          values: (
+            option.values || []
+          ).filter(
             (_, valueIndex) =>
               valueIndex !== index
           ),
+        };
+      })
+    );
+  }
+
+  function addChildOption(
+    optionId: string,
+    valueIndex: number
+  ) {
+    setOrderOptions((previous) =>
+      previous.map((option) => {
+        if (option.id !== optionId) {
+          return option;
+        }
+
+        const values = [
+          ...(option.values || []),
+        ];
+
+        const currentValue = values[valueIndex];
+
+        values[valueIndex] = {
+          ...currentValue,
+          children: [
+            ...(currentValue.children || []),
+            {
+              id:
+                Date.now().toString() +
+                Math.random().toString(36).slice(2),
+              label: "",
+              type: "select",
+              values: [makeOptionValue()],
+              required: true,
+            },
+          ],
+        };
+
+        return {
+          ...option,
+          values,
+        };
+      })
+    );
+  }
+
+  function updateChildOption(
+    parentOptionId: string,
+    valueIndex: number,
+    childId: string,
+    field: keyof OrderOption,
+    value: any
+  ) {
+    setOrderOptions((previous) =>
+      previous.map((option) => {
+        if (option.id !== parentOptionId) {
+          return option;
+        }
+
+        const values = [
+          ...(option.values || []),
+        ];
+
+        const currentValue = values[valueIndex];
+
+        values[valueIndex] = {
+          ...currentValue,
+          children: (
+            currentValue.children || []
+          ).map((child) =>
+            child.id === childId
+              ? {
+                  ...child,
+                  [field]: value,
+                }
+              : child
+          ),
+        };
+
+        return {
+          ...option,
+          values,
+        };
+      })
+    );
+  }
+
+  function removeChildOption(
+    parentOptionId: string,
+    valueIndex: number,
+    childId: string
+  ) {
+    setOrderOptions((previous) =>
+      previous.map((option) => {
+        if (option.id !== parentOptionId) {
+          return option;
+        }
+
+        const values = [
+          ...(option.values || []),
+        ];
+
+        const currentValue = values[valueIndex];
+
+        values[valueIndex] = {
+          ...currentValue,
+          children: (
+            currentValue.children || []
+          ).filter(
+            (child) =>
+              child.id !== childId
+          ),
+        };
+
+        return {
+          ...option,
+          values,
         };
       })
     );
@@ -455,13 +720,26 @@ export default function AccueilAdminPage() {
 
     if (name.includes("silure")) {
       setOrderOptions([
-        {
-          id: "silure-type",
-          label: "Préparation",
-          type: "select",
-          values: ["Frais", "Fumé"],
-          required: true,
-        },
+        createSelectOption(
+          "silure-preparation",
+          "Préparation",
+          [
+            createSuggestedValue(
+              "Frais",
+              "1 à 29 kg",
+              2500,
+              "À partir de 30 kg",
+              2400
+            ),
+            {
+              ...createSuggestedValue(
+                "Fumé"
+              ),
+              available: false,
+              price_unit: "kg",
+            },
+          ]
+        ),
       ]);
 
       return;
@@ -472,20 +750,43 @@ export default function AccueilAdminPage() {
       name.includes("porcs")
     ) {
       setOrderOptions([
-        {
-          id: "porc-format",
-          label: "Format",
-          type: "select",
-          values: ["Entier", "Au kg"],
-          required: true,
-        },
-        {
-          id: "porc-preparation",
-          label: "Préparation",
-          type: "select",
-          values: ["Frais", "Fumé"],
-          required: true,
-        },
+        createSelectOption(
+          "porc-format",
+          "Format",
+          [
+            createSuggestedValue(
+              "Entier",
+              "Prix",
+              null
+            ),
+            {
+              ...createSuggestedValue(
+                "Au kg",
+                "1 à 29 kg",
+                null,
+                "À partir de 30 kg",
+                null
+              ),
+              children: [
+                createSelectOption(
+                  "porc-preparation",
+                  "Préparation",
+                  [
+                    createSuggestedValue(
+                      "Frais"
+                    ),
+                    {
+                      ...createSuggestedValue(
+                        "Fumé"
+                      ),
+                      available: false,
+                    },
+                  ]
+                ),
+              ],
+            },
+          ]
+        ),
       ]);
 
       return;
@@ -496,23 +797,33 @@ export default function AccueilAdminPage() {
       name.includes("chair")
     ) {
       setOrderOptions([
-        {
-          id: "poulet-nettoyage",
-          label: "Préparation",
-          type: "select",
-          values: [
-            "Nettoyé",
-            "Non nettoyé",
-          ],
-          required: true,
-        },
-        {
-          id: "poulet-etat",
-          label: "État",
-          type: "select",
-          values: ["Frais", "Fumé"],
-          required: true,
-        },
+        createSelectOption(
+          "poulet-preparation",
+          "Préparation",
+          [
+            createSuggestedValue(
+              "Nettoyé"
+            ),
+            createSuggestedValue(
+              "Non nettoyé"
+            ),
+          ]
+        ),
+        createSelectOption(
+          "poulet-etat",
+          "État",
+          [
+            createSuggestedValue(
+              "Frais"
+            ),
+            {
+              ...createSuggestedValue(
+                "Fumé"
+              ),
+              available: false,
+            },
+          ]
+        ),
       ]);
 
       return;
@@ -555,12 +866,82 @@ export default function AccueilAdminPage() {
             ...option,
             label:
               option.label.trim(),
+
             values:
-              option.values
-                ?.map((value) =>
-                  value.trim()
-                )
-                .filter(Boolean) || [],
+              (option.values || [])
+                .map((value) => ({
+                  ...value,
+                  label:
+                    value.label.trim(),
+                  available:
+                    value.available !== false,
+                  price_unit:
+                    value.price_unit.trim(),
+                  price_1_label:
+                    value.price_1_label.trim(),
+                  price_1:
+                    value.price_1 !== null &&
+                    value.price_1 !== undefined &&
+                    value.price_1 !== ""
+                      ? Number(value.price_1)
+                      : null,
+                  price_2_label:
+                    value.price_2_label.trim(),
+                  price_2:
+                    value.price_2 !== null &&
+                    value.price_2 !== undefined &&
+                    value.price_2 !== ""
+                      ? Number(value.price_2)
+                      : null,
+                  children:
+                    (value.children || [])
+                      .map((child) => ({
+                        ...child,
+                        label:
+                          child.label.trim(),
+                        required:
+                          child.required !== false,
+                        values:
+                          (child.values || [])
+                            .map((childValue) => ({
+                              ...childValue,
+                              label:
+                                childValue.label.trim(),
+                              available:
+                                childValue.available !== false,
+                              price_unit:
+                                childValue.price_unit.trim(),
+                              price_1_label:
+                                childValue.price_1_label.trim(),
+                              price_1:
+                                childValue.price_1 !== null &&
+                                childValue.price_1 !== undefined &&
+                                childValue.price_1 !== ""
+                                  ? Number(childValue.price_1)
+                                  : null,
+                              price_2_label:
+                                childValue.price_2_label.trim(),
+                              price_2:
+                                childValue.price_2 !== null &&
+                                childValue.price_2 !== undefined &&
+                                childValue.price_2 !== ""
+                                  ? Number(childValue.price_2)
+                                  : null,
+                            }))
+                            .filter(
+                              (childValue) =>
+                                childValue.label.length > 0
+                            ),
+                      }))
+                      .filter(
+                        (child) =>
+                          child.label.length > 0
+                      ),
+                }))
+                .filter(
+                  (value) =>
+                    value.label.length > 0
+                ),
           }))
           .filter(
             (option) =>
@@ -1356,8 +1737,12 @@ export default function AccueilAdminPage() {
                           Options de commande
                         </p>
 
-                        <p className="mt-1 max-w-2xl text-xs leading-5 text-black/50">
-                          Configurez les choix que le client devra faire lorsqu’il sélectionnera ce produit.
+                        <p className="mt-1 max-w-3xl text-xs leading-5 text-black/50">
+                          Gérez ici chaque choix proposé au client,
+                          sa disponibilité et sa tarification.
+                          Une option indisponible restera visible
+                          sur le site mais affichera « Pas encore
+                          disponible » lorsqu'elle est sélectionnée.
                         </p>
                       </div>
 
@@ -1366,14 +1751,11 @@ export default function AccueilAdminPage() {
                         onClick={() =>
                           addOrderOption()
                         }
-                        disabled={
-                          productForm.status !==
-                          "disponible"
-                        }
-                        className="rounded-xl bg-[#1D4B44] px-4 py-2.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-xl bg-[#1D4B44] px-4 py-2.5 text-xs font-semibold text-white"
                       >
                         + Ajouter une option
                       </button>
+
                     </div>
 
                     {/* SUGGESTIONS */}
@@ -1382,6 +1764,11 @@ export default function AccueilAdminPage() {
 
                       <p className="text-xs font-semibold uppercase tracking-wide text-black/50">
                         Configuration rapide
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-black/45">
+                        Les modèles ci-dessous peuvent ensuite être
+                        modifiés librement.
                       </p>
 
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -1439,7 +1826,7 @@ export default function AccueilAdminPage() {
 
                     {/* LISTE DES OPTIONS */}
 
-                    <div className="mt-5 space-y-4">
+                    <div className="mt-5 space-y-5">
 
                       {orderOptions.length === 0 && (
                         <div className="rounded-xl border border-dashed border-black/15 px-5 py-8 text-center">
@@ -1456,14 +1843,13 @@ export default function AccueilAdminPage() {
                         ) => (
                           <div
                             key={option.id}
-                            className="rounded-xl border border-black/10 bg-[#F7F5EF] p-4"
+                            className="rounded-2xl border border-black/10 bg-[#F7F5EF] p-4"
                           >
 
                             <div className="flex items-start gap-3">
 
                               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1D4B44] text-xs font-semibold text-white">
-                                {optionIndex +
-                                  1}
+                                {optionIndex + 1}
                               </div>
 
                               <div className="min-w-0 flex-1">
@@ -1526,13 +1912,18 @@ export default function AccueilAdminPage() {
 
                                 {option.type ===
                                   "select" && (
-                                  <div className="mt-4 rounded-xl border border-black/10 bg-white p-4">
+                                  <div className="mt-5 rounded-xl border border-black/10 bg-white p-4">
 
                                     <div className="flex items-center justify-between gap-4">
 
                                       <div>
                                         <p className="text-xs font-semibold uppercase tracking-wide text-black/50">
-                                          Choix disponibles
+                                          Choix
+                                        </p>
+
+                                        <p className="mt-1 text-xs text-black/45">
+                                          Chaque choix peut avoir son propre
+                                          état de disponibilité et ses propres prix.
                                         </p>
                                       </div>
 
@@ -1550,7 +1941,7 @@ export default function AccueilAdminPage() {
 
                                     </div>
 
-                                    <div className="mt-3 space-y-2">
+                                    <div className="mt-4 space-y-5">
 
                                       {(option.values ||
                                         []).map(
@@ -1560,58 +1951,961 @@ export default function AccueilAdminPage() {
                                         ) => (
                                           <div
                                             key={
-                                              valueIndex
+                                              value.id
                                             }
-                                            className="flex gap-2"
+                                            className="rounded-xl border border-black/10 bg-[#F7F5EF] p-4"
                                           >
 
-                                            <input
-                                              value={
-                                                value
-                                              }
-                                              onChange={(
-                                                e
-                                              ) =>
-                                                updateOptionValue(
-                                                  option.id,
-                                                  valueIndex,
-                                                  e.target
-                                                    .value
-                                                )
-                                              }
-                                              placeholder="Ex. Frais"
-                                              className={
-                                                inputClass
-                                              }
-                                            />
+                                            <div className="flex items-start gap-3">
 
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                removeOptionValue(
-                                                  option.id,
-                                                  valueIndex
-                                                )
-                                              }
-                                              className="rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700"
-                                            >
-                                              ×
-                                            </button>
+                                              <div className="min-w-0 flex-1">
+
+                                                <div className="grid gap-4 md:grid-cols-2">
+
+                                                  <Field
+                                                    label="Nom du choix"
+                                                    value={
+                                                      value.label
+                                                    }
+                                                    onChange={(
+                                                      newValue
+                                                    ) =>
+                                                      updateOptionValue(
+                                                        option.id,
+                                                        valueIndex,
+                                                        "label",
+                                                        newValue
+                                                      )
+                                                    }
+                                                  />
+
+                                                  <label className="flex items-center gap-3 rounded-xl border border-black/10 bg-white px-4 py-3">
+                                                    <input
+                                                      type="checkbox"
+                                                      checked={
+                                                        value.available !==
+                                                        false
+                                                      }
+                                                      onChange={(
+                                                        e
+                                                      ) =>
+                                                        updateOptionValue(
+                                                          option.id,
+                                                          valueIndex,
+                                                          "available",
+                                                          e.target.checked
+                                                        )
+                                                      }
+                                                    />
+
+                                                    <span className="text-sm font-semibold">
+                                                      Disponible
+                                                    </span>
+                                                  </label>
+
+                                                </div>
+
+                                                <div className="mt-4 rounded-xl border border-black/10 bg-white p-4">
+
+                                                  <p className="text-xs font-semibold uppercase tracking-wide text-black/50">
+                                                    Tarification de ce choix
+                                                  </p>
+
+                                                  <p className="mt-1 text-xs text-black/45">
+                                                    Exemple : le Silure frais peut être
+                                                    à 2 500 FCFA/kg puis 2 400 FCFA/kg
+                                                    à partir de 30 kg. Le Silure fumé
+                                                    pourra avoir une tarification différente.
+                                                  </p>
+
+                                                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+
+                                                    <Field
+                                                      label="Unité"
+                                                      value={
+                                                        value.price_unit
+                                                      }
+                                                      onChange={(
+                                                        newValue
+                                                      ) =>
+                                                        updateOptionValue(
+                                                          option.id,
+                                                          valueIndex,
+                                                          "price_unit",
+                                                          newValue
+                                                        )
+                                                      }
+                                                    />
+
+                                                    <Field
+                                                      label="Libellé prix 1"
+                                                      value={
+                                                        value.price_1_label
+                                                      }
+                                                      onChange={(
+                                                        newValue
+                                                      ) =>
+                                                        updateOptionValue(
+                                                          option.id,
+                                                          valueIndex,
+                                                          "price_1_label",
+                                                          newValue
+                                                        )
+                                                      }
+                                                    />
+
+                                                    <Field
+                                                      label="Prix 1"
+                                                      type="number"
+                                                      value={
+                                                        value.price_1 ===
+                                                        null
+                                                          ? ""
+                                                          : String(
+                                                              value.price_1
+                                                            )
+                                                      }
+                                                      onChange={(
+                                                        newValue
+                                                      ) =>
+                                                        updateOptionValue(
+                                                          option.id,
+                                                          valueIndex,
+                                                          "price_1",
+                                                          newValue ===
+                                                            ""
+                                                            ? null
+                                                            : Number(
+                                                                newValue
+                                                              )
+                                                        )
+                                                      }
+                                                    />
+
+                                                    <Field
+                                                      label="Libellé prix 2"
+                                                      value={
+                                                        value.price_2_label
+                                                      }
+                                                      onChange={(
+                                                        newValue
+                                                      ) =>
+                                                        updateOptionValue(
+                                                          option.id,
+                                                          valueIndex,
+                                                          "price_2_label",
+                                                          newValue
+                                                        )
+                                                      }
+                                                    />
+
+                                                    <Field
+                                                      label="Prix 2"
+                                                      type="number"
+                                                      value={
+                                                        value.price_2 ===
+                                                        null
+                                                          ? ""
+                                                          : String(
+                                                              value.price_2
+                                                            )
+                                                      }
+                                                      onChange={(
+                                                        newValue
+                                                      ) =>
+                                                        updateOptionValue(
+                                                          option.id,
+                                                          valueIndex,
+                                                          "price_2",
+                                                          newValue ===
+                                                            ""
+                                                            ? null
+                                                            : Number(
+                                                                newValue
+                                                              )
+                                                        )
+                                                      }
+                                                    />
+
+                                                  </div>
+
+                                                </div>
+
+                                                <div className="mt-4 flex flex-wrap items-center gap-2">
+
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      addChildOption(
+                                                        option.id,
+                                                        valueIndex
+                                                      )
+                                                    }
+                                                    className="rounded-lg border border-black/10 bg-white px-3 py-2 text-xs font-semibold"
+                                                  >
+                                                    + Ajouter une sous-option
+                                                  </button>
+
+                                                  <span
+                                                    className={`rounded-lg px-3 py-2 text-xs font-semibold ${
+                                                      value.available !==
+                                                      false
+                                                        ? "bg-green-50 text-green-700"
+                                                        : "bg-amber-50 text-amber-700"
+                                                    }`}
+                                                  >
+                                                    {value.available !==
+                                                    false
+                                                      ? "Disponible"
+                                                      : "Pas encore disponible"}
+                                                  </span>
+
+                                                </div>
+
+                                                {/* SOUS-OPTIONS */}
+
+                                                {value.children &&
+                                                  value.children
+                                                    .length >
+                                                    0 && (
+                                                    <div className="mt-4 space-y-4 border-l-2 border-[#1D4B44]/20 pl-4">
+
+                                                      {value.children.map(
+                                                        (
+                                                          child
+                                                        ) => (
+                                                          <div
+                                                            key={
+                                                              child.id
+                                                            }
+                                                            className="rounded-xl border border-black/10 bg-white p-4"
+                                                          >
+
+                                                            <div className="flex items-start gap-3">
+
+                                                              <div className="min-w-0 flex-1">
+
+                                                                <div className="grid gap-4 md:grid-cols-2">
+
+                                                                  <Field
+                                                                    label="Sous-option"
+                                                                    value={
+                                                                      child.label
+                                                                    }
+                                                                    onChange={(
+                                                                      newValue
+                                                                    ) =>
+                                                                      updateChildOption(
+                                                                        option.id,
+                                                                        valueIndex,
+                                                                        child.id,
+                                                                        "label",
+                                                                        newValue
+                                                                      )
+                                                                    }
+                                                                  />
+
+                                                                  <SelectField
+                                                                    label="Type"
+                                                                    value={
+                                                                      child.type
+                                                                    }
+                                                                    onChange={(
+                                                                      newValue
+                                                                    ) =>
+                                                                      updateChildOption(
+                                                                        option.id,
+                                                                        valueIndex,
+                                                                        child.id,
+                                                                        "type",
+                                                                        newValue
+                                                                      )
+                                                                    }
+                                                                    options={[
+                                                                      {
+                                                                        value:
+                                                                          "select",
+                                                                        label:
+                                                                          "Choix dans une liste",
+                                                                      },
+                                                                      {
+                                                                        value:
+                                                                          "number",
+                                                                        label:
+                                                                          "Nombre",
+                                                                      },
+                                                                      {
+                                                                        value:
+                                                                          "single",
+                                                                        label:
+                                                                          "Choix simple",
+                                                                      },
+                                                                    ]}
+                                                                  />
+
+                                                                </div>
+
+                                                                {child.type ===
+                                                                  "select" && (
+                                                                  <div className="mt-4 rounded-xl border border-black/10 bg-[#F7F5EF] p-4">
+
+                                                                    <div className="flex items-center justify-between gap-3">
+
+                                                                      <p className="text-xs font-semibold uppercase tracking-wide text-black/50">
+                                                                        Choix de la sous-option
+                                                                      </p>
+
+                                                                      <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                          setOrderOptions(
+                                                                            (
+                                                                              previous
+                                                                            ) =>
+                                                                              previous.map(
+                                                                                (
+                                                                                  parent
+                                                                                ) => {
+                                                                                  if (
+                                                                                    parent.id !==
+                                                                                    option.id
+                                                                                  ) {
+                                                                                    return parent;
+                                                                                  }
+
+                                                                                  const values =
+                                                                                    [
+                                                                                      ...(parent.values ||
+                                                                                        []),
+                                                                                    ];
+
+                                                                                  const current =
+                                                                                    values[
+                                                                                      valueIndex
+                                                                                    ];
+
+                                                                                  values[
+                                                                                    valueIndex
+                                                                                  ] = {
+                                                                                    ...current,
+                                                                                    children:
+                                                                                      (
+                                                                                        current.children ||
+                                                                                        []
+                                                                                      ).map(
+                                                                                        (
+                                                                                          childItem
+                                                                                        ) =>
+                                                                                          childItem.id ===
+                                                                                          child.id
+                                                                                            ? {
+                                                                                                ...childItem,
+                                                                                                values:
+                                                                                                  [
+                                                                                                    ...(childItem.values ||
+                                                                                                      []),
+                                                                                                    makeOptionValue(),
+                                                                                                  ],
+                                                                                              }
+                                                                                            : childItem
+                                                                                      ),
+                                                                                  };
+
+                                                                                  return {
+                                                                                    ...parent,
+                                                                                    values,
+                                                                                  };
+                                                                                }
+                                                                              )
+                                                                          );
+                                                                        }}
+                                                                        className="rounded-lg border border-black/10 bg-white px-3 py-2 text-xs font-semibold"
+                                                                      >
+                                                                        + Ajouter
+                                                                      </button>
+
+                                                                    </div>
+
+                                                                    <div className="mt-3 space-y-3">
+
+                                                                      {(child.values ||
+                                                                        []).map(
+                                                                        (
+                                                                          childValue,
+                                                                          childValueIndex
+                                                                        ) => (
+                                                                          <div
+                                                                            key={
+                                                                              childValue.id
+                                                                            }
+                                                                            className="rounded-lg border border-black/10 bg-white p-3"
+                                                                          >
+
+                                                                            <div className="grid gap-3 md:grid-cols-2">
+
+                                                                              <input
+                                                                                value={
+                                                                                  childValue.label
+                                                                                }
+                                                                                onChange={(
+                                                                                  e
+                                                                                ) => {
+                                                                                  const newValue =
+                                                                                    e.target.value;
+
+                                                                                  setOrderOptions(
+                                                                                    (
+                                                                                      previous
+                                                                                    ) =>
+                                                                                      previous.map(
+                                                                                        (
+                                                                                          parent
+                                                                                        ) => {
+                                                                                          if (
+                                                                                            parent.id !==
+                                                                                            option.id
+                                                                                          ) {
+                                                                                            return parent;
+                                                                                          }
+
+                                                                                          const values =
+                                                                                            [
+                                                                                              ...(parent.values ||
+                                                                                                []),
+                                                                                            ];
+
+                                                                                          const current =
+                                                                                            values[
+                                                                                              valueIndex
+                                                                                            ];
+
+                                                                                          values[
+                                                                                            valueIndex
+                                                                                          ] = {
+                                                                                            ...current,
+                                                                                            children:
+                                                                                              (
+                                                                                                current.children ||
+                                                                                                []
+                                                                                              ).map(
+                                                                                                (
+                                                                                                  childItem
+                                                                                                ) =>
+                                                                                                  childItem.id ===
+                                                                                                  child.id
+                                                                                                    ? {
+                                                                                                        ...childItem,
+                                                                                                        values:
+                                                                                                          (
+                                                                                                            childItem.values ||
+                                                                                                            []
+                                                                                                          ).map(
+                                                                                                            (
+                                                                                                              cv,
+                                                                                                              i
+                                                                                                            ) =>
+                                                                                                              i ===
+                                                                                                              childValueIndex
+                                                                                                                ? {
+                                                                                                                    ...cv,
+                                                                                                                    label:
+                                                                                                                      newValue,
+                                                                                                                  }
+                                                                                                                : cv
+                                                                                                          ),
+                                                                                                      }
+                                                                                                    : childItem
+                                                                                              ),
+                                                                                          };
+
+                                                                                          return {
+                                                                                            ...parent,
+                                                                                            values,
+                                                                                          };
+                                                                                        }
+                                                                                      )
+                                                                                  );
+                                                                                }}
+                                                                                placeholder="Ex. Frais"
+                                                                                className={
+                                                                                  inputClass
+                                                                                }
+                                                                              />
+
+                                                                              <label className="flex items-center gap-3 rounded-xl border border-black/10 px-4 py-3">
+                                                                                <input
+                                                                                  type="checkbox"
+                                                                                  checked={
+                                                                                    childValue.available !==
+                                                                                    false
+                                                                                  }
+                                                                                  onChange={(
+                                                                                    e
+                                                                                  ) => {
+                                                                                    const newAvailable =
+                                                                                      e.target.checked;
+
+                                                                                    setOrderOptions(
+                                                                                      (
+                                                                                        previous
+                                                                                      ) =>
+                                                                                        previous.map(
+                                                                                          (
+                                                                                            parent
+                                                                                          ) => {
+                                                                                            if (
+                                                                                              parent.id !==
+                                                                                              option.id
+                                                                                            ) {
+                                                                                              return parent;
+                                                                                            }
+
+                                                                                            const values =
+                                                                                              [
+                                                                                                ...(parent.values ||
+                                                                                                  []),
+                                                                                              ];
+
+                                                                                            const current =
+                                                                                              values[
+                                                                                                valueIndex
+                                                                                              ];
+
+                                                                                            values[
+                                                                                              valueIndex
+                                                                                            ] = {
+                                                                                              ...current,
+                                                                                              children:
+                                                                                                (
+                                                                                                  current.children ||
+                                                                                                  []
+                                                                                                ).map(
+                                                                                                  (
+                                                                                                    childItem
+                                                                                                  ) =>
+                                                                                                    childItem.id ===
+                                                                                                    child.id
+                                                                                                      ? {
+                                                                                                          ...childItem,
+                                                                                                          values:
+                                                                                                            (
+                                                                                                              childItem.values ||
+                                                                                                              []
+                                                                                                            ).map(
+                                                                                                              (
+                                                                                                                cv,
+                                                                                                                i
+                                                                                                              ) =>
+                                                                                                                i ===
+                                                                                                                childValueIndex
+                                                                                                                  ? {
+                                                                                                                      ...cv,
+                                                                                                                      available:
+                                                                                                                        newAvailable,
+                                                                                                                    }
+                                                                                                                  : cv
+                                                                                                            ),
+                                                                                                        }
+                                                                                                      : childItem
+                                                                                                ),
+                                                                                            };
+
+                                                                                            return {
+                                                                                              ...parent,
+                                                                                              values,
+                                                                                            };
+                                                                                          }
+                                                                                        )
+                                                                                    );
+                                                                                  }}
+                                                                                />
+
+                                                                                <span className="text-xs font-semibold">
+                                                                                  Disponible
+                                                                                </span>
+                                                                              </label>
+
+                                                                            </div>
+
+                                                                            <div className="mt-3 grid gap-3 md:grid-cols-3">
+
+                                                                              <input
+                                                                                value={
+                                                                                  childValue.price_unit
+                                                                                }
+                                                                                onChange={(
+                                                                                  e
+                                                                                ) => {
+                                                                                  const newUnit =
+                                                                                    e.target.value;
+
+                                                                                  setOrderOptions(
+                                                                                    (
+                                                                                      previous
+                                                                                    ) =>
+                                                                                      previous.map(
+                                                                                        (
+                                                                                          parent
+                                                                                        ) => {
+                                                                                          if (
+                                                                                            parent.id !==
+                                                                                            option.id
+                                                                                          ) {
+                                                                                            return parent;
+                                                                                          }
+
+                                                                                          const values =
+                                                                                            [
+                                                                                              ...(parent.values ||
+                                                                                                []),
+                                                                                            ];
+
+                                                                                          const current =
+                                                                                            values[
+                                                                                              valueIndex
+                                                                                            ];
+
+                                                                                          values[
+                                                                                            valueIndex
+                                                                                          ] = {
+                                                                                            ...current,
+                                                                                            children:
+                                                                                              (
+                                                                                                current.children ||
+                                                                                                []
+                                                                                              ).map(
+                                                                                                (
+                                                                                                  childItem
+                                                                                                ) =>
+                                                                                                  childItem.id ===
+                                                                                                  child.id
+                                                                                                    ? {
+                                                                                                        ...childItem,
+                                                                                                        values:
+                                                                                                          (
+                                                                                                            childItem.values ||
+                                                                                                            []
+                                                                                                          ).map(
+                                                                                                            (
+                                                                                                              cv,
+                                                                                                              i
+                                                                                                            ) =>
+                                                                                                              i ===
+                                                                                                              childValueIndex
+                                                                                                                ? {
+                                                                                                                    ...cv,
+                                                                                                                    price_unit:
+                                                                                                                      newUnit,
+                                                                                                                  }
+                                                                                                                : cv
+                                                                                                          ),
+                                                                                                      }
+                                                                                                    : childItem
+                                                                                              ),
+                                                                                          };
+
+                                                                                          return {
+                                                                                            ...parent,
+                                                                                            values,
+                                                                                          };
+                                                                                        }
+                                                                                      )
+                                                                                  );
+                                                                                }}
+                                                                                placeholder="Unité"
+                                                                                className={
+                                                                                  inputClass
+                                                                                }
+                                                                              />
+
+                                                                              <input
+                                                                                type="number"
+                                                                                value={
+                                                                                  childValue.price_1 ??
+                                                                                  ""
+                                                                                }
+                                                                                onChange={(
+                                                                                  e
+                                                                                ) => {
+                                                                                  const newPrice =
+                                                                                    e.target.value ===
+                                                                                    ""
+                                                                                      ? null
+                                                                                      : Number(
+                                                                                          e.target.value
+                                                                                        );
+
+                                                                                  setOrderOptions(
+                                                                                    (
+                                                                                      previous
+                                                                                    ) =>
+                                                                                      previous.map(
+                                                                                        (
+                                                                                          parent
+                                                                                        ) => {
+                                                                                          if (
+                                                                                            parent.id !==
+                                                                                            option.id
+                                                                                          ) {
+                                                                                            return parent;
+                                                                                          }
+
+                                                                                          const values =
+                                                                                            [
+                                                                                              ...(parent.values ||
+                                                                                                []),
+                                                                                            ];
+
+                                                                                          const current =
+                                                                                            values[
+                                                                                              valueIndex
+                                                                                            ];
+
+                                                                                          values[
+                                                                                            valueIndex
+                                                                                          ] = {
+                                                                                            ...current,
+                                                                                            children:
+                                                                                              (
+                                                                                                current.children ||
+                                                                                                []
+                                                                                              ).map(
+                                                                                                (
+                                                                                                  childItem
+                                                                                                ) =>
+                                                                                                  childItem.id ===
+                                                                                                  child.id
+                                                                                                    ? {
+                                                                                                        ...childItem,
+                                                                                                        values:
+                                                                                                          (
+                                                                                                            childItem.values ||
+                                                                                                            []
+                                                                                                          ).map(
+                                                                                                            (
+                                                                                                              cv,
+                                                                                                              i
+                                                                                                            ) =>
+                                                                                                              i ===
+                                                                                                              childValueIndex
+                                                                                                                ? {
+                                                                                                                    ...cv,
+                                                                                                                    price_1:
+                                                                                                                      newPrice,
+                                                                                                                  }
+                                                                                                                : cv
+                                                                                                          ),
+                                                                                                      }
+                                                                                                    : childItem
+                                                                                              ),
+                                                                                          };
+
+                                                                                          return {
+                                                                                            ...parent,
+                                                                                            values,
+                                                                                          };
+                                                                                        }
+                                                                                      )
+                                                                                  );
+                                                                                }}
+                                                                                placeholder="Prix 1"
+                                                                                className={
+                                                                                  inputClass
+                                                                                }
+                                                                              />
+
+                                                                              <input
+                                                                                type="number"
+                                                                                value={
+                                                                                  childValue.price_2 ??
+                                                                                  ""
+                                                                                }
+                                                                                onChange={(
+                                                                                  e
+                                                                                ) => {
+                                                                                  const newPrice =
+                                                                                    e.target.value ===
+                                                                                    ""
+                                                                                      ? null
+                                                                                      : Number(
+                                                                                          e.target.value
+                                                                                        );
+
+                                                                                  setOrderOptions(
+                                                                                    (
+                                                                                      previous
+                                                                                    ) =>
+                                                                                      previous.map(
+                                                                                        (
+                                                                                          parent
+                                                                                        ) => {
+                                                                                          if (
+                                                                                            parent.id !==
+                                                                                            option.id
+                                                                                          ) {
+                                                                                            return parent;
+                                                                                          }
+
+                                                                                          const values =
+                                                                                            [
+                                                                                              ...(parent.values ||
+                                                                                                []),
+                                                                                            ];
+
+                                                                                          const current =
+                                                                                            values[
+                                                                                              valueIndex
+                                                                                            ];
+
+                                                                                          values[
+                                                                                            valueIndex
+                                                                                          ] = {
+                                                                                            ...current,
+                                                                                            children:
+                                                                                              (
+                                                                                                current.children ||
+                                                                                                []
+                                                                                              ).map(
+                                                                                                (
+                                                                                                  childItem
+                                                                                                ) =>
+                                                                                                  childItem.id ===
+                                                                                                  child.id
+                                                                                                    ? {
+                                                                                                        ...childItem,
+                                                                                                        values:
+                                                                                                          (
+                                                                                                            childItem.values ||
+                                                                                                            []
+                                                                                                          ).map(
+                                                                                                            (
+                                                                                                              cv,
+                                                                                                              i
+                                                                                                            ) =>
+                                                                                                              i ===
+                                                                                                              childValueIndex
+                                                                                                                ? {
+                                                                                                                    ...cv,
+                                                                                                                    price_2:
+                                                                                                                      newPrice,
+                                                                                                                  }
+                                                                                                                : cv
+                                                                                                          ),
+                                                                                                      }
+                                                                                                    : childItem
+                                                                                              ),
+                                                                                          };
+
+                                                                                          return {
+                                                                                            ...parent,
+                                                                                            values,
+                                                                                          };
+                                                                                        }
+                                                                                      )
+                                                                                  );
+                                                                                }}
+                                                                                placeholder="Prix 2"
+                                                                                className={
+                                                                                  inputClass
+                                                                                }
+                                                                              />
+
+                                                                            </div>
+
+                                                                          </div>
+                                                                        )
+                                                                      )}
+
+                                                                    </div>
+
+                                                                  </div>
+                                                                )}
+
+                                                                <label className="mt-4 flex items-center gap-3 text-xs">
+                                                                  <input
+                                                                    type="checkbox"
+                                                                    checked={
+                                                                      child.required !==
+                                                                      false
+                                                                    }
+                                                                    onChange={(
+                                                                      e
+                                                                    ) =>
+                                                                      updateChildOption(
+                                                                        option.id,
+                                                                        valueIndex,
+                                                                        child.id,
+                                                                        "required",
+                                                                        e.target.checked
+                                                                      )
+                                                                    }
+                                                                  />
+
+                                                                  <span>
+                                                                    Choix obligatoire
+                                                                  </span>
+                                                                </label>
+
+                                                              </div>
+
+                                                              <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                  removeChildOption(
+                                                                    option.id,
+                                                                    valueIndex,
+                                                                    child.id
+                                                                  )
+                                                                }
+                                                                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700"
+                                                              >
+                                                                Supprimer
+                                                              </button>
+
+                                                            </div>
+
+                                                          </div>
+                                                        )
+                                                      )}
+
+                                                    </div>
+                                                  )}
+
+                                              </div>
+
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  removeOptionValue(
+                                                    option.id,
+                                                    valueIndex
+                                                  )
+                                                }
+                                                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700"
+                                              >
+                                                Supprimer
+                                              </button>
+
+                                            </div>
 
                                           </div>
                                         )
                                       )}
 
                                     </div>
+
                                   </div>
                                 )}
 
                                 {option.type ===
                                   "number" && (
-                                  <div className="mt-4 rounded-xl bg-white p-4 text-xs text-black/50">
+                                  <div className="mt-4 rounded-xl bg-white p-4 text-xs leading-5 text-black/50">
                                     Le client pourra saisir un nombre.
                                     <br />
                                     Exemple : nombre d’alvéoles.
+                                    <br />
+                                    La disponibilité et le tarif peuvent
+                                    être gérés au niveau du produit.
                                   </div>
                                 )}
 
@@ -1628,8 +2922,7 @@ export default function AccueilAdminPage() {
                                       updateOrderOption(
                                         option.id,
                                         "required",
-                                        e.target
-                                          .checked
+                                        e.target.checked
                                       )
                                     }
                                   />
@@ -1654,6 +2947,7 @@ export default function AccueilAdminPage() {
                               </button>
 
                             </div>
+
                           </div>
                         )
                       )}
@@ -1877,39 +3171,51 @@ export default function AccueilAdminPage() {
                                 Options de commande
                               </p>
 
-                              <div className="mt-2 flex flex-wrap gap-2">
+                              <div className="mt-3 space-y-2">
 
                                 {product.order_options.map(
-                                  (
-                                    option
-                                  ) => (
-                                    <span
-                                      key={
-                                        option.id
-                                      }
+                                  (option) => (
+                                    <div
+                                      key={option.id}
                                       className="rounded-lg border border-black/10 bg-white px-3 py-2 text-xs"
                                     >
                                       <strong>
-                                        {
-                                          option.label
-                                        }
+                                        {option.label}
                                       </strong>
 
                                       {option.values &&
-                                        option
-                                          .values
-                                          .length >
-                                          0 && (
-                                          <>
-                                            {" "}
-                                            :
-                                            {" "}
-                                            {option.values.join(
-                                              " / "
+                                        option.values.length > 0 && (
+                                          <div className="mt-2 flex flex-wrap gap-2">
+                                            {option.values.map(
+                                              (value) => (
+                                                <span
+                                                  key={value.id}
+                                                  className={`rounded-md px-2 py-1 ${
+                                                    value.available !== false
+                                                      ? "bg-green-50 text-green-700"
+                                                      : "bg-amber-50 text-amber-700"
+                                                  }`}
+                                                >
+                                                  {value.label}
+                                                  {" · "}
+                                                  {value.available !== false
+                                                    ? "Disponible"
+                                                    : "Pas encore disponible"}
+                                                  {value.price_1 !== null && (
+                                                    <>
+                                                      {" · "}
+                                                      {value.price_1.toLocaleString(
+                                                        "fr-FR"
+                                                      )}{" "}
+                                                      FCFA
+                                                    </>
+                                                  )}
+                                                </span>
+                                              )
                                             )}
-                                          </>
+                                          </div>
                                         )}
-                                    </span>
+                                    </div>
                                   )
                                 )}
 
