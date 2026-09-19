@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { isAdminAuthed } from "@/lib/adminAuth";
@@ -163,6 +164,20 @@ export async function PATCH(
     if (body.order_enabled !== undefined) {
       updates.order_enabled =
         Boolean(body.order_enabled);
+    }
+
+    // Options de commande
+    if (body.order_options !== undefined) {
+      if (!Array.isArray(body.order_options)) {
+        return NextResponse.json(
+          {
+            error: "Options de commande invalides.",
+          },
+          { status: 400 }
+        );
+      }
+
+      updates.order_options = body.order_options;
     }
 
     if (body.position !== undefined) {
