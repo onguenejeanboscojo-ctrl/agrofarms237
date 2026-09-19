@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { isAdminAuthed } from "@/lib/adminAuth";
@@ -110,6 +111,21 @@ export async function POST(request: Request) {
         ? null
         : Number(body.price_2);
 
+    // Options de commande
+    const orderOptions =
+      body.order_options === undefined
+        ? []
+        : body.order_options;
+
+    if (!Array.isArray(orderOptions)) {
+      return NextResponse.json(
+        {
+          error: "Options de commande invalides.",
+        },
+        { status: 400 }
+      );
+    }
+
     const supabase = supabaseAdmin();
 
     const { data, error } = await supabase
@@ -156,6 +172,9 @@ export async function POST(request: Request) {
 
         order_enabled:
           Boolean(body.order_enabled),
+
+        // Enregistre les options de commande dans Supabase
+        order_options: orderOptions,
 
         position,
 
@@ -341,6 +360,21 @@ export async function PATCH(request: Request) {
     if (body.order_enabled !== undefined) {
       updates.order_enabled =
         Boolean(body.order_enabled);
+    }
+
+    // Met à jour les options de commande uniquement
+    // si elles sont présentes dans la requête.
+    if (body.order_options !== undefined) {
+      if (!Array.isArray(body.order_options)) {
+        return NextResponse.json(
+          {
+            error: "Options de commande invalides.",
+          },
+          { status: 400 }
+        );
+      }
+
+      updates.order_options = body.order_options;
     }
 
     if (body.position !== undefined) {
