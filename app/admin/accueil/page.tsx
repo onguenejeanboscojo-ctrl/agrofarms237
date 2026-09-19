@@ -881,16 +881,14 @@ export default function AccueilAdminPage() {
                     value.price_1_label.trim(),
                   price_1:
                     value.price_1 !== null &&
-                    value.price_1 !== undefined &&
-                    value.price_1 !== ""
+                    value.price_1 !== undefined
                       ? Number(value.price_1)
                       : null,
                   price_2_label:
                     value.price_2_label.trim(),
                   price_2:
                     value.price_2 !== null &&
-                    value.price_2 !== undefined &&
-                    value.price_2 !== ""
+                    value.price_2 !== undefined
                       ? Number(value.price_2)
                       : null,
                   children:
@@ -915,16 +913,14 @@ export default function AccueilAdminPage() {
                                 childValue.price_1_label.trim(),
                               price_1:
                                 childValue.price_1 !== null &&
-                                childValue.price_1 !== undefined &&
-                                childValue.price_1 !== ""
+                                childValue.price_1 !== undefined
                                   ? Number(childValue.price_1)
                                   : null,
                               price_2_label:
                                 childValue.price_2_label.trim(),
                               price_2:
                                 childValue.price_2 !== null &&
-                                childValue.price_2 !== undefined &&
-                                childValue.price_2 !== ""
+                                childValue.price_2 !== undefined
                                   ? Number(childValue.price_2)
                                   : null,
                             }))
