@@ -488,73 +488,115 @@ export default async function HomePage() {
   return (
     <>
       {/* ================================================================ */}
-      {/* HERO — VERSION PREMIUM À IMAGE FIXE                             */}
+      {/* ================================================================ */}
+      {/* ================================================================ */}
+      {/* HERO PREMIUM — image fixe issue des médias publiés               */}
       {/* ================================================================ */}
 
-      <section className="relative isolate flex min-h-[650px] items-center overflow-hidden bg-[#0E2622] px-5 py-24 text-paper md:min-h-[720px] md:py-32">
-        {/* IMAGE FIXE : première image issue des médias publiés de V1 */}
-        {heroImages.length > 0 ? (
-          <img
-            src={heroImages[0]}
-            alt="Agrofarms237 — notre ferme"
-            className="absolute inset-0 -z-20 h-full w-full object-cover"
-          />
-        ) : (
-          <div className="absolute inset-0 -z-20 bg-[radial-gradient(120%_140%_at_15%_0%,#1D4B44_0%,#0E2622_60%,#081815_100%)]" />
-        )}
+      <section className="relative isolate overflow-hidden bg-[radial-gradient(ellipse_at_78%_20%,#1C4A3D_0%,#102F27_38%,#081B16_100%)] px-5 py-14 text-paper sm:py-20 lg:py-24">
+        <div className="pointer-events-none absolute -right-32 -top-32 h-[420px] w-[420px] rounded-full border border-gold/10" />
+        <div className="pointer-events-none absolute -right-20 -top-20 h-[300px] w-[300px] rounded-full border border-gold/10" />
 
-        {/* VOILE SOMBRE POUR GARANTIR LA LISIBILITÉ */}
-        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#081815]/95 via-[#0E2622]/75 to-[#0E2622]/25" />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[#081815]/65 via-transparent to-black/10" />
+        <div className="relative mx-auto grid max-w-[1280px] items-center gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14">
+          <div className="max-w-[720px]">
+            <div className="mb-6 inline-flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.22em] text-gold sm:text-[13px]">
+              <span className="h-px w-10 bg-gold" />
+              <span>{content.hero_label || "Agrofarms237 · Production locale"}</span>
+            </div>
 
-        {/* CONTENU DU HERO — toujours administrable via Supabase */}
-        <div className="mx-auto w-full max-w-[1280px]">
-          <div className="max-w-[850px]">
-            {content.hero_label && (
-              <span className="mb-6 inline-flex items-center gap-3 text-[12px] font-bold uppercase tracking-[0.22em] text-gold md:text-[13px]">
-                <span className="h-px w-8 bg-gold" />
-                {content.hero_label}
-              </span>
-            )}
-
-            <h1 className="max-w-[820px] font-serif text-[clamp(42px,7vw,82px)] font-semibold leading-[1.04] tracking-[-0.035em] text-paper">
+            <h1 className="max-w-[760px] font-serif text-[clamp(42px,7vw,82px)] font-semibold leading-[0.98] tracking-[-0.035em] text-paper">
               {content.hero_title}
             </h1>
 
-            <p className="mt-6 max-w-[650px] text-[16px] leading-7 text-paper/80 md:mt-8 md:text-[19px] md:leading-8">
+            <p className="mt-6 max-w-[620px] text-[16px] leading-7 text-paper/80 sm:mt-7 sm:text-[18px] sm:leading-8">
               {content.hero_description}
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap">
+            <p className="mt-4 text-sm font-semibold tracking-wide text-paper/90 sm:text-[15px]">
+              Pisciculture <span className="px-1.5 text-gold">•</span> Élevage porcin <span className="px-1.5 text-gold">•</span> Aviculture
+            </p>
+
+            <div className="mt-8 flex flex-col gap-3 sm:mt-9 sm:flex-row sm:flex-wrap">
               {content.hero_button_primary_label && (
                 <Link
                   href={content.hero_button_primary_url || "/commander"}
-                  className="btn btn-gold w-full justify-center sm:w-auto"
+                  className="btn btn-gold min-h-[52px] justify-center sm:justify-start"
                 >
                   {content.hero_button_primary_label}
-                  <span aria-hidden="true">→</span>
+                  <span aria-hidden="true" className="ml-1 text-lg">↗</span>
                 </Link>
               )}
 
               {content.hero_button_secondary_label && (
                 <Link
                   href={content.hero_button_secondary_url || "#histoire"}
-                  className="btn btn-outline w-full justify-center border-white/40 bg-white/5 backdrop-blur-sm hover:bg-white/10 sm:w-auto"
+                  className="btn btn-outline min-h-[52px] justify-center border-paper/45 bg-white/5 backdrop-blur-sm sm:justify-start"
                 >
                   {content.hero_button_secondary_label}
+                  <span aria-hidden="true" className="ml-1 text-lg">→</span>
                 </Link>
               )}
             </div>
 
-            <div className="mt-10 flex items-center gap-3 text-[12px] font-medium tracking-wide text-paper/70 md:mt-14">
-              <span className="h-px w-10 bg-gold/70" />
-              Pisciculture · Élevage porcin · Aviculture
+            <div className="mt-9 grid max-w-[650px] grid-cols-1 gap-4 border-t border-paper/20 pt-6 sm:mt-12 sm:grid-cols-3 sm:gap-5">
+              {[
+                { title: "Production locale", text: "Ancrée au Cameroun" },
+                { title: "Qualité suivie", text: "De la ferme à la table" },
+                { title: "Ferme diversifiée", text: "Plusieurs filières agricoles" },
+              ].map((item) => (
+                <div key={item.title} className="flex items-start gap-3">
+                  <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gold/70 text-gold" aria-hidden="true">
+                    <span className="h-2 w-2 rounded-full bg-gold" />
+                  </span>
+                  <div>
+                    <p className="text-[13px] font-bold text-paper">{item.title}</p>
+                    <p className="mt-1 text-[12px] leading-5 text-paper/65">{item.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Visuel fixe : première image issue des médias publiés de la ferme. */}
+          <div className="relative mx-auto w-full max-w-[600px] lg:pl-2">
+            <div className="absolute -inset-3 rounded-[2rem] border border-gold/25" />
+            <div className="relative overflow-hidden rounded-[1.5rem] border border-paper/15 bg-[#16382F]/70 p-2.5 shadow-2xl shadow-black/30 sm:p-3">
+              <div className="relative min-h-[300px] overflow-hidden rounded-[1.1rem] bg-[radial-gradient(circle_at_30%_20%,#2A5E56_0%,#0E2622_60%,#081815_100%)] sm:min-h-[390px] lg:min-h-[470px]">
+                {heroImages.length > 0 ? (
+                  <img
+                    src={heroImages[0]}
+                    alt="Agrofarms237 — visuel de la ferme et de ses activités agricoles"
+                    className="absolute inset-0 h-full w-full object-cover"
+                    fetchPriority="high"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center p-8 text-center">
+                    <div>
+                      <span className="text-xs font-bold uppercase tracking-[0.2em] text-gold">Agrofarms237</span>
+                      <p className="mt-3 font-serif text-2xl text-paper sm:text-3xl">La qualité commence à la ferme.</p>
+                      <p className="mt-3 text-sm text-paper/65">Ajoutez une photo publiée de votre ferme pour l’afficher ici.</p>
+                    </div>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#071D18]/85 via-transparent to-[#071D18]/5" />
+                <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
+                  <span className="inline-flex rounded-full border border-gold/50 bg-[#0B211C]/75 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-gold backdrop-blur-sm">
+                    Pisciculture · Élevage porcin · Aviculture
+                  </span>
+                  <p className="mt-3 max-w-[380px] font-serif text-xl leading-tight text-white sm:text-2xl">
+                    Une ferme, plusieurs filières, un même engagement.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="absolute -bottom-5 -left-3 hidden rounded-xl border border-paper/15 bg-[#0B211C]/95 px-5 py-3 shadow-xl backdrop-blur-md xl:block">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">Notre démarche</p>
+              <p className="mt-1 text-sm font-semibold text-paper">Produire localement, progresser durablement.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ================================================================ */}
       {/* POURQUOI                                                         */}
       {/* ================================================================ */}
 
