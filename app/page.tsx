@@ -96,46 +96,6 @@ function LocationIcon() {
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#F7F5EF] text-[#173D2D]">
-      {/* NAVIGATION */}
-      <header className="sticky top-0 z-50 border-b border-[#173D2D]/10 bg-[#F7F5EF]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-4 lg:px-10">
-          <a href="#accueil" className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#173D2D] text-lg font-bold text-[#E8C98A]">
-              A
-            </div>
-            <div>
-              <p className="text-lg font-bold leading-tight tracking-tight">
-                AGROFARMS<span className="text-[#B7863D]">237</span>
-              </p>
-              <p className="text-[10px] uppercase tracking-[0.22em] text-[#647466]">
-                L’agriculture de demain
-              </p>
-            </div>
-          </a>
-
-          <nav className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm font-medium text-[#40594A]">
-            <a href="#accueil" className="transition hover:text-[#B7863D]">
-              Accueil
-            </a>
-            <a href="#produits" className="transition hover:text-[#B7863D]">
-              Nos produits
-            </a>
-            <a href="#ferme" className="transition hover:text-[#B7863D]">
-              Notre ferme
-            </a>
-            <a href="#contact" className="transition hover:text-[#B7863D]">
-              Contact
-            </a>
-          </nav>
-
-          <a
-            href="#produits"
-            className="rounded-full bg-[#173D2D] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#28563F]"
-          >
-            Commander ↗
-          </a>
-        </div>
-      </header>
 
       {/* HERO */}
       <section id="accueil" className="px-4 pb-8 pt-5 sm:px-6 lg:px-10">
