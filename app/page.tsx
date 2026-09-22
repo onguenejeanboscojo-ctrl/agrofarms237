@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import HeroSlideshow from "@/components/HeroSlideshow";
 import ProductCarousel from "@/components/ProductCarousel";
 
 export const revalidate = 60;
@@ -489,64 +488,67 @@ export default async function HomePage() {
   return (
     <>
       {/* ================================================================ */}
-      {/* HERO                                                             */}
+      {/* HERO — VERSION PREMIUM À IMAGE FIXE                             */}
       {/* ================================================================ */}
 
-      <section className="relative min-h-[680px] overflow-hidden px-5 py-[150px] pb-24 text-paper">
+      <section className="relative isolate flex min-h-[650px] items-center overflow-hidden bg-[#0E2622] px-5 py-24 text-paper md:min-h-[720px] md:py-32">
+        {/* IMAGE FIXE : première image issue des médias publiés de V1 */}
         {heroImages.length > 0 ? (
-          <>
-            <HeroSlideshow
-              images={heroImages}
-            />
-
-            <div className="absolute inset-0 z-[1] bg-gradient-to-b from-black/60 via-[#0E2622]/55 to-[#081815]/90" />
-          </>
+          <img
+            src={heroImages[0]}
+            alt="Agrofarms237 — notre ferme"
+            className="absolute inset-0 -z-20 h-full w-full object-cover"
+          />
         ) : (
-          <div className="absolute inset-0 z-0 bg-[radial-gradient(120%_140%_at_15%_0%,#1D4B44_0%,#0E2622_60%,#081815_100%)]" />
+          <div className="absolute inset-0 -z-20 bg-[radial-gradient(120%_140%_at_15%_0%,#1D4B44_0%,#0E2622_60%,#081815_100%)]" />
         )}
 
-        <div className="relative z-10 mx-auto max-w-[1280px]">
-          <div className="max-w-[950px]">
-            <span className="mb-5 inline-block text-[13px] font-bold uppercase tracking-[0.2em] text-gold">
-              {content.hero_label}
-            </span>
+        {/* VOILE SOMBRE POUR GARANTIR LA LISIBILITÉ */}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#081815]/95 via-[#0E2622]/75 to-[#0E2622]/25" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[#081815]/65 via-transparent to-black/10" />
 
-            <h1 className="font-serif text-[clamp(44px,7vw,86px)] font-semibold leading-[1.02] tracking-[-0.03em] text-paper">
+        {/* CONTENU DU HERO — toujours administrable via Supabase */}
+        <div className="mx-auto w-full max-w-[1280px]">
+          <div className="max-w-[850px]">
+            {content.hero_label && (
+              <span className="mb-6 inline-flex items-center gap-3 text-[12px] font-bold uppercase tracking-[0.22em] text-gold md:text-[13px]">
+                <span className="h-px w-8 bg-gold" />
+                {content.hero_label}
+              </span>
+            )}
+
+            <h1 className="max-w-[820px] font-serif text-[clamp(42px,7vw,82px)] font-semibold leading-[1.04] tracking-[-0.035em] text-paper">
               {content.hero_title}
             </h1>
 
-            <p className="mt-7 max-w-[720px] text-[17px] leading-8 text-paper/80 md:text-[19px]">
+            <p className="mt-6 max-w-[650px] text-[16px] leading-7 text-paper/80 md:mt-8 md:text-[19px] md:leading-8">
               {content.hero_description}
             </p>
 
-            <div className="mt-9 flex flex-wrap gap-3">
+            <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap">
               {content.hero_button_primary_label && (
                 <Link
-                  href={
-                    content.hero_button_primary_url ||
-                    "/commander"
-                  }
-                  className="btn btn-gold"
+                  href={content.hero_button_primary_url || "/commander"}
+                  className="btn btn-gold w-full justify-center sm:w-auto"
                 >
-                  {
-                    content.hero_button_primary_label
-                  }
+                  {content.hero_button_primary_label}
+                  <span aria-hidden="true">→</span>
                 </Link>
               )}
 
               {content.hero_button_secondary_label && (
                 <Link
-                  href={
-                    content.hero_button_secondary_url ||
-                    "#histoire"
-                  }
-                  className="btn btn-outline"
+                  href={content.hero_button_secondary_url || "#histoire"}
+                  className="btn btn-outline w-full justify-center border-white/40 bg-white/5 backdrop-blur-sm hover:bg-white/10 sm:w-auto"
                 >
-                  {
-                    content.hero_button_secondary_label
-                  }
+                  {content.hero_button_secondary_label}
                 </Link>
               )}
+            </div>
+
+            <div className="mt-10 flex items-center gap-3 text-[12px] font-medium tracking-wide text-paper/70 md:mt-14">
+              <span className="h-px w-10 bg-gold/70" />
+              Pisciculture · Élevage porcin · Aviculture
             </div>
           </div>
         </div>
