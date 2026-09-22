@@ -1,1046 +1,533 @@
-import Link from "next/link";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import ProductCarousel from "@/components/ProductCarousel";
 
-export const revalidate = 60;
-
-type HomeContent = {
-  hero_label: string;
-  hero_title: string;
-  hero_description: string;
-  hero_button_primary_label: string;
-  hero_button_primary_url: string;
-  hero_button_secondary_label: string;
-  hero_button_secondary_url: string;
-
-  commitments_title: string;
-  commitment1_title: string;
-  commitment1_text: string;
-  commitment2_title: string;
-  commitment2_text: string;
-  commitment3_title: string;
-  commitment3_text: string;
-  commitment4_title: string;
-  commitment4_text: string;
-
-  products_label: string;
-  products_title: string;
-  products_description: string;
-
-  story_label: string;
-  story_title: string;
-  story_text: string;
-  story_button_label: string;
-  story_button_url: string;
-
-  future_label: string;
-  future_title: string;
-  future_text: string;
-
-  cta_label: string;
-  cta_title: string;
-  cta_text: string;
-  cta_button_primary_label: string;
-  cta_button_primary_url: string;
-  cta_button_secondary_label: string;
-  cta_button_secondary_url: string;
-};
-
-type HomeProduct = {
-  id: string;
-  name: string;
-  description: string | null;
-  status: "disponible" | "bientot" | "rupture";
-  price: number | null;
-  price_unit: string | null;
-  price_1_label: string | null;
-  price_1: number | null;
-  price_2_label: string | null;
-  price_2: number | null;
-  order_enabled: boolean;
-  position: number;
-  published: boolean;
-};
-
-type ProductMedia = {
-  id: string;
-  home_product_id: string;
-  url: string;
-  position: number;
-};
-
-type FarmMedia = {
-  id: string;
-  farm_breeding_id: string;
-  url: string;
-  position: number;
-};
-
-type FarmItem = {
-  id: string;
-  published: boolean;
-};
-
-type GeneralMedia = {
-  id: string;
-  url: string;
-  kind: string;
-  published: boolean;
-};
-
-type Review = {
-  id: string;
-  content: string;
-  author_name: string;
-  client_type?: string | null;
-};
-
-const FALLBACK_CONTENT: HomeContent = {
-  hero_label: "Agrofarms237",
-  hero_title: "Une agriculture camerounaise pensée pour durer.",
-  hero_description:
-    "Nous développons une production agricole locale, responsable et proche des consommateurs.",
-  hero_button_primary_label: "Commander",
-  hero_button_primary_url: "/commander",
-  hero_button_secondary_label: "Découvrir Agrofarms237",
-  hero_button_secondary_url: "#histoire",
-
-  commitments_title:
-    "Une production pensée pour durer, pas pour paraître.",
-  commitment1_title: "Production locale",
-  commitment1_text:
-    "Des produits issus d'une production camerounaise, élevée et suivie avec attention.",
-  commitment2_title: "Fraîcheur",
-  commitment2_text:
-    "Un suivi de la ferme jusqu'au client, avec une attention particulière portée à la qualité.",
-  commitment3_title: "Transparence",
-  commitment3_text:
-    "Nous montrons notre manière de produire et faisons évoluer notre ferme avec clarté.",
-  commitment4_title: "Proximité",
-  commitment4_text:
-    "Une marque accessible aux familles comme aux professionnels de l'alimentation.",
-
-  products_label: "Nos produits",
-  products_title: "De la ferme à votre table.",
-  products_description:
-    "Découvrez les produits issus de notre ferme et ceux que nous préparons pour demain.",
-
-  story_label: "Notre histoire",
-  story_title:
-    "Une entreprise agricole camerounaise, construite pas à pas.",
-  story_text:
-    "Agrofarms237 développe progressivement une ferme diversifiée autour d'une conviction simple : produire localement des aliments de qualité tout en construisant une activité agricole durable.",
-  story_button_label: "Découvrir notre histoire",
-  story_button_url: "/la-vie-de-la-ferme",
-
-  future_label: "Notre vision",
-  future_title:
-    "Construire une ferme agricole camerounaise diversifiée.",
-  future_text:
-    "Notre ambition est de développer progressivement plusieurs filières d'élevage et de production afin de proposer davantage de produits issus de notre ferme.",
-
-  cta_label: "Agrofarms237",
-  cta_title: "De la production à la table.",
-  cta_text:
-    "Découvrez notre ferme, nos produits et notre manière de construire une agriculture locale.",
-  cta_button_primary_label: "Voir nos produits",
-  cta_button_primary_url: "/produits",
-  cta_button_secondary_label: "Nous contacter",
-  cta_button_secondary_url: "/contact",
-};
-
-async function getHomeContent(): Promise<HomeContent> {
-  try {
-    const { data, error } = await supabaseAdmin()
-      .from("home_content")
-      .select("*")
-      .limit(1)
-      .maybeSingle();
-
-    if (error || !data) {
-      return FALLBACK_CONTENT;
-    }
-
-    return {
-      ...FALLBACK_CONTENT,
-      ...data,
-    } as HomeContent;
-  } catch {
-    return FALLBACK_CONTENT;
-  }
-}
-
-async function getHomeProducts(): Promise<HomeProduct[]> {
-  try {
-    const { data, error } = await supabaseAdmin()
-      .from("home_products")
-      .select("*")
-      .eq("published", true)
-      .order("position", {
-        ascending: true,
-      })
-      .order("created_at", {
-        ascending: true,
-      });
-
-    if (error) {
-      console.error(
-        "Erreur récupération produits accueil :",
-        error
-      );
-
-      return [];
-    }
-
-    return (data || []) as HomeProduct[];
-  } catch {
-    return [];
-  }
-}
-
-async function getProductMedia(): Promise<ProductMedia[]> {
-  try {
-    const { data, error } = await supabaseAdmin()
-      .from("home_product_media")
-      .select(
-        "id,home_product_id,url,position"
-      )
-      .order("position", {
-        ascending: true,
-      })
-      .order("created_at", {
-        ascending: true,
-      });
-
-    if (error) {
-      console.error(
-        "Erreur récupération photos produits accueil :",
-        error
-      );
-
-      return [];
-    }
-
-    return (data || []) as ProductMedia[];
-  } catch {
-    return [];
-  }
-}
-
-async function getFarmItems(): Promise<FarmItem[]> {
-  try {
-    const { data } = await supabaseAdmin()
-      .from("farm_breeding")
-      .select("id,published")
-      .eq("published", true);
-
-    return (data || []) as FarmItem[];
-  } catch {
-    return [];
-  }
-}
-
-async function getFarmMedia(): Promise<FarmMedia[]> {
-  try {
-    const { data } = await supabaseAdmin()
-      .from("farm_breeding_media")
-      .select(
-        "id,farm_breeding_id,url,position"
-      )
-      .order("position", {
-        ascending: true,
-      })
-      .order("created_at", {
-        ascending: true,
-      });
-
-    return (data || []) as FarmMedia[];
-  } catch {
-    return [];
-  }
-}
-
-type StoryMedia = {
-  id: string;
-  url: string;
-  created_at: string;
-};
-
-async function getStoryMedia(): Promise<StoryMedia[]> {
-  try {
-    const { data, error } = await supabaseAdmin()
-      .from("home_story_media")
-      .select("id,url,created_at")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error(
-        "Erreur récupération photo Notre histoire :",
-        error
-      );
-      return [];
-    }
-
-    return (data || []) as StoryMedia[];
-  } catch {
-    return [];
-  }
-}
-
-async function getGeneralMedia(): Promise<GeneralMedia[]> {
-  try {
-    const { data } = await supabaseAdmin()
-      .from("media")
-      .select(
-        "id,url,kind,published"
-      )
-      .eq("published", true)
-      .eq("kind", "photo")
-      .order("position", {
-        ascending: true,
-      })
-      .order("created_at", {
-        ascending: false,
-      });
-
-    return (data || []) as GeneralMedia[];
-  } catch {
-    return [];
-  }
-}
-
-async function getReviews(): Promise<Review[]> {
-  try {
-    const { data } = await supabaseAdmin()
-      .from("reviews")
-      .select("*")
-      .eq("published", true)
-      .order("created_at", {
-        ascending: false,
-      })
-      .limit(3);
-
-    return (data || []) as Review[];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Construit le slideshow global du Hero.
- *
- * Sources :
- * - Galerie générale
- * - Photos de Notre élevage
- * - Photos des produits de l'accueil
- *
- * Les doublons sont supprimés.
- */
-function buildHeroImages(
-  generalMedia: GeneralMedia[],
-  farmMedia: FarmMedia[],
-  farmItems: FarmItem[],
-  productMedia: ProductMedia[],
-  products: HomeProduct[]
-) {
-  const publishedFarmIds = new Set(
-    farmItems.map((item) => item.id)
-  );
-
-  const publishedProductIds = new Set(
-    products.map((product) => product.id)
-  );
-
-  const urls = [
-    ...generalMedia.map(
-      (item) => item.url
-    ),
-
-    ...farmMedia
-      .filter((item) =>
-        publishedFarmIds.has(
-          item.farm_breeding_id
-        )
-      )
-      .map((item) => item.url),
-
-    ...productMedia
-      .filter((item) =>
-        publishedProductIds.has(
-          item.home_product_id
-        )
-      )
-      .map((item) => item.url),
-  ];
-
-  return Array.from(
-    new Set(
-      urls.filter(Boolean)
-    )
-  );
-}
-
-function formatFCFA(
-  value: number | null
-) {
-  if (
-    value === null ||
-    value === undefined
-  ) {
-    return null;
-  }
-
-  return `${value.toLocaleString(
-    "fr-FR"
-  )} FCFA`;
-}
-
-function statusLabel(
-  status: HomeProduct["status"]
-) {
-  if (status === "disponible") {
-    return "Disponible";
-  }
-
-  if (status === "rupture") {
-    return "Rupture de stock";
-  }
-
-  return "Bientôt disponible";
-}
-
-function statusStyle(
-  status: HomeProduct["status"]
-) {
-  if (status === "disponible") {
-    return "border-white/20 bg-white/10 text-white";
-  }
-
-  if (status === "rupture") {
-    return "border-red-300/20 bg-red-500/10 text-red-100";
-  }
-
-  return "border-gold/30 bg-gold/10 text-gold";
-}
-
-function splitParagraphs(
-  text: string
-) {
-  return text
-    .split(/\n\s*\n/)
-    .map((paragraph) =>
-      paragraph.trim()
-    )
-    .filter(Boolean);
-}
-
-export default async function HomePage() {
-  const [
-    content,
-    products,
-    productMedia,
-    farmItems,
-    farmMedia,
-    generalMedia,
-    storyMedia,
-    reviews,
-  ] = await Promise.all([
-    getHomeContent(),
-    getHomeProducts(),
-    getProductMedia(),
-    getFarmItems(),
-    getFarmMedia(),
-    getGeneralMedia(),
-    getStoryMedia(),
-    getReviews(),
-  ]);
-
-  const heroImages = buildHeroImages(
-    generalMedia,
-    farmMedia,
-    farmItems,
-    productMedia,
-    products
-  );
-
-  const mediaByProduct: Record<
-    string,
-    string[]
-  > = {};
-
-  for (const photo of productMedia) {
-    if (!mediaByProduct[photo.home_product_id]) {
-      mediaByProduct[
-        photo.home_product_id
-      ] = [];
-    }
-
-    mediaByProduct[
-      photo.home_product_id
-    ].push(photo.url);
-  }
-
-  const storyParagraphs =
-    splitParagraphs(
-      content.story_text
-    );
-
+const products = [
+  {
+    name: "Silure frais",
+    description: "Issu de notre élevage, soigneusement sélectionné.",
+    price: "2 500 FCFA/kg",
+    note: "2 400 FCFA/kg dès 30 kg",
+    available: true,
+    image:
+      "https://images.unsplash.com/photo-1510130387422-82bed34b37e9?auto=format&fit=crop&w=1000&q=85",
+  },
+  {
+    name: "Silure fumé",
+    description: "Une préparation savoureuse, pensée pour vos repas.",
+    price: "Bientôt disponible",
+    note: "Préparation en cours",
+    available: false,
+    image:
+      "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=1000&q=85",
+  },
+  {
+    name: "Porc & volaille",
+    description: "Des produits d’élevage pour vos besoins quotidiens.",
+    price: "Bientôt disponible",
+    note: "Restez informés",
+    available: false,
+    image:
+      "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1000&q=85",
+  },
+];
+
+const commitments = [
+  {
+    number: "01",
+    title: "Une production maîtrisée",
+    text: "Nous développons nos activités d’élevage avec une attention particulière portée aux pratiques de production.",
+  },
+  {
+    number: "02",
+    title: "La proximité avant tout",
+    text: "Une relation directe avec nos clients, des échanges simples et un accompagnement adapté à leurs besoins.",
+  },
+  {
+    number: "03",
+    title: "Une vision durable",
+    text: "Construire une entreprise agricole ambitieuse, ancrée au Cameroun et tournée vers l’avenir.",
+  },
+];
+
+function PhoneIcon({ className = "h-5 w-5" }) {
   return (
-    <>
-      {/* ================================================================ */}
-      {/* ================================================================ */}
-      {/* ================================================================ */}
-      {/* HERO PREMIUM — image fixe issue des médias publiés               */}
-      {/* ================================================================ */}
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.56 3.58.56a1 1 0 011 1V20a1 1 0 01-1 1C10.61 21 3 13.39 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.19 2.46.56 3.58a1 1 0 01-.25 1.01l-2.19 2.2z" />
+    </svg>
+  );
+}
 
-      <section className="relative isolate overflow-hidden bg-[radial-gradient(ellipse_at_78%_20%,#1C4A3D_0%,#102F27_38%,#081B16_100%)] px-5 py-14 text-paper sm:py-20 lg:py-24">
-        <div className="pointer-events-none absolute -right-32 -top-32 h-[420px] w-[420px] rounded-full border border-gold/10" />
-        <div className="pointer-events-none absolute -right-20 -top-20 h-[300px] w-[300px] rounded-full border border-gold/10" />
+function WhatsAppIcon({ className = "h-6 w-6" }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 32 32"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        fill="#25D366"
+        d="M16 2.5A13.4 13.4 0 004.5 22.8L2.7 29.5l6.9-1.8A13.5 13.5 0 1016 2.5z"
+      />
+      <path
+        fill="white"
+        d="M16 5a10.8 10.8 0 00-9.2 16.5l.3.5-1.1 4 4.1-1.1.5.3A10.8 10.8 0 1016 5zm6.1 15.5c-.3.8-1.7 1.5-2.4 1.6-.6.1-1.4.2-2.3-.1-.5-.2-1.2-.4-2-.8-3.5-1.5-5.8-5.1-6-5.3-.2-.2-1.4-1.9-1.4-3.6s.9-2.5 1.2-2.8c.3-.3.6-.4.8-.4h.6c.2 0 .5-.1.7.5.3.7 1 2.4 1.1 2.6.1.2.1.4 0 .6-.1.2-.2.4-.4.6-.2.2-.4.5-.6.7-.2.2-.4.4-.2.8.2.4.9 1.5 1.9 2.4 1.3 1.1 2.4 1.5 2.8 1.7.4.2.6.1.8-.1.2-.2.9-1 1.1-1.4.2-.4.5-.3.8-.2.3.1 2 .9 2.3 1.1.3.2.5.3.6.4.1.1.1.8-.2 1.5z"
+      />
+    </svg>
+  );
+}
 
-        <div className="relative mx-auto grid max-w-[1280px] items-center gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14">
-          <div className="max-w-[720px]">
-            <div className="mb-6 inline-flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.22em] text-gold sm:text-[13px]">
-              <span className="h-px w-10 bg-gold" />
-              <span>{content.hero_label || "Agrofarms237 · Production locale"}</span>
+function LocationIcon() {
+  return (
+    <span
+      className="text-2xl leading-none"
+      role="img"
+      aria-label="Localisation"
+    >
+      📍
+    </span>
+  );
+}
+
+export default function Home() {
+  return (
+    <main className="min-h-screen bg-[#F7F5EF] text-[#173D2D]">
+      {/* NAVIGATION */}
+      <header className="sticky top-0 z-50 border-b border-[#173D2D]/10 bg-[#F7F5EF]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-4 lg:px-10">
+          <a href="#accueil" className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#173D2D] text-lg font-bold text-[#E8C98A]">
+              A
+            </div>
+            <div>
+              <p className="text-lg font-bold leading-tight tracking-tight">
+                AGROFARMS<span className="text-[#B7863D]">237</span>
+              </p>
+              <p className="text-[10px] uppercase tracking-[0.22em] text-[#647466]">
+                L’agriculture de demain
+              </p>
+            </div>
+          </a>
+
+          <nav className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm font-medium text-[#40594A]">
+            <a href="#accueil" className="transition hover:text-[#B7863D]">
+              Accueil
+            </a>
+            <a href="#produits" className="transition hover:text-[#B7863D]">
+              Nos produits
+            </a>
+            <a href="#ferme" className="transition hover:text-[#B7863D]">
+              Notre ferme
+            </a>
+            <a href="#contact" className="transition hover:text-[#B7863D]">
+              Contact
+            </a>
+          </nav>
+
+          <a
+            href="#produits"
+            className="rounded-full bg-[#173D2D] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#28563F]"
+          >
+            Commander ↗
+          </a>
+        </div>
+      </header>
+
+      {/* HERO */}
+      <section id="accueil" className="px-4 pb-8 pt-5 sm:px-6 lg:px-10">
+        <div
+          className="relative mx-auto flex min-h-[580px] max-w-7xl items-end overflow-hidden rounded-[28px] bg-[#173D2D] bg-cover bg-center sm:min-h-[650px]"
+          style={{
+            backgroundImage:
+              "linear-gradient(90deg, rgba(12,38,27,0.88) 0%, rgba(12,38,27,0.63) 48%, rgba(12,38,27,0.12) 100%), url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2200&q=90')",
+          }}
+        >
+          <div className="relative z-10 max-w-3xl px-7 py-14 sm:px-12 sm:py-20 lg:px-16">
+            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-[#F1D9A8] backdrop-blur">
+              <span className="h-2 w-2 rounded-full bg-[#D5B16D]" />
+              Une ferme camerounaise, une vision d’avenir
             </div>
 
-            <h1 className="max-w-[760px] font-serif text-[clamp(42px,7vw,82px)] font-semibold leading-[0.98] tracking-[-0.035em] text-paper">
-              {content.hero_title}
+            <h1 className="text-4xl font-semibold leading-[1.08] tracking-tight text-white sm:text-6xl lg:text-7xl">
+              Nourrir aujourd’hui.
+              <br />
+              <span className="font-light italic text-[#E8C98A]">
+                Construire demain.
+              </span>
             </h1>
 
-            <p className="mt-6 max-w-[620px] text-[16px] leading-7 text-paper/80 sm:mt-7 sm:text-[18px] sm:leading-8">
-              {content.hero_description}
+            <p className="mt-7 max-w-xl text-base leading-7 text-white/80 sm:text-lg sm:leading-8">
+              Agrofarms237 développe des activités d’élevage et de production
+              agricole au Cameroun, avec une ambition : proposer des produits
+              de qualité et bâtir une agriculture durable.
             </p>
 
-            <p className="mt-4 text-sm font-semibold tracking-wide text-paper/90 sm:text-[15px]">
-              Pisciculture <span className="px-1.5 text-gold">•</span> Élevage porcin <span className="px-1.5 text-gold">•</span> Aviculture
-            </p>
-
-            <div className="mt-8 flex flex-col gap-3 sm:mt-9 sm:flex-row sm:flex-wrap">
-              {content.hero_button_primary_label && (
-                <Link
-                  href={content.hero_button_primary_url || "/commander"}
-                  className="btn btn-gold min-h-[52px] justify-center sm:justify-start"
-                >
-                  {content.hero_button_primary_label}
-                  <span aria-hidden="true" className="ml-1 text-lg">↗</span>
-                </Link>
-              )}
-
-              {content.hero_button_secondary_label && (
-                <Link
-                  href={content.hero_button_secondary_url || "#histoire"}
-                  className="btn btn-outline min-h-[52px] justify-center border-paper/45 bg-white/5 backdrop-blur-sm sm:justify-start"
-                >
-                  {content.hero_button_secondary_label}
-                  <span aria-hidden="true" className="ml-1 text-lg">→</span>
-                </Link>
-              )}
+            <div className="mt-9 flex flex-wrap gap-3">
+              <a
+                href="#produits"
+                className="rounded-full bg-[#E8C98A] px-7 py-4 text-sm font-bold text-[#173D2D] transition hover:bg-white"
+              >
+                Découvrir nos produits ↗
+              </a>
+              <a
+                href="#ferme"
+                className="rounded-full border border-white/40 px-7 py-4 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                Notre vision
+              </a>
             </div>
 
-            <div className="mt-9 grid max-w-[650px] grid-cols-1 gap-4 border-t border-paper/20 pt-6 sm:mt-12 sm:grid-cols-3 sm:gap-5">
-              {[
-                { title: "Production locale", text: "Ancrée au Cameroun" },
-                { title: "Qualité suivie", text: "De la ferme à la table" },
-                { title: "Ferme diversifiée", text: "Plusieurs filières agricoles" },
-              ].map((item) => (
-                <div key={item.title} className="flex items-start gap-3">
-                  <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gold/70 text-gold" aria-hidden="true">
-                    <span className="h-2 w-2 rounded-full bg-gold" />
-                  </span>
-                  <div>
-                    <p className="text-[13px] font-bold text-paper">{item.title}</p>
-                    <p className="mt-1 text-[12px] leading-5 text-paper/65">{item.text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Visuel fixe : première image issue des médias publiés de la ferme. */}
-          <div className="relative mx-auto w-full max-w-[600px] lg:pl-2">
-            <div className="absolute -inset-3 rounded-[2rem] border border-gold/25" />
-            <div className="relative overflow-hidden rounded-[1.5rem] border border-paper/15 bg-[#16382F]/70 p-2.5 shadow-2xl shadow-black/30 sm:p-3">
-              <div className="relative min-h-[300px] overflow-hidden rounded-[1.1rem] bg-[radial-gradient(circle_at_30%_20%,#2A5E56_0%,#0E2622_60%,#081815_100%)] sm:min-h-[390px] lg:min-h-[470px]">
-                {heroImages.length > 0 ? (
-                  <img
-                    src={heroImages[0]}
-                    alt="Agrofarms237 — visuel de la ferme et de ses activités agricoles"
-                    className="absolute inset-0 h-full w-full object-cover"
-                    fetchPriority="high"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center p-8 text-center">
-                    <div>
-                      <span className="text-xs font-bold uppercase tracking-[0.2em] text-gold">Agrofarms237</span>
-                      <p className="mt-3 font-serif text-2xl text-paper sm:text-3xl">La qualité commence à la ferme.</p>
-                      <p className="mt-3 text-sm text-paper/65">Ajoutez une photo publiée de votre ferme pour l’afficher ici.</p>
-                    </div>
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#071D18]/85 via-transparent to-[#071D18]/5" />
-                <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                  <span className="inline-flex rounded-full border border-gold/50 bg-[#0B211C]/75 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-gold backdrop-blur-sm">
-                    Pisciculture · Élevage porcin · Aviculture
-                  </span>
-                  <p className="mt-3 max-w-[380px] font-serif text-xl leading-tight text-white sm:text-2xl">
-                    Une ferme, plusieurs filières, un même engagement.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="absolute -bottom-5 -left-3 hidden rounded-xl border border-paper/15 bg-[#0B211C]/95 px-5 py-3 shadow-xl backdrop-blur-md xl:block">
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">Notre démarche</p>
-              <p className="mt-1 text-sm font-semibold text-paper">Produire localement, progresser durablement.</p>
+            <div className="mt-12 flex flex-wrap gap-x-8 gap-y-4 border-t border-white/20 pt-6 text-sm text-white/75">
+              <span>● Pisciculture</span>
+              <span>● Élevage</span>
+              <span>● Agriculture durable</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* POURQUOI                                                         */}
-      {/* ================================================================ */}
-
-      <section className="px-5 py-[82px]">
-        <div className="mx-auto max-w-[1280px]">
-          <span className="mb-3 inline-block text-[13px] font-bold uppercase tracking-[0.16em] text-goldDeep">
-            Pourquoi Agrofarms237
-          </span>
-
-          <h2 className="max-w-[900px] font-serif text-[clamp(30px,4.5vw,46px)] font-semibold leading-tight">
-            {content.commitments_title}
+      {/* INTRODUCTION */}
+      <section className="mx-auto grid max-w-7xl gap-8 px-5 py-16 sm:px-8 lg:grid-cols-2 lg:items-end lg:px-10 lg:py-24">
+        <div>
+          <p className="mb-4 text-xs font-bold uppercase tracking-[0.24em] text-[#B7863D]">
+            Bienvenue chez Agrofarms237
+          </p>
+          <h2 className="max-w-xl text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">
+            De la ferme à vos besoins, avec une vision claire.
           </h2>
+        </div>
+        <p className="max-w-2xl text-base leading-8 text-[#627166]">
+          Nous construisons une entreprise agricole qui associe production,
+          proximité et transmission du savoir. Notre démarche s’inscrit dans
+          une volonté de développer des activités responsables et de créer de
+          la valeur localement.
+        </p>
+      </section>
 
-          <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              [
-                content.commitment1_title,
-                content.commitment1_text,
-              ],
-              [
-                content.commitment2_title,
-                content.commitment2_text,
-              ],
-              [
-                content.commitment3_title,
-                content.commitment3_text,
-              ],
-              [
-                content.commitment4_title,
-                content.commitment4_text,
-              ],
-            ].map(([title, text], index) => (
-              <div
-                key={`${title}-${index}`}
-                className="border-t border-ink/15 pt-5"
+      {/* PRODUITS */}
+      <section
+        id="produits"
+        className="bg-[#EDE9DE] px-5 py-16 sm:px-8 lg:px-10 lg:py-24"
+      >
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-10 flex flex-wrap items-end justify-between gap-5">
+            <div>
+              <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-[#B7863D]">
+                Notre sélection
+              </p>
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-5xl">
+                Les produits de la ferme
+              </h2>
+              <p className="mt-4 max-w-xl leading-7 text-[#627166]">
+                Découvrez notre catalogue. Les produits indisponibles restent
+                visibles et seront proposés au fur et à mesure de leur mise en
+                vente.
+              </p>
+            </div>
+            <span className="rounded-full border border-[#173D2D]/15 px-4 py-2 text-xs font-semibold text-[#40594A]">
+              Catalogue Agrofarms237
+            </span>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {products.map((product) => (
+              <article
+                key={product.name}
+                className="group overflow-hidden rounded-[22px] border border-[#173D2D]/8 bg-[#FBFAF6]"
               >
-                <span className="text-xs font-bold tracking-[0.15em] text-goldDeep">
-                  0{index + 1}
+                <div className="relative h-64 overflow-hidden bg-[#D8DCCF]">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className={`h-full w-full object-cover transition duration-700 group-hover:scale-105 ${
+                      product.available ? "" : "grayscale-[35%]"
+                    }`}
+                  />
+                  <span
+                    className={`absolute left-4 top-4 rounded-full px-3 py-2 text-[11px] font-bold ${
+                      product.available
+                        ? "bg-[#E4F0DF] text-[#28563F]"
+                        : "bg-white/90 text-[#69746A]"
+                    }`}
+                  >
+                    {product.available
+                      ? "● Disponible"
+                      : "Pas encore disponible"}
+                  </span>
+                </div>
+
+                <div className="p-6">
+                  <h3 className="text-xl font-semibold">{product.name}</h3>
+                  <p className="mt-2 min-h-[48px] text-sm leading-6 text-[#718074]">
+                    {product.description}
+                  </p>
+
+                  <div className="mt-5 border-t border-[#173D2D]/10 pt-4">
+                    <p className="text-lg font-bold text-[#173D2D]">
+                      {product.price}
+                    </p>
+                    <p className="mt-1 text-xs text-[#718074]">
+                      {product.note}
+                    </p>
+                  </div>
+
+                  {product.available ? (
+                    <a
+                      href="https://wa.me/237697983119?text=Bonjour%20Agrofarms237%2C%20je%20souhaite%20commander%20du%20silure%20frais."
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#173D2D] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#28563F]"
+                    >
+                      <WhatsAppIcon className="h-5 w-5" />
+                      Commander sur WhatsApp ↗
+                    </a>
+                  ) : (
+                    <div className="mt-5 flex w-full cursor-not-allowed items-center justify-center rounded-full bg-[#E8E7E0] px-5 py-3.5 text-sm font-semibold text-[#858B81]">
+                      Bientôt disponible
+                    </div>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <p className="mt-7 text-xs leading-5 text-[#718074]">
+            Les prix et disponibilités affichés sont à confirmer avant
+            commande. Les autres produits et variantes ne sont pas encore
+            disponibles à la vente.
+          </p>
+        </div>
+      </section>
+
+      {/* ENGAGEMENTS */}
+      <section
+        id="ferme"
+        className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-10 lg:py-24"
+      >
+        <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr]">
+          <div>
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-[#B7863D]">
+              Notre engagement
+            </p>
+            <h2 className="text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">
+              Une ferme pensée pour l’avenir.
+            </h2>
+            <p className="mt-5 max-w-md leading-8 text-[#627166]">
+              Au-delà de la production, Agrofarms237 porte une vision
+              entrepreneuriale de l’agriculture : apprendre, structurer,
+              produire et grandir durablement.
+            </p>
+            <a
+              href="#contact"
+              className="mt-7 inline-flex rounded-full border border-[#173D2D]/20 px-6 py-3.5 text-sm font-semibold transition hover:bg-[#173D2D] hover:text-white"
+            >
+              En savoir plus ↗
+            </a>
+          </div>
+
+          <div className="divide-y divide-[#173D2D]/12">
+            {commitments.map((item) => (
+              <div
+                key={item.number}
+                className="grid gap-3 py-6 sm:grid-cols-[60px_1fr]"
+              >
+                <span className="text-sm font-bold text-[#B7863D]">
+                  {item.number}
                 </span>
-
-                <h3 className="mt-4 text-[20px] font-semibold">
-                  {title}
-                </h3>
-
-                <p className="mt-3 text-[15px] leading-7 text-inkSoft">
-                  {text}
-                </p>
+                <div>
+                  <h3 className="text-xl font-semibold">{item.title}</h3>
+                  <p className="mt-2 max-w-xl text-sm leading-7 text-[#718074]">
+                    {item.text}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ================================================================ */}
-      {/* PRODUITS                                                         */}
-      {/* ================================================================ */}
+      {/* CONTACT */}
+      <section className="px-4 pb-5 sm:px-6 lg:px-10">
+        <div
+          className="mx-auto max-w-7xl overflow-hidden rounded-[26px] bg-cover bg-center px-7 py-14 sm:px-12 sm:py-16"
+          style={{
+            backgroundImage:
+              "linear-gradient(90deg, rgba(16,53,37,0.96), rgba(16,53,37,0.80)), url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1800&q=80')",
+          }}
+        >
+          <div className="max-w-2xl">
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-[#E8C98A]">
+              Travaillons ensemble
+            </p>
+            <h2 className="text-3xl font-semibold leading-tight text-white sm:text-5xl">
+              Un projet, un besoin ou un partenariat ?
+            </h2>
+            <p className="mt-5 leading-7 text-white/75">
+              Échangeons autour de vos besoins, de vos commandes ou de vos
+              projets dans le secteur agricole.
+            </p>
 
-      <section className="bg-ink px-5 py-[82px] text-paper">
-        <div className="mx-auto max-w-[1280px]">
-          <span className="mb-3 inline-block text-[13px] font-bold uppercase tracking-[0.16em] text-gold">
-            {content.products_label}
-          </span>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <a
+                href="tel:+237659505823"
+                className="inline-flex items-center justify-center gap-3 rounded-full border border-white/40 px-7 py-4 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                <PhoneIcon className="h-5 w-5" />
+                Appeler Agrofarms237
+              </a>
 
-          <h2 className="font-serif text-[clamp(30px,4.5vw,46px)] font-semibold leading-tight">
-            {content.products_title}
-          </h2>
-
-          <p className="mt-5 max-w-[720px] text-[16px] leading-7 text-paper/65">
-            {content.products_description}
-          </p>
-
-          {products.length === 0 ? (
-            <div className="mt-12 rounded-2xl border border-paper/10 bg-white/5 p-10 text-center">
-              <p className="text-paper/60">
-                Nos produits seront bientôt
-                disponibles ici.
-              </p>
+              <a
+                href="https://wa.me/237697983119"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-3 rounded-full bg-[#E8C98A] px-7 py-4 text-sm font-bold text-[#173D2D] transition hover:bg-white"
+              >
+                <WhatsAppIcon className="h-6 w-6" />
+                Écrire sur WhatsApp
+              </a>
             </div>
-          ) : (
-            <div className="mt-12 space-y-8">
-              {products.map((product) => {
-                const images =
-                  mediaByProduct[
-                    product.id
-                  ] || [];
-
-                const canOrder =
-                  product.status ===
-                    "disponible" &&
-                  product.order_enabled;
-
-                return (
-                  <article
-                    key={product.id}
-                    className="overflow-hidden rounded-2xl border border-paper/10 bg-waterDeep"
-                  >
-                    <div className="grid md:grid-cols-2">
-                      {/* IMAGE */}
-                      <div className="min-h-[330px] bg-[#102B26]">
-                        {images.length >
-                        0 ? (
-                          <ProductCarousel
-                            images={images}
-                          />
-                        ) : (
-                          <div className="flex h-full min-h-[330px] items-center justify-center bg-[radial-gradient(circle_at_30%_20%,#2A5E56_0%,#0E2622_60%,#081815_100%)]">
-                            <div className="text-center">
-                              <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-gold">
-                                Agrofarms237
-                              </span>
-
-                              <p className="mt-2 font-serif text-xl text-paper/80">
-                                Photos à venir
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* INFOS */}
-                      <div className="flex flex-col justify-center p-8 md:p-11">
-                        <div>
-                          <span
-                            className={`inline-flex rounded-full border px-3.5 py-1.5 text-[12px] font-bold ${statusStyle(
-                              product.status
-                            )}`}
-                          >
-                            {
-                              statusLabel(
-                                product.status
-                              )
-                            }
-                          </span>
-                        </div>
-
-                        <h3 className="mt-5 font-serif text-[30px] font-semibold">
-                          {product.name}
-                        </h3>
-
-                        {product.description && (
-                          <p className="mt-4 max-w-[580px] text-[15px] leading-7 text-paper/65">
-                            {
-                              product.description
-                            }
-                          </p>
-                        )}
-
-                        {/* TARIFS */}
-                        <div className="mt-7 border-t border-paper/10">
-                          {product.price_1 !==
-                            null && (
-                            <div className="flex items-center justify-between gap-6 border-b border-paper/10 py-4">
-                              <span className="text-[14px] text-paper/70">
-                                {product.price_1_label ||
-                                  "Prix 1"}
-                              </span>
-
-                              <strong className="font-serif text-[20px] text-gold">
-                                {formatFCFA(
-                                  product.price_1
-                                )}
-                              </strong>
-                            </div>
-                          )}
-
-                          {product.price_2 !==
-                            null && (
-                            <div className="flex items-center justify-between gap-6 border-b border-paper/10 py-4">
-                              <span className="text-[14px] text-paper/70">
-                                {product.price_2_label ||
-                                  "Prix 2"}
-                              </span>
-
-                              <strong className="font-serif text-[20px] text-gold">
-                                {formatFCFA(
-                                  product.price_2
-                                )}
-                              </strong>
-                            </div>
-                          )}
-
-                          {product.price !==
-                            null && (
-                            <div className="flex items-center justify-between gap-6 border-b border-paper/10 py-4">
-                              <span className="text-[14px] text-paper/70">
-                                Prix
-                              </span>
-
-                              <strong className="font-serif text-[20px] text-gold">
-                                {formatFCFA(
-                                  product.price
-                                )}{" "}
-                                /{" "}
-                                {product.price_unit ||
-                                  "unité"}
-                              </strong>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* COMMANDE */}
-                        {canOrder && (
-                          <div className="mt-7">
-                            <Link
-                              href="/commander"
-                              className="btn btn-gold"
-                            >
-                              Commander
-                            </Link>
-                          </div>
-                        )}
-
-                        {product.status ===
-                          "bientot" && (
-                          <p className="mt-6 text-sm text-gold/80">
-                            Ce produit sera
-                            prochainement
-                            disponible.
-                          </p>
-                        )}
-
-                        {product.status ===
-                          "rupture" && (
-                          <p className="mt-6 text-sm text-red-200/70">
-                            Ce produit est
-                            actuellement en
-                            rupture de stock.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
+          </div>
         </div>
       </section>
 
-      {/* ================================================================ */}
-      {/* HISTOIRE                                                         */}
-      {/* ================================================================ */}
-
-      <section
-        id="histoire"
-        className="px-5 py-[88px]"
+      {/* FOOTER */}
+      <footer
+        id="contact"
+        className="mt-12 bg-[#123426] px-5 py-12 text-white sm:px-8 lg:px-10"
       >
-        <div className="mx-auto grid max-w-[1280px] gap-12 md:grid-cols-2 md:items-center">
-          <div className="overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_30%_20%,#2A5E56_0%,#0E2622_60%,#081815_100%)]">
-            {storyMedia.length > 0 ? (
-              <img
-                src={storyMedia[0].url}
-                alt="Notre histoire — Agrofarms237"
-                className="aspect-[5/4] h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex aspect-[5/4] items-center justify-center px-6 text-center">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3 lg:gap-14">
+            {/* BRAND */}
+            <div>
+              <div className="flex items-center gap-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#E8C98A] text-2xl font-bold text-[#E8C98A]">
+                  A
+                </div>
                 <div>
-                  <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-gold">
-                    Agrofarms237
-                  </span>
-                  <p className="mt-2 font-serif text-lg text-paper/80">
-                    Photo à venir
+                  <p className="text-2xl font-bold tracking-tight">
+                    AGROFARMS<span className="text-[#E8C98A]">237</span>
+                  </p>
+                  <p className="mt-1 text-[10px] uppercase tracking-[0.25em] text-white/65">
+                    L’agriculture de demain
                   </p>
                 </div>
               </div>
-            )}
-          </div>
 
-          <div>
-            <span className="mb-3 inline-block text-[13px] font-bold uppercase tracking-[0.16em] text-goldDeep">
-              {content.story_label}
-            </span>
+              <p className="mt-6 max-w-sm text-sm leading-7 text-white/70">
+                Des produits frais et sains, issus de notre ferme, pour une
+                alimentation de qualité au Cameroun.
+              </p>
 
-            <h2 className="font-serif text-[clamp(30px,4vw,42px)] font-semibold leading-tight">
-              {content.story_title}
-            </h2>
-
-            <div className="mt-6 space-y-4">
-              {storyParagraphs.map(
-                (paragraph, index) => (
-                  <p
-                    key={index}
-                    className="max-w-[650px] text-[16px] leading-8 text-inkSoft"
-                  >
-                    {paragraph}
-                  </p>
-                )
-              )}
+              <p className="mt-5 text-sm text-white/65">
+                Agrofarms237 — Produire aujourd’hui, nourrir demain.
+              </p>
             </div>
 
-            {content.story_button_label && (
-              <Link
-                href={
-                  content.story_button_url ||
-                  "/la-vie-de-la-ferme"
-                }
-                className="btn btn-outline mt-7 border-ink/20 text-ink"
-              >
-                {
-                  content.story_button_label
-                }
-              </Link>
-            )}
+            {/* QUICK LINKS */}
+            <div>
+              <h3 className="text-lg font-semibold">Liens rapides</h3>
+              <div className="mt-4 h-1 w-14 rounded-full bg-[#E8C98A]" />
+
+              <nav className="mt-5 flex flex-col items-start gap-3 text-sm text-white/75">
+                <a href="#accueil" className="transition hover:text-[#E8C98A]">
+                  Accueil
+                </a>
+                <a href="#produits" className="transition hover:text-[#E8C98A]">
+                  Nos produits
+                </a>
+                <a href="#ferme" className="transition hover:text-[#E8C98A]">
+                  Notre ferme
+                </a>
+                <a href="#contact" className="transition hover:text-[#E8C98A]">
+                  Contact
+                </a>
+              </nav>
+            </div>
+
+            {/* CONTACT DETAILS */}
+            <div>
+              <h3 className="text-lg font-semibold">Nos coordonnées</h3>
+              <div className="mt-4 h-1 w-14 rounded-full bg-[#E8C98A]" />
+
+              <div className="mt-6 space-y-5">
+                {/* LOCATION */}
+                <div className="flex items-start gap-4">
+                  <LocationIcon />
+                  <div>
+                    <p className="text-sm font-medium text-white">
+                      Yaoundé, Mimboman OPEP
+                    </p>
+                    <p className="mt-1 text-xs text-white/55">Cameroun</p>
+                  </div>
+                </div>
+
+                {/* PHONE */}
+                <a
+                  href="tel:+237659505823"
+                  className="group flex items-start gap-4"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366]/15 text-[#25D366] transition group-hover:bg-[#25D366]/25">
+                    <PhoneIcon className="h-5 w-5" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-medium text-white transition group-hover:text-[#E8C98A]">
+                      Appel : +237 6 59 50 58 23
+                    </span>
+                    <span className="mt-1 block text-xs text-white/55">
+                      Appuyez pour nous appeler
+                    </span>
+                  </span>
+                </a>
+
+                {/* WHATSAPP */}
+                <a
+                  href="https://wa.me/237697983119"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group flex items-start gap-4"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366]/15 transition group-hover:bg-[#25D366]/25">
+                    <WhatsAppIcon className="h-8 w-8" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-medium text-white transition group-hover:text-[#E8C98A]">
+                      WhatsApp : +237 6 97 98 31 19
+                    </span>
+                    <span className="mt-1 block text-xs text-white/55">
+                      Commandes et informations
+                    </span>
+                  </span>
+                </a>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
 
-      {/* ================================================================ */}
-      {/* VISION                                                           */}
-      {/* ================================================================ */}
-
-      <section className="bg-bgAlt px-5 py-[82px]">
-        <div className="mx-auto max-w-[1280px]">
-          <div className="max-w-[900px]">
-            <span className="mb-3 inline-block text-[13px] font-bold uppercase tracking-[0.16em] text-goldDeep">
-              {content.future_label}
-            </span>
-
-            <h2 className="font-serif text-[clamp(30px,4.5vw,48px)] font-semibold leading-tight">
-              {content.future_title}
-            </h2>
-
-            <p className="mt-6 max-w-[760px] text-[16px] leading-8 text-inkSoft">
-              {content.future_text}
+          {/* COPYRIGHT */}
+          <div className="mt-10 flex flex-col gap-4 border-t border-white/15 pt-6 text-xs text-white/55 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              © {new Date().getFullYear()} Agrofarms237. Tous droits réservés.
+            </p>
+            <p className="font-semibold uppercase tracking-[0.2em] text-[#E8C98A]">
+              🌿 Produire aujourd’hui, nourrir demain
             </p>
           </div>
         </div>
-      </section>
+      </footer>
 
-      {/* ================================================================ */}
-      {/* AVIS                                                             */}
-      {/* ================================================================ */}
-
-      <section className="px-5 py-[82px]">
-        <div className="mx-auto max-w-[1280px]">
-          <span className="mb-3 inline-block text-[13px] font-bold uppercase tracking-[0.16em] text-goldDeep">
-            Ils nous font confiance
-          </span>
-
-          <h2 className="font-serif text-[clamp(30px,4.5vw,44px)] font-semibold">
-            Avis clients.
-          </h2>
-
-          {reviews.length ===
-          0 ? (
-            <div className="mt-10 rounded-2xl border border-dashed border-ink/15 bg-bgAlt p-10 text-center">
-              <p className="text-inkSoft">
-                Les avis de nos clients
-                seront publiés ici au
-                fur et à mesure des
-                livraisons.
-              </p>
-            </div>
-          ) : (
-            <div className="mt-10 grid gap-5 md:grid-cols-3">
-              {reviews.map(
-                (review) => (
-                  <article
-                    key={
-                      review.id
-                    }
-                    className="rounded-2xl border border-ink/10 bg-bgAlt p-7"
-                  >
-                    <p className="text-[15px] leading-7 text-inkSoft">
-                      «{" "}
-                      {
-                        review.content
-                      }{" "}
-                      »
-                    </p>
-
-                    <p className="mt-5 text-[14px] font-semibold text-ink">
-                      {
-                        review.author_name
-                      }
-
-                      {review.client_type && (
-                        <span className="font-normal text-inkSoft">
-                          {" "}
-                          —{" "}
-                          {
-                            review.client_type
-                          }
-                        </span>
-                      )}
-                    </p>
-                  </article>
-                )
-              )}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ================================================================ */}
-      {/* CTA FINAL                                                        */}
-      {/* ================================================================ */}
-
-      <section className="bg-ink px-5 py-[90px] text-paper">
-        <div className="mx-auto max-w-[1100px] text-center">
-          <span className="mb-3 inline-block text-[13px] font-bold uppercase tracking-[0.18em] text-gold">
-            {content.cta_label}
-          </span>
-
-          <h2 className="font-serif text-[clamp(32px,5vw,54px)] font-semibold leading-tight">
-            {content.cta_title}
-          </h2>
-
-          <p className="mx-auto mt-5 max-w-[680px] text-[16px] leading-7 text-paper/65">
-            {content.cta_text}
-          </p>
-
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            {content.cta_button_primary_label && (
-              <Link
-                href={
-                  content.cta_button_primary_url ||
-                  "/produits"
-                }
-                className="btn btn-gold"
-              >
-                {
-                  content.cta_button_primary_label
-                }
-              </Link>
-            )}
-
-            {content.cta_button_secondary_label && (
-              <Link
-                href={
-                  content.cta_button_secondary_url ||
-                  "/contact"
-                }
-                className="btn btn-outline"
-              >
-                {
-                  content.cta_button_secondary_label
-                }
-              </Link>
-            )}
-          </div>
-        </div>
-      </section>
-    </>
+      {/* BOUTON WHATSAPP FLOTTANT */}
+      <a
+        href="https://wa.me/237697983119?text=Bonjour%20Agrofarms237%2C%20je%20souhaite%20avoir%20des%20informations."
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Contacter Agrofarms237 sur WhatsApp"
+        className="fixed bottom-6 right-6 z-50 flex h-16 w-16 items-center justify-center rounded-full bg-[#25D366] shadow-xl transition duration-300 hover:scale-110 hover:bg-[#1EBE5D]"
+      >
+        <WhatsAppIcon className="h-10 w-10" />
+      </a>
+    </main>
   );
 }
