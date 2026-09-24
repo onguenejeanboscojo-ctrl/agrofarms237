@@ -44,7 +44,10 @@ const DEFAULT_OPTIONS: Record<string, OrderOption[]> = {
   silure: [
     {
       label: "État",
-      values: ["Frais", "Fumé"],
+      values: [
+        { label: "Frais", available: true },
+        { label: "Fumé", available: false },
+      ],
     },
   ],
 
@@ -167,15 +170,30 @@ function getTierThreshold(label?: string | null): number | null {
   return match ? Number(match[1]) : null;
 }
 
-function getProductPrice(product: HomeProduct | null) {
+function getProductPrice(
+  product: HomeProduct | null,
+  quantity: number
+) {
   if (!product) return null;
 
-  if (typeof product.price === "number") {
-    return product.price;
+  // Applique le tarif de volume lorsqu'un seuil est défini
+  // dans le libellé du deuxième prix (ex. : « À partir de 30 kg »).
+  const threshold = getTierThreshold(product.price_2_label);
+
+  if (
+    threshold !== null &&
+    quantity >= threshold &&
+    typeof product.price_2 === "number"
+  ) {
+    return product.price_2;
   }
 
   if (typeof product.price_1 === "number") {
     return product.price_1;
+  }
+
+  if (typeof product.price === "number") {
+    return product.price;
   }
 
   if (typeof product.price_2 === "number") {
@@ -300,7 +318,7 @@ export default function CommanderPage() {
         ? selectedPricedValue.price_2
         : null)
     : null;
-  const unitPrice = optionPrice ?? getProductPrice(selectedProduct);
+  const unitPrice = optionPrice ?? getProductPrice(selectedProduct, quantity);
 
   const total =
     typeof unitPrice === "number"
