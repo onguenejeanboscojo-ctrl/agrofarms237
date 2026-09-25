@@ -26,6 +26,18 @@ type EducationLesson = {
   position: number;
 };
 
+type InitializationResult = {
+  success?: boolean;
+  message?: string;
+  modulesCreated?: number;
+  modulesSkipped?: number;
+  lessonsCreated?: number;
+  lessonsSkipped?: number;
+  totalModules?: number;
+  totalLessons?: number;
+  error?: string;
+};
+
 export default function AdminEducationClient() {
   const [modules, setModules] = useState<EducationModule[]>([]);
   const [lessons, setLessons] = useState<EducationLesson[]>([]);
@@ -36,7 +48,9 @@ export default function AdminEducationClient() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [initializing, setInitializing] = useState(false);
   const [message, setMessage] = useState("");
+  const [initializationMessage, setInitializationMessage] = useState("");
 
   const [moduleTitle, setModuleTitle] = useState("");
   const [moduleDescription, setModuleDescription] = useState("");
@@ -109,6 +123,63 @@ export default function AdminEducationClient() {
     [lessons, selectedModuleId]
   );
 
+  /*
+   * ---------------------------------------------------------
+   * INITIALISATION AUTOMATIQUE
+   * ---------------------------------------------------------
+   */
+
+  async function initializeEducation() {
+    const confirmed = window.confirm(
+      "Initialiser le contenu AgroFarms237 ?\n\n" +
+        "Les modules et cours manquants seront créés automatiquement.\n\n" +
+        "Les modules et cours qui existent déjà ne seront PAS écrasés."
+    );
+
+    if (!confirmed) return;
+
+    setInitializing(true);
+    setInitializationMessage("");
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/education/initialize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data: InitializationResult = await response.json();
+
+      if (!response.ok) {
+        setInitializationMessage(
+          data.error || "Impossible d'initialiser le contenu éducatif."
+        );
+        return;
+      }
+
+      setInitializationMessage(
+        [
+          data.message || "Initialisation terminée.",
+          "",
+          `Modules créés : ${data.modulesCreated ?? 0}`,
+          `Modules déjà présents : ${data.modulesSkipped ?? 0}`,
+          `Cours créés : ${data.lessonsCreated ?? 0}`,
+          `Cours déjà présents : ${data.lessonsSkipped ?? 0}`,
+        ].join("\n")
+      );
+
+      await loadData();
+    } catch {
+      setInitializationMessage(
+        "Une erreur est survenue pendant l'initialisation."
+      );
+    } finally {
+      setInitializing(false);
+    }
+  }
+
   function openModule(module: EducationModule) {
     setSelectedModuleId(module.id);
     setModuleTitle(module.title);
@@ -117,6 +188,7 @@ export default function AdminEducationClient() {
     setShowLessonForm(false);
     setEditingLessonId(null);
     setMessage("");
+    setInitializationMessage("");
   }
 
   function closeModule() {
@@ -424,19 +496,42 @@ export default function AdminEducationClient() {
 
       <main className="mx-auto max-w-[1180px] px-5 py-9">
         <div className="mb-8">
-          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.12em] text-inkSoft">
-            AgroFarms237
-          </p>
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="mb-2 text-sm font-semibold uppercase tracking-[0.12em] text-inkSoft">
+                AgroFarms237
+              </p>
 
-          <h1 className="font-serif text-3xl font-semibold">
-            Éducation
-          </h1>
+              <h1 className="font-serif text-3xl font-semibold">
+                Éducation
+              </h1>
 
-          <p className="mt-2 max-w-2xl text-[15px] leading-7 text-inkSoft">
-            Gérez les modules éducatifs et les cours proposés aux
-            visiteurs du site.
-          </p>
+              <p className="mt-2 max-w-2xl text-[15px] leading-7 text-inkSoft">
+                Gérez les modules éducatifs et les cours proposés aux
+                visiteurs du site.
+              </p>
+            </div>
+
+            {!selectedModule && (
+              <button
+                type="button"
+                onClick={initializeEducation}
+                disabled={initializing}
+                className="inline-flex items-center justify-center rounded-lg bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {initializing
+                  ? "Initialisation..."
+                  : "⚡ Initialiser le contenu AgroFarms237"}
+              </button>
+            )}
+          </div>
         </div>
+
+        {initializationMessage && (
+          <div className="mb-6 whitespace-pre-line rounded-xl border border-ink/10 bg-paper px-5 py-4 text-sm leading-6 text-ink">
+            {initializationMessage}
+          </div>
+        )}
 
         {message && (
           <div className="mb-6 rounded-xl border border-ink/10 bg-paper px-5 py-4 text-sm text-ink">
@@ -769,7 +864,7 @@ export default function AdminEducationClient() {
                     />
 
                     <p className="mt-2 text-xs leading-5 text-inkSoft">
-                      URL ou chemin de l'image utilisée pour illustrer le
+                      Chemin ou URL de l'image utilisée pour illustrer le
                       cours.
                     </p>
                   </div>
@@ -789,7 +884,7 @@ export default function AdminEducationClient() {
                     />
 
                     <p className="mt-2 text-xs leading-5 text-inkSoft">
-                      Facultatif. Tu pourras ajouter une vidéo plus tard.
+                      Facultatif.
                     </p>
                   </div>
 
