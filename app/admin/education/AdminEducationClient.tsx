@@ -43,11 +43,14 @@ export default function AdminEducationClient() {
   const [modulePublished, setModulePublished] = useState(true);
 
   const [showLessonForm, setShowLessonForm] = useState(false);
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
 
   const [lessonTitle, setLessonTitle] = useState("");
   const [lessonSlug, setLessonSlug] = useState("");
   const [lessonIntroduction, setLessonIntroduction] = useState("");
   const [lessonContent, setLessonContent] = useState("");
+  const [lessonImageUrl, setLessonImageUrl] = useState("");
+  const [lessonVideoUrl, setLessonVideoUrl] = useState("");
   const [lessonPublished, setLessonPublished] = useState(true);
 
   async function loadData() {
@@ -112,12 +115,14 @@ export default function AdminEducationClient() {
     setModuleDescription(module.description || "");
     setModulePublished(module.published);
     setShowLessonForm(false);
+    setEditingLessonId(null);
     setMessage("");
   }
 
   function closeModule() {
     setSelectedModuleId(null);
     setShowLessonForm(false);
+    setEditingLessonId(null);
     setMessage("");
   }
 
@@ -140,8 +145,8 @@ export default function AdminEducationClient() {
         },
         body: JSON.stringify({
           id: selectedModule.id,
-          title: moduleTitle,
-          description: moduleDescription,
+          title: moduleTitle.trim(),
+          description: moduleDescription.trim(),
           published: modulePublished,
         }),
       });
@@ -161,7 +166,7 @@ export default function AdminEducationClient() {
         )
       );
 
-      setMessage("Module enregistré.");
+      setMessage("Module enregistré avec succès.");
     } catch {
       setMessage("Une erreur est survenue.");
     } finally {
@@ -179,27 +184,52 @@ export default function AdminEducationClient() {
   }
 
   function startNewLesson() {
+    setEditingLessonId(null);
     setLessonTitle("");
     setLessonSlug("");
     setLessonIntroduction("");
     setLessonContent("");
+    setLessonImageUrl("");
+    setLessonVideoUrl("");
     setLessonPublished(true);
     setShowLessonForm(true);
     setMessage("");
-  }
-
-  function editLesson(lesson: EducationLesson) {
-    setLessonTitle(lesson.title);
-    setLessonSlug(lesson.slug);
-    setLessonIntroduction(lesson.introduction || "");
-    setLessonContent(lesson.content || "");
-    setLessonPublished(lesson.published);
-    setShowLessonForm(true);
 
     window.scrollTo({
       top: document.body.scrollHeight,
       behavior: "smooth",
     });
+  }
+
+  function editLesson(lesson: EducationLesson) {
+    setEditingLessonId(lesson.id);
+    setLessonTitle(lesson.title);
+    setLessonSlug(lesson.slug);
+    setLessonIntroduction(lesson.introduction || "");
+    setLessonContent(lesson.content || "");
+    setLessonImageUrl(lesson.image_url || "");
+    setLessonVideoUrl(lesson.video_url || "");
+    setLessonPublished(lesson.published);
+    setShowLessonForm(true);
+    setMessage("");
+
+    window.scrollTo({
+      top: document.body.scrollHeight,
+      behavior: "smooth",
+    });
+  }
+
+  function cancelLessonForm() {
+    setShowLessonForm(false);
+    setEditingLessonId(null);
+    setLessonTitle("");
+    setLessonSlug("");
+    setLessonIntroduction("");
+    setLessonContent("");
+    setLessonImageUrl("");
+    setLessonVideoUrl("");
+    setLessonPublished(true);
+    setMessage("");
   }
 
   async function saveLesson() {
@@ -212,12 +242,17 @@ export default function AdminEducationClient() {
 
     const slug = lessonSlug.trim() || createSlug(lessonTitle);
 
+    if (!slug) {
+      setMessage("Le slug du cours est obligatoire.");
+      return;
+    }
+
     setSaving(true);
     setMessage("");
 
     try {
       const existingLesson = selectedLessons.find(
-        (lesson) => lesson.id === lessonSlug
+        (lesson) => lesson.id === editingLessonId
       );
 
       const response = await fetch("/api/education/lessons", {
@@ -230,18 +265,22 @@ export default function AdminEducationClient() {
             ? {
                 id: existingLesson.id,
                 module_id: selectedModule.id,
-                title: lessonTitle,
+                title: lessonTitle.trim(),
                 slug,
-                introduction: lessonIntroduction,
+                introduction: lessonIntroduction.trim(),
                 content: lessonContent,
+                image_url: lessonImageUrl.trim() || null,
+                video_url: lessonVideoUrl.trim() || null,
                 published: lessonPublished,
               }
             : {
                 module_id: selectedModule.id,
-                title: lessonTitle,
+                title: lessonTitle.trim(),
                 slug,
-                introduction: lessonIntroduction,
+                introduction: lessonIntroduction.trim(),
                 content: lessonContent,
+                image_url: lessonImageUrl.trim() || null,
+                video_url: lessonVideoUrl.trim() || null,
                 published: lessonPublished,
                 position: selectedLessons.length + 1,
               }
@@ -267,7 +306,13 @@ export default function AdminEducationClient() {
         setLessons((current) => [...current, data.lesson]);
       }
 
-      setMessage("Cours enregistré.");
+      setMessage(
+        existingLesson
+          ? "Cours modifié avec succès."
+          : "Cours ajouté avec succès."
+      );
+
+      setEditingLessonId(null);
       setShowLessonForm(false);
     } catch {
       setMessage("Une erreur est survenue.");
@@ -277,6 +322,8 @@ export default function AdminEducationClient() {
   }
 
   async function toggleLesson(lesson: EducationLesson) {
+    setMessage("");
+
     try {
       const response = await fetch("/api/education/lessons", {
         method: "PATCH",
@@ -321,6 +368,8 @@ export default function AdminEducationClient() {
 
     if (!confirmed) return;
 
+    setMessage("");
+
     try {
       const response = await fetch("/api/education/lessons", {
         method: "DELETE",
@@ -344,6 +393,10 @@ export default function AdminEducationClient() {
       setLessons((current) =>
         current.filter((item) => item.id !== lesson.id)
       );
+
+      if (editingLessonId === lesson.id) {
+        cancelLessonForm();
+      }
 
       setMessage("Cours supprimé.");
     } catch {
@@ -508,9 +561,7 @@ export default function AdminEducationClient() {
                         type="checkbox"
                         checked={modulePublished}
                         onChange={(event) =>
-                          setModulePublished(
-                            event.target.checked
-                          )
+                          setModulePublished(event.target.checked)
                         }
                       />
 
@@ -580,6 +631,12 @@ export default function AdminEducationClient() {
                                 {lesson.introduction ||
                                   "Aucune introduction renseignée."}
                               </p>
+
+                              {lesson.image_url && (
+                                <p className="mt-2 text-xs text-inkSoft">
+                                  Image : {lesson.image_url}
+                                </p>
+                              )}
                             </div>
                           </div>
 
@@ -607,9 +664,7 @@ export default function AdminEducationClient() {
 
                           <button
                             type="button"
-                            onClick={() =>
-                              toggleLesson(lesson)
-                            }
+                            onClick={() => toggleLesson(lesson)}
                             className="rounded-lg border border-ink/10 px-4 py-2 text-sm font-semibold hover:bg-bgAlt"
                           >
                             {lesson.published
@@ -619,9 +674,7 @@ export default function AdminEducationClient() {
 
                           <button
                             type="button"
-                            onClick={() =>
-                              deleteLesson(lesson)
-                            }
+                            onClick={() => deleteLesson(lesson)}
                             className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
                           >
                             Supprimer
@@ -642,7 +695,9 @@ export default function AdminEducationClient() {
                   </p>
 
                   <h2 className="mt-2 font-serif text-xl font-semibold">
-                    Nouveau cours / modification
+                    {editingLessonId
+                      ? "Modifier le cours"
+                      : "Nouveau cours"}
                   </h2>
                 </div>
 
@@ -655,12 +710,12 @@ export default function AdminEducationClient() {
                     <input
                       value={lessonTitle}
                       onChange={(event) => {
-                        setLessonTitle(event.target.value);
+                        const value = event.target.value;
 
-                        if (!lessonSlug) {
-                          setLessonSlug(
-                            createSlug(event.target.value)
-                          );
+                        setLessonTitle(value);
+
+                        if (!editingLessonId && !lessonSlug) {
+                          setLessonSlug(createSlug(value));
                         }
                       }}
                       className="w-full rounded-lg border border-ink/10 bg-bg px-4 py-3 text-sm outline-none focus:border-ink/30"
@@ -691,13 +746,51 @@ export default function AdminEducationClient() {
                     <textarea
                       value={lessonIntroduction}
                       onChange={(event) =>
-                        setLessonIntroduction(
-                          event.target.value
-                        )
+                        setLessonIntroduction(event.target.value)
                       }
                       rows={4}
                       className="w-full rounded-lg border border-ink/10 bg-bg px-4 py-3 text-sm outline-none focus:border-ink/30"
+                      placeholder="Courte présentation du cours..."
                     />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Image du cours
+                    </label>
+
+                    <input
+                      value={lessonImageUrl}
+                      onChange={(event) =>
+                        setLessonImageUrl(event.target.value)
+                      }
+                      className="w-full rounded-lg border border-ink/10 bg-bg px-4 py-3 text-sm outline-none focus:border-ink/30"
+                      placeholder="/images/education/cours/introduction-pisciculture.jpg"
+                    />
+
+                    <p className="mt-2 text-xs leading-5 text-inkSoft">
+                      URL ou chemin de l'image utilisée pour illustrer le
+                      cours.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Vidéo du cours
+                    </label>
+
+                    <input
+                      value={lessonVideoUrl}
+                      onChange={(event) =>
+                        setLessonVideoUrl(event.target.value)
+                      }
+                      className="w-full rounded-lg border border-ink/10 bg-bg px-4 py-3 text-sm outline-none focus:border-ink/30"
+                      placeholder="https://..."
+                    />
+
+                    <p className="mt-2 text-xs leading-5 text-inkSoft">
+                      Facultatif. Tu pourras ajouter une vidéo plus tard.
+                    </p>
                   </div>
 
                   <div>
@@ -710,7 +803,7 @@ export default function AdminEducationClient() {
                       onChange={(event) =>
                         setLessonContent(event.target.value)
                       }
-                      rows={14}
+                      rows={20}
                       className="w-full rounded-lg border border-ink/10 bg-bg px-4 py-3 text-sm leading-6 outline-none focus:border-ink/30"
                       placeholder="Rédigez ici le contenu complet du cours..."
                     />
@@ -721,9 +814,7 @@ export default function AdminEducationClient() {
                       type="checkbox"
                       checked={lessonPublished}
                       onChange={(event) =>
-                        setLessonPublished(
-                          event.target.checked
-                        )
+                        setLessonPublished(event.target.checked)
                       }
                     />
 
@@ -739,14 +830,14 @@ export default function AdminEducationClient() {
                     >
                       {saving
                         ? "Enregistrement..."
-                        : "Enregistrer le cours"}
+                        : editingLessonId
+                          ? "Enregistrer les modifications"
+                          : "Enregistrer le cours"}
                     </button>
 
                     <button
                       type="button"
-                      onClick={() =>
-                        setShowLessonForm(false)
-                      }
+                      onClick={cancelLessonForm}
                       className="rounded-lg border border-ink/10 px-5 py-2.5 text-sm font-semibold hover:bg-bgAlt"
                     >
                       Annuler
