@@ -12,6 +12,8 @@ export async function POST() {
       );
     }
 
+    const supabase = supabaseAdmin();
+
     let modulesCreated = 0;
     let modulesUpdated = 0;
     let lessonsCreated = 0;
@@ -19,7 +21,7 @@ export async function POST() {
 
     for (const moduleDefault of educationDefaults) {
       const { data: existingModule, error: moduleFindError } =
-        await supabaseAdmin
+        await supabase
           .from("education_modules")
           .select("id")
           .eq("slug", moduleDefault.slug)
@@ -33,7 +35,7 @@ export async function POST() {
 
       if (existingModule) {
         const { data: updatedModule, error: moduleUpdateError } =
-          await supabaseAdmin
+          await supabase
             .from("education_modules")
             .update({
               title: moduleDefault.title,
@@ -53,7 +55,7 @@ export async function POST() {
         modulesUpdated++;
       } else {
         const { data: newModule, error: moduleInsertError } =
-          await supabaseAdmin
+          await supabase
             .from("education_modules")
             .insert({
               title: moduleDefault.title,
@@ -76,7 +78,7 @@ export async function POST() {
 
       for (const lessonDefault of moduleDefault.lessons) {
         const { data: existingLesson, error: lessonFindError } =
-          await supabaseAdmin
+          await supabase
             .from("education_lessons")
             .select("id")
             .eq("module_id", moduleId)
@@ -89,7 +91,7 @@ export async function POST() {
 
         if (existingLesson) {
           const { error: lessonUpdateError } =
-            await supabaseAdmin
+            await supabase
               .from("education_lessons")
               .update({
                 title: lessonDefault.title,
@@ -107,7 +109,7 @@ export async function POST() {
           lessonsUpdated++;
         } else {
           const { error: lessonInsertError } =
-            await supabaseAdmin
+            await supabase
               .from("education_lessons")
               .insert({
                 module_id: moduleId,
