@@ -15,11 +15,17 @@ export async function POST() {
     const supabase = supabaseAdmin();
 
     let modulesCreated = 0;
-    let modulesUpdated = 0;
+    let modulesSkipped = 0;
     let lessonsCreated = 0;
-    let lessonsUpdated = 0;
+    let lessonsSkipped = 0;
 
     for (const moduleDefault of educationDefaults) {
+      /*
+       * ---------------------------------------------------------
+       * MODULE
+       * ---------------------------------------------------------
+       */
+
       const { data: existingModule, error: moduleFindError } =
         await supabase
           .from("education_modules")
@@ -34,25 +40,15 @@ export async function POST() {
       let moduleId: string;
 
       if (existingModule) {
-        const { data: updatedModule, error: moduleUpdateError } =
-          await supabase
-            .from("education_modules")
-            .update({
-              title: moduleDefault.title,
-              description: moduleDefault.description,
-              image_url: moduleDefault.image_url,
-              position: moduleDefault.position,
-            })
-            .eq("id", existingModule.id)
-            .select("id")
-            .single();
-
-        if (moduleUpdateError) {
-          throw moduleUpdateError;
-        }
-
-        moduleId = updatedModule.id;
-        modulesUpdated++;
+        /*
+         * Le module existe déjà.
+         *
+         * IMPORTANT :
+         * On ne modifie rien afin de préserver les éventuelles
+         * personnalisations faites depuis l'administration.
+         */
+        moduleId = existingModule.id;
+        modulesSkipped++;
       } else {
         const { data: newModule, error: moduleInsertError } =
           await supabase
@@ -76,6 +72,12 @@ export async function POST() {
         modulesCreated++;
       }
 
+      /*
+       * ---------------------------------------------------------
+       * COURS DU MODULE
+       * ---------------------------------------------------------
+       */
+
       for (const lessonDefault of moduleDefault.lessons) {
         const { data: existingLesson, error: lessonFindError } =
           await supabase
@@ -90,57 +92,62 @@ export async function POST() {
         }
 
         if (existingLesson) {
-          const { error: lessonUpdateError } =
-            await supabase
-              .from("education_lessons")
-              .update({
-                title: lessonDefault.title,
-                introduction: lessonDefault.introduction,
-                content: lessonDefault.content,
-                image_url: lessonDefault.image_url,
-                position: lessonDefault.position,
-              })
-              .eq("id", existingLesson.id);
-
-          if (lessonUpdateError) {
-            throw lessonUpdateError;
-          }
-
-          lessonsUpdated++;
-        } else {
-          const { error: lessonInsertError } =
-            await supabase
-              .from("education_lessons")
-              .insert({
-                module_id: moduleId,
-                title: lessonDefault.title,
-                slug: lessonDefault.slug,
-                introduction: lessonDefault.introduction,
-                content: lessonDefault.content,
-                image_url: lessonDefault.image_url,
-                position: lessonDefault.position,
-                published: lessonDefault.published,
-              });
-
-          if (lessonInsertError) {
-            throw lessonInsertError;
-          }
-
-          lessonsCreated++;
+          /*
+           * Le cours existe déjà.
+           *
+           * On ne le modifie surtout pas.
+           * Cela protège les contenus personnalisés depuis l'Admin.
+           */
+          lessonsSkipped++;
+          continue;
         }
+
+        const { error: lessonInsertError } =
+          await supabase
+            .from("education_lessons")
+            .insert({
+              module_id: moduleId,
+              title: lessonDefault.title,
+              slug: lessonDefault.slug,
+              introduction: lessonDefault.introduction,
+              content: lessonDefault.content,
+              image_url: lessonDefault.image_url,
+              position: lessonDefault.position,
+              published: lessonDefault.published,
+            });
+
+        if (lessonInsertError) {
+          throw lessonInsertError;
+        }
+
+        lessonsCreated++;
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: "Contenu éducatif initialisé avec succès.",
+
+      message:
+        "Le contenu éducatif a été initialisé sans écraser les contenus existants.",
+
       modulesCreated,
-      modulesUpdated,
+      modulesSkipped,
+
       lessonsCreated,
-      lessonsUpdated,
+      lessonsSkipped,
+
+      totalModules: educationDefaults.length,
+
+      totalLessons: educationDefaults.reduce(
+        (total, module) => total + module.lessons.length,
+        0
+      ),
     });
   } catch (error) {
-    console.error("Education initialization error:", error);
+    console.error(
+      "Education initialization error:",
+      error
+    );
 
     return NextResponse.json(
       {
@@ -149,7 +156,9 @@ export async function POST() {
             ? error.message
             : "Erreur lors de l'initialisation du contenu éducatif.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }
