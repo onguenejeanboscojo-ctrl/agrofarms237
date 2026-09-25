@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { redirect } from "next/navigation";
 import AdminNav from "@/components/AdminNav";
-import { isAdminAuthed } from "@/lib/adminAuth";
 
 type EducationModule = {
   id: string;
@@ -28,7 +26,7 @@ type EducationLesson = {
   position: number;
 };
 
-export default function AdminEducationPage() {
+export default function AdminEducationClient() {
   const [modules, setModules] = useState<EducationModule[]>([]);
   const [lessons, setLessons] = useState<EducationLesson[]>([]);
 
@@ -52,12 +50,9 @@ export default function AdminEducationPage() {
   const [lessonContent, setLessonContent] = useState("");
   const [lessonPublished, setLessonPublished] = useState(true);
 
-  if (!isAdminAuthed()) {
-    redirect("/admin/login");
-  }
-
   async function loadData() {
     setLoading(true);
+    setMessage("");
 
     try {
       const [modulesRes, lessonsRes] = await Promise.all([
@@ -68,10 +63,26 @@ export default function AdminEducationPage() {
       const modulesData = await modulesRes.json();
       const lessonsData = await lessonsRes.json();
 
+      if (!modulesRes.ok) {
+        throw new Error(
+          modulesData.error || "Impossible de charger les modules."
+        );
+      }
+
+      if (!lessonsRes.ok) {
+        throw new Error(
+          lessonsData.error || "Impossible de charger les cours."
+        );
+      }
+
       setModules(modulesData.modules || []);
       setLessons(lessonsData.lessons || []);
-    } catch {
-      setMessage("Impossible de charger les données.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Impossible de charger les données."
+      );
     } finally {
       setLoading(false);
     }
@@ -82,7 +93,8 @@ export default function AdminEducationPage() {
   }, []);
 
   const selectedModule = useMemo(
-    () => modules.find((module) => module.id === selectedModuleId) || null,
+    () =>
+      modules.find((module) => module.id === selectedModuleId) || null,
     [modules, selectedModuleId]
   );
 
@@ -112,38 +124,49 @@ export default function AdminEducationPage() {
   async function saveModule() {
     if (!selectedModule) return;
 
-    setSaving(true);
-    setMessage("");
-
-    const response = await fetch("/api/education/modules", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        id: selectedModule.id,
-        title: moduleTitle,
-        description: moduleDescription,
-        published: modulePublished,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      setMessage(data.error || "Erreur lors de l'enregistrement.");
-      setSaving(false);
+    if (!moduleTitle.trim()) {
+      setMessage("Le nom du module est obligatoire.");
       return;
     }
 
-    setModules((current) =>
-      current.map((module) =>
-        module.id === selectedModule.id ? data.module : module
-      )
-    );
+    setSaving(true);
+    setMessage("");
 
-    setMessage("Module enregistré.");
-    setSaving(false);
+    try {
+      const response = await fetch("/api/education/modules", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: selectedModule.id,
+          title: moduleTitle,
+          description: moduleDescription,
+          published: modulePublished,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessage(
+          data.error || "Erreur lors de l'enregistrement du module."
+        );
+        return;
+      }
+
+      setModules((current) =>
+        current.map((module) =>
+          module.id === selectedModule.id ? data.module : module
+        )
+      );
+
+      setMessage("Module enregistré.");
+    } catch {
+      setMessage("Une erreur est survenue.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function createSlug(value: string) {
@@ -192,85 +215,103 @@ export default function AdminEducationPage() {
     setSaving(true);
     setMessage("");
 
-    const existingLesson = selectedLessons.find(
-      (lesson) => lesson.title === lessonTitle && lesson.slug === slug
-    );
-
-    const response = await fetch("/api/education/lessons", {
-      method: existingLesson ? "PATCH" : "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(
-        existingLesson
-          ? {
-              id: existingLesson.id,
-              module_id: selectedModule.id,
-              title: lessonTitle,
-              slug,
-              introduction: lessonIntroduction,
-              content: lessonContent,
-              published: lessonPublished,
-            }
-          : {
-              module_id: selectedModule.id,
-              title: lessonTitle,
-              slug,
-              introduction: lessonIntroduction,
-              content: lessonContent,
-              published: lessonPublished,
-              position: selectedLessons.length + 1,
-            }
-      ),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      setMessage(data.error || "Erreur lors de l'enregistrement du cours.");
-      setSaving(false);
-      return;
-    }
-
-    if (existingLesson) {
-      setLessons((current) =>
-        current.map((lesson) =>
-          lesson.id === existingLesson.id ? data.lesson : lesson
-        )
+    try {
+      const existingLesson = selectedLessons.find(
+        (lesson) => lesson.id === lessonSlug
       );
-    } else {
-      setLessons((current) => [...current, data.lesson]);
-    }
 
-    setMessage("Cours enregistré.");
-    setShowLessonForm(false);
-    setSaving(false);
+      const response = await fetch("/api/education/lessons", {
+        method: existingLesson ? "PATCH" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(
+          existingLesson
+            ? {
+                id: existingLesson.id,
+                module_id: selectedModule.id,
+                title: lessonTitle,
+                slug,
+                introduction: lessonIntroduction,
+                content: lessonContent,
+                published: lessonPublished,
+              }
+            : {
+                module_id: selectedModule.id,
+                title: lessonTitle,
+                slug,
+                introduction: lessonIntroduction,
+                content: lessonContent,
+                published: lessonPublished,
+                position: selectedLessons.length + 1,
+              }
+        ),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessage(
+          data.error || "Erreur lors de l'enregistrement du cours."
+        );
+        return;
+      }
+
+      if (existingLesson) {
+        setLessons((current) =>
+          current.map((lesson) =>
+            lesson.id === existingLesson.id ? data.lesson : lesson
+          )
+        );
+      } else {
+        setLessons((current) => [...current, data.lesson]);
+      }
+
+      setMessage("Cours enregistré.");
+      setShowLessonForm(false);
+    } catch {
+      setMessage("Une erreur est survenue.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function toggleLesson(lesson: EducationLesson) {
-    const response = await fetch("/api/education/lessons", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        id: lesson.id,
-        published: !lesson.published,
-      }),
-    });
+    try {
+      const response = await fetch("/api/education/lessons", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: lesson.id,
+          published: !lesson.published,
+        }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      setMessage(data.error || "Impossible de modifier le statut.");
-      return;
+      if (!response.ok) {
+        setMessage(
+          data.error || "Impossible de modifier le statut."
+        );
+        return;
+      }
+
+      setLessons((current) =>
+        current.map((item) =>
+          item.id === lesson.id ? data.lesson : item
+        )
+      );
+
+      setMessage(
+        data.lesson.published
+          ? "Cours publié."
+          : "Cours dépublié."
+      );
+    } catch {
+      setMessage("Une erreur est survenue.");
     }
-
-    setLessons((current) =>
-      current.map((item) =>
-        item.id === lesson.id ? data.lesson : item
-      )
-    );
   }
 
   async function deleteLesson(lesson: EducationLesson) {
@@ -280,28 +321,34 @@ export default function AdminEducationPage() {
 
     if (!confirmed) return;
 
-    const response = await fetch("/api/education/lessons", {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        id: lesson.id,
-      }),
-    });
+    try {
+      const response = await fetch("/api/education/lessons", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: lesson.id,
+        }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      setMessage(data.error || "Impossible de supprimer le cours.");
-      return;
+      if (!response.ok) {
+        setMessage(
+          data.error || "Impossible de supprimer le cours."
+        );
+        return;
+      }
+
+      setLessons((current) =>
+        current.filter((item) => item.id !== lesson.id)
+      );
+
+      setMessage("Cours supprimé.");
+    } catch {
+      setMessage("Une erreur est survenue.");
     }
-
-    setLessons((current) =>
-      current.filter((item) => item.id !== lesson.id)
-    );
-
-    setMessage("Cours supprimé.");
   }
 
   if (loading) {
@@ -310,7 +357,9 @@ export default function AdminEducationPage() {
         <AdminNav />
 
         <main className="mx-auto max-w-[1180px] px-5 py-9">
-          <p className="text-inkSoft">Chargement de l'éducation...</p>
+          <p className="text-inkSoft">
+            Chargement de l'éducation...
+          </p>
         </main>
       </>
     );
@@ -331,8 +380,8 @@ export default function AdminEducationPage() {
           </h1>
 
           <p className="mt-2 max-w-2xl text-[15px] leading-7 text-inkSoft">
-            Gérez les modules éducatifs et les cours proposés aux visiteurs
-            du site.
+            Gérez les modules éducatifs et les cours proposés aux
+            visiteurs du site.
           </p>
         </div>
 
@@ -344,16 +393,14 @@ export default function AdminEducationPage() {
 
         {!selectedModule ? (
           <section>
-            <div className="mb-4 flex items-end justify-between gap-4">
-              <div>
-                <h2 className="font-serif text-xl font-semibold">
-                  Modules éducatifs
-                </h2>
+            <div className="mb-4">
+              <h2 className="font-serif text-xl font-semibold">
+                Modules éducatifs
+              </h2>
 
-                <p className="mt-1 text-sm text-inkSoft">
-                  Sélectionnez un module pour gérer ses cours.
-                </p>
-              </div>
+              <p className="mt-1 text-sm text-inkSoft">
+                Sélectionnez un module pour gérer ses cours.
+              </p>
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">
@@ -367,7 +414,7 @@ export default function AdminEducationPage() {
                     key={module.id}
                     type="button"
                     onClick={() => openModule(module)}
-                    className="text-left rounded-m border border-ink/10 bg-paper p-6 transition hover:-translate-y-0.5 hover:border-ink/20 hover:shadow-sm"
+                    className="rounded-m border border-ink/10 bg-paper p-6 text-left transition hover:-translate-y-0.5 hover:border-ink/20 hover:shadow-sm"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
@@ -388,13 +435,14 @@ export default function AdminEducationPage() {
                             : "bg-bgAlt text-inkSoft"
                         }`}
                       >
-                        {module.published ? "Publié" : "Brouillon"}
+                        {module.published
+                          ? "Publié"
+                          : "Brouillon"}
                       </span>
                     </div>
 
                     <div className="mt-5 border-t border-ink/10 pt-4 text-sm font-semibold text-ink">
-                      {moduleLessons.length}{" "}
-                      {moduleLessons.length > 1 ? "cours" : "cours"}
+                      {moduleLessons.length} cours
                       <span className="ml-2">→</span>
                     </div>
                   </button>
@@ -460,7 +508,9 @@ export default function AdminEducationPage() {
                         type="checkbox"
                         checked={modulePublished}
                         onChange={(event) =>
-                          setModulePublished(event.target.checked)
+                          setModulePublished(
+                            event.target.checked
+                          )
                         }
                       />
 
@@ -473,7 +523,9 @@ export default function AdminEducationPage() {
                       disabled={saving}
                       className="btn btn-ink"
                     >
-                      {saving ? "Enregistrement..." : "Enregistrer le module"}
+                      {saving
+                        ? "Enregistrement..."
+                        : "Enregistrer le module"}
                     </button>
                   </div>
                 </div>
@@ -538,7 +590,9 @@ export default function AdminEducationPage() {
                                 : "bg-bgAlt text-inkSoft"
                             }`}
                           >
-                            {lesson.published ? "Publié" : "Brouillon"}
+                            {lesson.published
+                              ? "Publié"
+                              : "Brouillon"}
                           </span>
                         </div>
 
@@ -553,7 +607,9 @@ export default function AdminEducationPage() {
 
                           <button
                             type="button"
-                            onClick={() => toggleLesson(lesson)}
+                            onClick={() =>
+                              toggleLesson(lesson)
+                            }
                             className="rounded-lg border border-ink/10 px-4 py-2 text-sm font-semibold hover:bg-bgAlt"
                           >
                             {lesson.published
@@ -563,7 +619,9 @@ export default function AdminEducationPage() {
 
                           <button
                             type="button"
-                            onClick={() => deleteLesson(lesson)}
+                            onClick={() =>
+                              deleteLesson(lesson)
+                            }
                             className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
                           >
                             Supprimer
@@ -600,7 +658,9 @@ export default function AdminEducationPage() {
                         setLessonTitle(event.target.value);
 
                         if (!lessonSlug) {
-                          setLessonSlug(createSlug(event.target.value));
+                          setLessonSlug(
+                            createSlug(event.target.value)
+                          );
                         }
                       }}
                       className="w-full rounded-lg border border-ink/10 bg-bg px-4 py-3 text-sm outline-none focus:border-ink/30"
@@ -631,7 +691,9 @@ export default function AdminEducationPage() {
                     <textarea
                       value={lessonIntroduction}
                       onChange={(event) =>
-                        setLessonIntroduction(event.target.value)
+                        setLessonIntroduction(
+                          event.target.value
+                        )
                       }
                       rows={4}
                       className="w-full rounded-lg border border-ink/10 bg-bg px-4 py-3 text-sm outline-none focus:border-ink/30"
@@ -659,7 +721,9 @@ export default function AdminEducationPage() {
                       type="checkbox"
                       checked={lessonPublished}
                       onChange={(event) =>
-                        setLessonPublished(event.target.checked)
+                        setLessonPublished(
+                          event.target.checked
+                        )
                       }
                     />
 
@@ -673,12 +737,16 @@ export default function AdminEducationPage() {
                       disabled={saving}
                       className="btn btn-ink"
                     >
-                      {saving ? "Enregistrement..." : "Enregistrer le cours"}
+                      {saving
+                        ? "Enregistrement..."
+                        : "Enregistrer le cours"}
                     </button>
 
                     <button
                       type="button"
-                      onClick={() => setShowLessonForm(false)}
+                      onClick={() =>
+                        setShowLessonForm(false)
+                      }
                       className="rounded-lg border border-ink/10 px-5 py-2.5 text-sm font-semibold hover:bg-bgAlt"
                     >
                       Annuler
