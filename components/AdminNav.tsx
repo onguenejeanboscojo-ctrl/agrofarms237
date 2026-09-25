@@ -25,6 +25,10 @@ const ADMIN_LINKS = [
     label: "Stocks",
   },
   {
+    href: "/admin/livraisons",
+    label: "Livraisons",
+  },
+  {
     href: "/admin/notre-elevage",
     label: "Notre élevage",
   },
