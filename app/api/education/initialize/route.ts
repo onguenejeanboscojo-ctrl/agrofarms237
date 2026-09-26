@@ -15,8 +15,11 @@ export async function POST() {
     const supabase = supabaseAdmin();
 
     let modulesCreated = 0;
+    let modulesUpdated = 0;
     let modulesSkipped = 0;
+
     let lessonsCreated = 0;
+    let lessonsUpdated = 0;
     let lessonsSkipped = 0;
 
     for (const moduleDefault of educationDefaults) {
@@ -29,7 +32,9 @@ export async function POST() {
       const { data: existingModule, error: moduleFindError } =
         await supabase
           .from("education_modules")
-          .select("id")
+          .select(
+            "id, title, description, image_url, position, published"
+          )
           .eq("slug", moduleDefault.slug)
           .maybeSingle();
 
@@ -40,15 +45,63 @@ export async function POST() {
       let moduleId: string;
 
       if (existingModule) {
+        moduleId = existingModule.id;
+
         /*
          * Le module existe déjà.
          *
-         * IMPORTANT :
-         * On ne modifie rien afin de préserver les éventuelles
-         * personnalisations faites depuis l'administration.
+         * On complète uniquement les champs qui sont vides.
+         * Une personnalisation existante n'est jamais écrasée.
          */
-        moduleId = existingModule.id;
-        modulesSkipped++;
+        const moduleUpdates: Record<string, unknown> = {};
+
+        if (
+          !existingModule.title ||
+          existingModule.title.trim() === ""
+        ) {
+          moduleUpdates.title = moduleDefault.title;
+        }
+
+        if (
+          !existingModule.description ||
+          existingModule.description.trim() === ""
+        ) {
+          moduleUpdates.description = moduleDefault.description;
+        }
+
+        if (
+          !existingModule.image_url ||
+          existingModule.image_url.trim() === ""
+        ) {
+          moduleUpdates.image_url = moduleDefault.image_url;
+        }
+
+        if (existingModule.position === null) {
+          moduleUpdates.position = moduleDefault.position;
+        }
+
+        if (existingModule.published === null) {
+          moduleUpdates.published = moduleDefault.published;
+        }
+
+        if (Object.keys(moduleUpdates).length > 0) {
+          const { error: moduleUpdateError } =
+            await supabase
+              .from("education_modules")
+              .update({
+                ...moduleUpdates,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", existingModule.id);
+
+          if (moduleUpdateError) {
+            throw moduleUpdateError;
+          }
+
+          modulesUpdated++;
+        } else {
+          modulesSkipped++;
+        }
       } else {
         const { data: newModule, error: moduleInsertError } =
           await supabase
@@ -82,7 +135,18 @@ export async function POST() {
         const { data: existingLesson, error: lessonFindError } =
           await supabase
             .from("education_lessons")
-            .select("id")
+            .select(
+              `
+                id,
+                title,
+                introduction,
+                content,
+                image_url,
+                video_url,
+                position,
+                published
+              `
+            )
             .eq("module_id", moduleId)
             .eq("slug", lessonDefault.slug)
             .maybeSingle();
@@ -91,16 +155,103 @@ export async function POST() {
           throw lessonFindError;
         }
 
+        /*
+         * -------------------------------------------------------
+         * LEÇON EXISTANTE
+         * -------------------------------------------------------
+         */
+
         if (existingLesson) {
           /*
-           * Le cours existe déjà.
+           * IMPORTANT :
            *
-           * On ne le modifie surtout pas.
-           * Cela protège les contenus personnalisés depuis l'Admin.
+           * On ne remplace jamais un contenu déjà renseigné.
+           *
+           * Si content est vide, on remet le contenu par défaut.
+           * Si image_url est vide, on remet l'image par défaut.
+           * Si introduction est vide, on remet l'introduction.
+           *
+           * Une modification personnalisée faite dans l'Admin
+           * reste donc intacte.
            */
-          lessonsSkipped++;
+
+          const lessonUpdates: Record<string, unknown> = {};
+
+          if (
+            !existingLesson.title ||
+            existingLesson.title.trim() === ""
+          ) {
+            lessonUpdates.title = lessonDefault.title;
+          }
+
+          if (
+            !existingLesson.introduction ||
+            existingLesson.introduction.trim() === ""
+          ) {
+            lessonUpdates.introduction =
+              lessonDefault.introduction;
+          }
+
+          if (
+            !existingLesson.content ||
+            existingLesson.content.trim() === ""
+          ) {
+            lessonUpdates.content = lessonDefault.content;
+          }
+
+          if (
+            !existingLesson.image_url ||
+            existingLesson.image_url.trim() === ""
+          ) {
+            lessonUpdates.image_url =
+              lessonDefault.image_url;
+          }
+
+          if (
+            existingLesson.video_url === null ||
+            existingLesson.video_url === undefined
+          ) {
+            lessonUpdates.video_url =
+              lessonDefault.video_url ?? null;
+          }
+
+          if (existingLesson.position === null) {
+            lessonUpdates.position =
+              lessonDefault.position;
+          }
+
+          if (existingLesson.published === null) {
+            lessonUpdates.published =
+              lessonDefault.published;
+          }
+
+          if (Object.keys(lessonUpdates).length > 0) {
+            const { error: lessonUpdateError } =
+              await supabase
+                .from("education_lessons")
+                .update({
+                  ...lessonUpdates,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", existingLesson.id);
+
+            if (lessonUpdateError) {
+              throw lessonUpdateError;
+            }
+
+            lessonsUpdated++;
+          } else {
+            lessonsSkipped++;
+          }
+
           continue;
         }
+
+        /*
+         * -------------------------------------------------------
+         * NOUVEAU COURS
+         * -------------------------------------------------------
+         */
 
         const { error: lessonInsertError } =
           await supabase
@@ -112,6 +263,7 @@ export async function POST() {
               introduction: lessonDefault.introduction,
               content: lessonDefault.content,
               image_url: lessonDefault.image_url,
+              video_url: lessonDefault.video_url ?? null,
               position: lessonDefault.position,
               published: lessonDefault.published,
             });
@@ -128,18 +280,21 @@ export async function POST() {
       success: true,
 
       message:
-        "Le contenu éducatif a été initialisé sans écraser les contenus existants.",
+        "Le contenu éducatif a été initialisé. Les contenus existants ont été préservés et les champs vides ont été complétés.",
 
       modulesCreated,
+      modulesUpdated,
       modulesSkipped,
 
       lessonsCreated,
+      lessonsUpdated,
       lessonsSkipped,
 
       totalModules: educationDefaults.length,
 
       totalLessons: educationDefaults.reduce(
-        (total, module) => total + module.lessons.length,
+        (total, module) =>
+          total + module.lessons.length,
         0
       ),
     });
