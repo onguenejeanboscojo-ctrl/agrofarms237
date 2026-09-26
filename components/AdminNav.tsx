@@ -29,6 +29,10 @@ const ADMIN_LINKS = [
     label: "Livraisons",
   },
   {
+    href: "/admin/education",
+    label: "Éducation",
+  },
+  {
     href: "/admin/notre-elevage",
     label: "Notre élevage",
   },
