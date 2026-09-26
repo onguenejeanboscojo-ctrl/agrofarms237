@@ -715,23 +715,66 @@ export default function AdminEducationClient() {
                           <div className="flex gap-4">
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bgAlt text-sm font-semibold">
                               {index + 1}
-                            </div>
-
-                            <div>
+                            </div>                            <div className="min-w-0 flex-1">
                               <h3 className="font-serif text-lg font-semibold">
                                 {lesson.title}
                               </h3>
 
-                              <p className="mt-1 text-sm text-inkSoft">
+                              <p className="mt-1 text-sm leading-6 text-inkSoft">
                                 {lesson.introduction ||
                                   "Aucune introduction renseignée."}
                               </p>
 
-                              {lesson.image_url && (
-                                <p className="mt-2 text-xs text-inkSoft">
-                                  Image : {lesson.image_url}
-                                </p>
-                              )}
+                              <div className="mt-4 grid gap-4 sm:grid-cols-[140px_1fr]">
+                                <div className="overflow-hidden rounded-xl border border-ink/10 bg-bgAlt">
+                                  {lesson.image_url ? (
+                                    <img
+                                      src={lesson.image_url}
+                                      alt={lesson.title}
+                                      className="h-28 w-full object-cover"
+                                      loading="lazy"
+                                      onError={(event) => {
+                                        event.currentTarget.style.display = "none";
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="flex h-28 items-center justify-center px-3 text-center text-xs text-inkSoft">
+                                      Aucune image définie
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div>
+                                  <div className="mb-2 flex items-center justify-between gap-3">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-inkSoft">
+                                      Contenu du cours
+                                    </p>
+                                    <span className="text-xs text-inkSoft">
+                                      {(lesson.content || "").length} caractères
+                                    </span>
+                                  </div>
+
+                                  <p className="whitespace-pre-line text-sm leading-6 text-inkSoft">
+                                    {lesson.content
+                                      ? lesson.content.length > 420
+                                        ? `${lesson.content.slice(0, 420).trim()}…`
+                                        : lesson.content
+                                      : "Aucun contenu renseigné."}
+                                  </p>
+
+                                  {lesson.image_url && (
+                                    <p className="mt-3 break-all text-xs text-inkSoft">
+                                      Image : {lesson.image_url}
+                                    </p>
+                                  )}
+
+                                  {lesson.video_url && (
+                                    <p className="mt-1 break-all text-xs text-inkSoft">
+                                      Vidéo : {lesson.video_url}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           </div>
 
