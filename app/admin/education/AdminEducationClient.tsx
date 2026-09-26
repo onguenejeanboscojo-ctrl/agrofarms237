@@ -54,6 +54,7 @@ export default function AdminEducationClient() {
 
   const [moduleTitle, setModuleTitle] = useState("");
   const [moduleDescription, setModuleDescription] = useState("");
+  const [moduleImageUrl, setModuleImageUrl] = useState("");
   const [modulePublished, setModulePublished] = useState(true);
 
   const [showLessonForm, setShowLessonForm] = useState(false);
@@ -184,6 +185,7 @@ export default function AdminEducationClient() {
     setSelectedModuleId(module.id);
     setModuleTitle(module.title);
     setModuleDescription(module.description || "");
+    setModuleImageUrl(module.image_url || "");
     setModulePublished(module.published);
     setShowLessonForm(false);
     setEditingLessonId(null);
@@ -219,6 +221,7 @@ export default function AdminEducationClient() {
           id: selectedModule.id,
           title: moduleTitle.trim(),
           description: moduleDescription.trim(),
+          image_url: moduleImageUrl.trim() || null,
           published: modulePublished,
         }),
       });
@@ -562,36 +565,47 @@ export default function AdminEducationClient() {
                     key={module.id}
                     type="button"
                     onClick={() => openModule(module)}
-                    className="rounded-m border border-ink/10 bg-paper p-6 text-left transition hover:-translate-y-0.5 hover:border-ink/20 hover:shadow-sm"
+                    className="overflow-hidden rounded-2xl border border-ink/10 bg-paper text-left transition hover:-translate-y-0.5 hover:border-ink/20 hover:shadow-sm"
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 className="font-serif text-xl font-semibold">
-                          {module.title}
-                        </h3>
-
-                        <p className="mt-2 text-sm leading-6 text-inkSoft">
-                          {module.description ||
-                            "Aucune description pour le moment."}
-                        </p>
-                      </div>
+                    <div className="relative h-44 bg-bgAlt">
+                      {module.image_url ? (
+                        <img
+                          src={module.image_url}
+                          alt={module.title}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-sm text-inkSoft">
+                          Aucune image de module
+                        </div>
+                      )}
 
                       <span
-                        className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+                        className={`absolute right-4 top-4 rounded-full px-3 py-1 text-xs font-semibold ${
                           module.published
                             ? "bg-ink text-white"
-                            : "bg-bgAlt text-inkSoft"
+                            : "bg-white/90 text-inkSoft"
                         }`}
                       >
-                        {module.published
-                          ? "Publié"
-                          : "Brouillon"}
+                        {module.published ? "Publié" : "Brouillon"}
                       </span>
                     </div>
 
-                    <div className="mt-5 border-t border-ink/10 pt-4 text-sm font-semibold text-ink">
-                      {moduleLessons.length} cours
-                      <span className="ml-2">→</span>
+                    <div className="p-6">
+                      <h3 className="font-serif text-xl font-semibold">
+                        {module.title}
+                      </h3>
+
+                      <p className="mt-2 text-sm leading-6 text-inkSoft">
+                        {module.description ||
+                          "Aucune description pour le moment."}
+                      </p>
+
+                      <div className="mt-5 border-t border-ink/10 pt-4 text-sm font-semibold text-ink">
+                        {moduleLessons.length} cours
+                        <span className="ml-2">→</span>
+                      </div>
                     </div>
                   </button>
                 );
@@ -649,6 +663,29 @@ export default function AdminEducationClient() {
                         rows={5}
                         className="w-full rounded-lg border border-ink/10 bg-bg px-4 py-3 text-sm outline-none focus:border-ink/30"
                       />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">
+                        Image du module
+                      </label>
+
+                      <input
+                        value={moduleImageUrl}
+                        onChange={(event) => setModuleImageUrl(event.target.value)}
+                        className="w-full rounded-lg border border-ink/10 bg-bg px-4 py-3 text-sm outline-none focus:border-ink/30"
+                        placeholder="/images/education/modules/pisciculture.jpg"
+                      />
+
+                      {moduleImageUrl && (
+                        <div className="mt-3 overflow-hidden rounded-xl border border-ink/10 bg-bgAlt">
+                          <img
+                            src={moduleImageUrl}
+                            alt={moduleTitle}
+                            className="h-40 w-full object-cover"
+                          />
+                        </div>
+                      )}
                     </div>
 
                     <label className="flex items-center gap-3 text-sm font-semibold">
