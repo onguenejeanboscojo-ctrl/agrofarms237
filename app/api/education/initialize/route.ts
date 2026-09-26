@@ -49,10 +49,10 @@ export async function POST() {
 
         /*
          * Le module existe déjà.
-         *
-         * On complète uniquement les champs qui sont vides.
-         * Une personnalisation existante n'est jamais écrasée.
+         * On complète uniquement les champs vides.
+         * Les personnalisations existantes sont conservées.
          */
+
         const moduleUpdates: Record<string, unknown> = {};
 
         if (
@@ -66,22 +66,26 @@ export async function POST() {
           !existingModule.description ||
           existingModule.description.trim() === ""
         ) {
-          moduleUpdates.description = moduleDefault.description;
+          moduleUpdates.description =
+            moduleDefault.description;
         }
 
         if (
           !existingModule.image_url ||
           existingModule.image_url.trim() === ""
         ) {
-          moduleUpdates.image_url = moduleDefault.image_url;
+          moduleUpdates.image_url =
+            moduleDefault.image_url;
         }
 
         if (existingModule.position === null) {
-          moduleUpdates.position = moduleDefault.position;
+          moduleUpdates.position =
+            moduleDefault.position;
         }
 
         if (existingModule.published === null) {
-          moduleUpdates.published = moduleDefault.published;
+          moduleUpdates.published =
+            moduleDefault.published;
         }
 
         if (Object.keys(moduleUpdates).length > 0) {
@@ -157,22 +161,16 @@ export async function POST() {
 
         /*
          * -------------------------------------------------------
-         * LEÇON EXISTANTE
+         * COURS EXISTANT
          * -------------------------------------------------------
          */
 
         if (existingLesson) {
           /*
-           * IMPORTANT :
+           * Le cours existe déjà.
            *
-           * On ne remplace jamais un contenu déjà renseigné.
-           *
-           * Si content est vide, on remet le contenu par défaut.
-           * Si image_url est vide, on remet l'image par défaut.
-           * Si introduction est vide, on remet l'introduction.
-           *
-           * Une modification personnalisée faite dans l'Admin
-           * reste donc intacte.
+           * On complète uniquement les champs vides.
+           * Un contenu personnalisé ne sera jamais écrasé.
            */
 
           const lessonUpdates: Record<string, unknown> = {};
@@ -192,11 +190,17 @@ export async function POST() {
               lessonDefault.introduction;
           }
 
+          /*
+           * C'EST LE POINT IMPORTANT :
+           * Si le contenu est vide, on remet le contenu
+           * pédagogique présent dans educationDefaults.
+           */
           if (
             !existingLesson.content ||
             existingLesson.content.trim() === ""
           ) {
-            lessonUpdates.content = lessonDefault.content;
+            lessonUpdates.content =
+              lessonDefault.content;
           }
 
           if (
@@ -205,14 +209,6 @@ export async function POST() {
           ) {
             lessonUpdates.image_url =
               lessonDefault.image_url;
-          }
-
-          if (
-            existingLesson.video_url === null ||
-            existingLesson.video_url === undefined
-          ) {
-            lessonUpdates.video_url =
-              lessonDefault.video_url ?? null;
           }
 
           if (existingLesson.position === null) {
@@ -224,6 +220,13 @@ export async function POST() {
             lessonUpdates.published =
               lessonDefault.published;
           }
+
+          /*
+           * video_url existe dans la base de données,
+           * mais n'est pas défini dans educationDefaults.
+           *
+           * On ne le modifie donc pas ici.
+           */
 
           if (Object.keys(lessonUpdates).length > 0) {
             const { error: lessonUpdateError } =
@@ -263,7 +266,6 @@ export async function POST() {
               introduction: lessonDefault.introduction,
               content: lessonDefault.content,
               image_url: lessonDefault.image_url,
-              video_url: lessonDefault.video_url ?? null,
               position: lessonDefault.position,
               published: lessonDefault.published,
             });
