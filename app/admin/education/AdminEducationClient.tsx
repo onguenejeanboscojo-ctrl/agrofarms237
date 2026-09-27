@@ -49,6 +49,7 @@ export default function AdminEducationClient() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [initializing, setInitializing] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState<"module" | "cours" | null>(null);
   const [message, setMessage] = useState("");
   const [initializationMessage, setInitializationMessage] = useState("");
 
@@ -67,6 +68,47 @@ export default function AdminEducationClient() {
   const [lessonImageUrl, setLessonImageUrl] = useState("");
   const [lessonVideoUrl, setLessonVideoUrl] = useState("");
   const [lessonPublished, setLessonPublished] = useState(true);
+
+  async function uploadEducationImage(
+    file: File,
+    kind: "module" | "cours"
+  ) {
+    setUploadingImage(kind);
+    setMessage("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("kind", kind);
+
+      const response = await fetch("/api/education/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Impossible d'envoyer l'image.");
+      }
+
+      if (kind === "module") {
+        setModuleImageUrl(data.url);
+      } else {
+        setLessonImageUrl(data.url);
+      }
+
+      setMessage("Image envoyée avec succès. Enregistrez ensuite le contenu pour conserver le changement.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Impossible d'envoyer l'image."
+      );
+    } finally {
+      setUploadingImage(null);
+    }
+  }
 
   async function loadData() {
     setLoading(true);
@@ -677,6 +719,30 @@ export default function AdminEducationClient() {
                         placeholder="/images/education/modules/pisciculture.jpg"
                       />
 
+                      <div className="mt-3">
+                        <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-ink/10 px-4 py-2.5 text-sm font-semibold transition hover:bg-bgAlt">
+                          {uploadingImage === "module"
+                            ? "Envoi de l'image..."
+                            : "📷 Importer une nouvelle image"}
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            disabled={uploadingImage !== null}
+                            onChange={(event) => {
+                              const file = event.target.files?.[0];
+                              if (file) {
+                                uploadEducationImage(file, "module");
+                              }
+                              event.currentTarget.value = "";
+                            }}
+                          />
+                        </label>
+                        <p className="mt-2 text-xs leading-5 text-inkSoft">
+                          JPG, PNG ou WebP — 10 Mo maximum.
+                        </p>
+                      </div>
+
                       {moduleImageUrl && (
                         <div className="mt-3 overflow-hidden rounded-xl border border-ink/10 bg-bgAlt">
                           <img
@@ -942,6 +1008,30 @@ export default function AdminEducationClient() {
                       className="w-full rounded-lg border border-ink/10 bg-bg px-4 py-3 text-sm outline-none focus:border-ink/30"
                       placeholder="/images/education/cours/introduction-pisciculture.jpg"
                     />
+
+                    <div className="mt-3">
+                      <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-ink/10 px-4 py-2.5 text-sm font-semibold transition hover:bg-bgAlt">
+                        {uploadingImage === "cours"
+                          ? "Envoi de l'image..."
+                          : "📷 Importer une nouvelle image"}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          disabled={uploadingImage !== null}
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (file) {
+                              uploadEducationImage(file, "cours");
+                            }
+                            event.currentTarget.value = "";
+                          }}
+                        />
+                      </label>
+                      <p className="mt-2 text-xs leading-5 text-inkSoft">
+                        JPG, PNG ou WebP — 10 Mo maximum.
+                      </p>
+                    </div>
 
                     <p className="mt-2 text-xs leading-5 text-inkSoft">
                       Chemin ou URL de l'image utilisée pour illustrer le
