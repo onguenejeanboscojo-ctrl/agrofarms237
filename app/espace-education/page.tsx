@@ -1,119 +1,205 @@
-import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import EducationModulesHeroSlideshow from "@/components/EducationModulesHeroSlideshow";
 
 export const revalidate = 30;
 
-type EducationModule = {
+type MediaItem = {
   id: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  image_url: string | null;
-  published: boolean;
-  position: number;
+  url: string;
+  kind: "photo" | "video";
+  category?: string | null;
+  caption?: string | null;
 };
 
-type EducationLesson = {
-  id: string;
-  module_id: string;
-  title: string;
-  slug: string;
-  published: boolean;
-  position: number;
-};
-
-type EducationModuleWithCount = EducationModule & {
-  lessonCount: number;
-};
-
-async function getEducationData(): Promise<EducationModuleWithCount[]> {
+async function getMedia() {
   try {
-    const supabase = supabaseAdmin();
+    const { data } = await supabaseAdmin()
+      .from("media")
+      .select("*")
+      .eq("published", true)
+      .order("position")
+      .order("created_at", { ascending: false });
 
-    const [{ data: modules }, { data: lessons }] = await Promise.all([
-      supabase
-        .from("education_modules")
-        .select(
-          "id, title, slug, description, image_url, published, position"
-        )
-        .eq("published", true)
-        .order("position", { ascending: true }),
-
-      supabase
-        .from("education_lessons")
-        .select("id, module_id, title, slug, published, position")
-        .eq("published", true)
-        .order("position", { ascending: true }),
-    ]);
-
-    const publishedModules = (modules || []) as EducationModule[];
-    const publishedLessons = (lessons || []) as EducationLesson[];
-
-    return publishedModules.map((module) => ({
-      ...module,
-      lessonCount: publishedLessons.filter(
-        (lesson) => lesson.module_id === module.id
-      ).length,
-    }));
+    return (data || []) as MediaItem[];
   } catch {
     return [];
   }
 }
 
-export default async function EspaceEducationPage() {
-  const modules = await getEducationData();
+const EDUCATION_SECTIONS = [
+  {
+    category: "education_pisciculture",
+    number: "01",
+    title: "Pisciculture",
+    subtitle: "Bien démarrer son élevage de poissons",
+    description:
+      "Découvrez les bases essentielles pour démarrer une activité piscicole : choix du bassin, qualité de l’eau, choix des alevins, alimentation et suivi de la croissance.",
+    lessons: [
+      "Choisir et préparer son bassin",
+      "Bien choisir ses alevins",
+      "Comprendre l’alimentation du silure",
+      "Surveiller la qualité de l’eau",
+      "Suivre la croissance des poissons",
+    ],
+  },
+  {
+    category: "education_porcs",
+    number: "02",
+    title: "Élevage porcin",
+    subtitle: "Les bases pour commencer",
+    description:
+      "Apprenez les fondamentaux de l’élevage porcin : installation, alimentation, hygiène, reproduction et suivi quotidien des animaux.",
+    lessons: [
+      "Préparer le bâtiment d’élevage",
+      "Organiser l’alimentation",
+      "Maintenir une bonne hygiène",
+      "Comprendre la reproduction",
+      "Suivre les porcelets",
+    ],
+  },
+  {
+    category: "education_aviculture",
+    number: "03",
+    title: "Aviculture",
+    subtitle: "Pondeuses et poulets de chair",
+    description:
+      "Les notions essentielles pour démarrer un élevage avicole et assurer de bonnes conditions de croissance aux volailles.",
+    lessons: [
+      "Préparer le poulailler",
+      "Choisir ses poussins",
+      "Organiser l’alimentation",
+      "Maintenir l’hygiène",
+      "Suivre la croissance et la production",
+    ],
+  },
+  {
+    category: "education_agriculture",
+    number: "04",
+    title: "Agriculture",
+    subtitle: "De la préparation du sol à la récolte",
+    description:
+      "Les fondamentaux pour mieux comprendre les principales étapes d’une production agricole et organiser son activité.",
+    lessons: [
+      "Préparer correctement le sol",
+      "Choisir les semences",
+      "Organiser les semis",
+      "Entretenir les cultures",
+      "Préparer la récolte",
+    ],
+  },
+];
 
-  return (
-    <main className="bg-paper">
-      {/* ===================================================== */}
-      {/* HERO PRINCIPAL                                        */}
-      {/* ===================================================== */}
+function EducationMedia({
+  images,
+  videos,
+  title,
+}: {
+  images: string[];
+  videos: string[];
+  title: string;
+}) {
+  if (images.length > 0) {
+    return (
+      <div className="overflow-hidden rounded-l border border-ink/10 bg-bgAlt">
+        <div
+          className="aspect-[16/10] bg-cover bg-center"
+          style={{
+            backgroundImage: `url("${images[0]}")`,
+          }}
+        />
 
-      <section className="px-5 pb-16 pt-8 md:pb-20 md:pt-10">
-        <div className="mx-auto max-w-[1280px]">
-          <div className="grid items-center gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:gap-14">
-            {/* TEXTE À GAUCHE */}
-            <div className="max-w-[520px]">
-              <span className="mb-4 inline-flex items-center gap-3 text-[12px] font-bold uppercase tracking-[0.18em] text-goldDeep">
-                <span className="h-px w-8 bg-goldDeep" />
-                Espace Éducation
+        {videos.length > 0 && (
+          <div className="border-t border-ink/10 p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ink text-[12px] text-paper">
+                ▶
               </span>
 
-              <h1 className="font-serif text-[clamp(44px,6vw,72px)] font-semibold leading-[0.98] tracking-[-0.03em] text-ink">
-                Apprendre.
-                <br />
-                Comprendre.
-                <br />
-                <span className="text-inkSoft">Produire.</span>
-              </h1>
-
-              <p className="mt-7 max-w-[500px] text-[16px] leading-7 text-inkSoft md:text-[17px]">
-                Un espace pensé pour celles et ceux qui souhaitent découvrir
-                l’agriculture et l’élevage, comprendre les bases et progresser
-                étape par étape.
-              </p>
-
-              <div className="mt-8 flex flex-wrap items-center gap-4">
-                <a
-                  href="#formations"
-                  className="inline-flex items-center rounded-full bg-ink px-6 py-3 text-[12px] font-bold text-paper transition hover:-translate-y-0.5 hover:opacity-90"
-                >
-                  Explorer les formations
-                  <span className="ml-2 text-base">↓</span>
-                </a>
-
-                <span className="text-[12px] font-medium text-inkSoft">
-                  Agriculture • Élevage • Gestion
-                </span>
-              </div>
+              <span className="text-[13px] font-bold text-ink">
+                Vidéo pédagogique
+              </span>
             </div>
 
-            {/* SLIDESHOW DES MODULES */}
-            <div className="min-w-0">
-              <EducationModulesHeroSlideshow modules={modules} />
-            </div>
+            <video
+              controls
+              preload="metadata"
+              className="w-full rounded-m"
+              src={videos[0]}
+            />
           </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-l border border-ink/10 bg-[radial-gradient(120%_140%_at_15%_0%,#2A5E56_0%,#0E2622_65%,#081815_100%)]">
+      <div className="flex aspect-[16/10] items-center justify-center px-6 text-center">
+        <div>
+          <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-gold">
+            Agrofarms237
+          </span>
+
+          <p className="mt-2 font-serif text-[24px] font-semibold text-paper">
+            {title}
+          </p>
+
+          <p className="mt-2 text-[13px] text-paper/60">
+            Photo pédagogique à venir
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default async function EspaceEducationPage() {
+  const media = await getMedia();
+
+  const getImages = (category: string) =>
+    media
+      .filter(
+        (item) =>
+          item.category === category &&
+          item.kind === "photo"
+      )
+      .map((item) => item.url);
+
+  const getVideos = (category: string) =>
+    media
+      .filter(
+        (item) =>
+          item.category === category &&
+          item.kind === "video"
+      )
+      .map((item) => item.url);
+
+  return (
+    <main>
+      {/* ===================================================== */}
+      {/* HERO                                                   */}
+      {/* ===================================================== */}
+
+      <section className="relative overflow-hidden bg-ink px-5 py-[100px] text-paper">
+        <div className="absolute inset-0 bg-[radial-gradient(120%_140%_at_15%_0%,#1D4B44_0%,#0E2622_60%,#081815_100%)]" />
+
+        <div className="relative mx-auto max-w-[1180px]">
+          <span className="mb-3 inline-block text-[13px] font-bold text-gold">
+            Espace Éducation
+          </span>
+
+          <h1 className="max-w-[850px] font-serif text-[clamp(40px,7vw,68px)] font-semibold leading-[1.05]">
+            Apprendre.
+            <br />
+            Comprendre.
+            <br />
+            Produire.
+          </h1>
+
+          <p className="mt-6 max-w-[680px] text-[17px] leading-7 text-paper/75">
+            Un espace pensé pour celles et ceux qui souhaitent découvrir
+            l’agriculture et l’élevage, comprendre les bases et progresser
+            étape par étape.
+          </p>
         </div>
       </section>
 
@@ -121,19 +207,19 @@ export default async function EspaceEducationPage() {
       {/* INTRODUCTION                                          */}
       {/* ===================================================== */}
 
-      <section className="border-y border-ink/10 bg-bgAlt px-5 py-[72px]">
+      <section className="px-5 py-[72px]">
         <div className="mx-auto max-w-[900px] text-center">
           <span className="text-[13px] font-bold text-goldDeep">
             Pour commencer
           </span>
 
-          <h2 className="mt-3 font-serif text-[clamp(30px,5vw,46px)] font-semibold leading-tight text-ink">
+          <h2 className="mt-3 font-serif text-[clamp(30px,5vw,46px)] font-semibold">
             L’agriculture s’apprend aussi sur le terrain.
           </h2>
 
-          <p className="mx-auto mt-5 max-w-[720px] text-[16px] leading-7 text-inkSoft">
+          <p className="mx-auto mt-5 max-w-[700px] text-[16px] leading-7 text-inkSoft">
             Que vous soyez débutant ou que vous souhaitiez approfondir vos
-            connaissances, AgroFarms237 partage ici des notions pratiques
+            connaissances, Agrofarms237 partage ici des notions pratiques
             pour mieux comprendre les différentes étapes d’une production
             agricole ou d’un élevage.
           </p>
@@ -141,145 +227,121 @@ export default async function EspaceEducationPage() {
       </section>
 
       {/* ===================================================== */}
-      {/* MODULES                                               */}
+      {/* FORMATIONS / THÈMES                                   */}
       {/* ===================================================== */}
 
-      <section
-        id="formations"
-        className="px-5 py-[80px] md:py-[96px]"
-      >
+      <section className="bg-bgAlt px-5 py-[72px]">
         <div className="mx-auto max-w-[1180px]">
-          <div className="mb-12 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-            <div>
-              <span className="mb-2 inline-block text-[13px] font-bold text-goldDeep">
-                Nos formations
-              </span>
+          <div className="mb-12">
+            <span className="mb-2 inline-block text-[13px] font-bold text-goldDeep">
+              Nos ressources
+            </span>
 
-              <h2 className="font-serif text-[clamp(32px,5vw,46px)] font-semibold leading-tight text-ink">
-                Apprendre par filière
-              </h2>
+            <h2 className="font-serif text-[clamp(30px,5vw,44px)] font-semibold">
+              Apprendre par filière
+            </h2>
 
-              <p className="mt-3 max-w-[680px] text-[15px] leading-7 text-inkSoft">
-                Des cours structurés pour comprendre progressivement les
-                bases techniques et les réalités d’une exploitation agricole.
-              </p>
-            </div>
-
-            {modules.length > 0 && (
-              <span className="shrink-0 text-[12px] font-semibold uppercase tracking-[0.12em] text-inkSoft">
-                {modules.length} modules disponibles
-              </span>
-            )}
+            <p className="mt-2 max-w-[680px] text-[15px] leading-7 text-inkSoft">
+              Chaque rubrique rassemble des conseils simples et pratiques
+              pour vous aider à mieux comprendre votre activité.
+            </p>
           </div>
 
-          {modules.length === 0 ? (
-            <div className="rounded-[24px] border border-ink/10 bg-bgAlt px-6 py-16 text-center">
-              <span className="text-[12px] font-bold uppercase tracking-[0.15em] text-goldDeep">
-                AgroFarms237
-              </span>
+          <div className="grid gap-10">
+            {EDUCATION_SECTIONS.map((section) => {
+              const images = getImages(section.category);
+              const videos = getVideos(section.category);
 
-              <h3 className="mt-3 font-serif text-2xl font-semibold text-ink">
-                Nos formations arrivent bientôt.
-              </h3>
-
-              <p className="mx-auto mt-3 max-w-[520px] text-sm leading-6 text-inkSoft">
-                Les contenus pédagogiques seront progressivement ajoutés à
-                cet espace.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-6 md:grid-cols-2">
-              {modules.map((module, index) => (
+              return (
                 <article
-                  key={module.id}
-                  className="group overflow-hidden rounded-[24px] border border-ink/10 bg-paper transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(8,24,21,0.08)]"
+                  key={section.category}
+                  className="overflow-hidden rounded-l border border-ink/10 bg-paper"
                 >
-                  <Link href={`/espace-education/${module.slug}`}>
-                    <div className="relative aspect-[16/9] overflow-hidden bg-bgAlt">
-                      {module.image_url ? (
-                        <img
-                          src={module.image_url}
-                          alt={module.title}
-                          className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center bg-[radial-gradient(120%_140%_at_15%_0%,#2A5E56_0%,#0E2622_65%,#081815_100%)]">
-                          <span className="font-serif text-2xl text-paper/80">
-                            AgroFarms237
-                          </span>
-                        </div>
-                      )}
+                  <div className="grid md:grid-cols-[1fr_1.05fr]">
+                    {/* MÉDIA */}
+                    <EducationMedia
+                      images={images}
+                      videos={videos}
+                      title={section.title}
+                    />
 
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-transparent" />
+                    {/* CONTENU */}
+                    <div className="p-7 md:p-10">
+                      <div className="flex items-center gap-4">
+                        <span className="text-[13px] font-bold text-goldDeep">
+                          {section.number}
+                        </span>
 
-                      <span className="absolute left-5 top-5 rounded-full border border-white/20 bg-black/25 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white backdrop-blur-md">
-                        {String(index + 1).padStart(2, "0")}
+                        <span className="h-px flex-1 bg-ink/10" />
+                      </div>
+
+                      <span className="mt-7 block text-[12px] font-bold uppercase tracking-[0.12em] text-goldDeep">
+                        {section.title}
                       </span>
 
-                      <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-4">
-                        <h3 className="font-serif text-[28px] font-semibold leading-tight text-white">
-                          {module.title}
-                        </h3>
+                      <h3 className="mt-2 font-serif text-[30px] font-semibold">
+                        {section.subtitle}
+                      </h3>
 
-                        <span className="shrink-0 rounded-full bg-gold px-3 py-1.5 text-[10px] font-bold text-ink">
-                          {module.lessonCount} cours
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="p-6 md:p-7">
-                      <p className="min-h-[48px] text-[14px] leading-6 text-inkSoft">
-                        {module.description ||
-                          "Découvrez les fondamentaux de cette filière à travers nos cours pédagogiques."}
+                      <p className="mt-4 text-[15px] leading-7 text-inkSoft">
+                        {section.description}
                       </p>
 
-                      <div className="mt-6 flex items-center justify-between border-t border-ink/10 pt-5">
-                        <span className="text-[12px] font-bold text-ink">
-                          Découvrir les cours
-                        </span>
+                      <div className="mt-7">
+                        <h4 className="text-[13px] font-bold uppercase tracking-[0.08em] text-ink">
+                          Au programme
+                        </h4>
 
-                        <span className="flex h-9 w-9 items-center justify-center rounded-full border border-ink/10 text-ink transition group-hover:border-ink group-hover:bg-ink group-hover:text-paper">
-                          →
-                        </span>
+                        <ul className="mt-4 space-y-3">
+                          {section.lessons.map((lesson) => (
+                            <li
+                              key={lesson}
+                              className="flex items-start gap-3 text-[14px] leading-6 text-inkSoft"
+                            >
+                              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gold" />
+                              <span>{lesson}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 </article>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
         </div>
       </section>
 
       {/* ===================================================== */}
-      {/* CONSEIL                                               */}
+      {/* CONSEIL DU DÉBUTANT                                   */}
       {/* ===================================================== */}
 
-      <section className="px-5 pb-[80px] md:pb-[96px]">
-        <div className="mx-auto max-w-[1050px] overflow-hidden rounded-[28px] bg-ink text-paper">
-          <div className="grid md:grid-cols-[0.7fr_1.3fr]">
-            <div className="flex min-h-[260px] items-center justify-center bg-[radial-gradient(120%_140%_at_15%_0%,#2A5E56_0%,#0E2622_65%,#081815_100%)] p-10">
+      <section className="px-5 py-[72px]">
+        <div className="mx-auto max-w-[1000px]">
+          <div className="grid overflow-hidden rounded-l bg-ink text-paper md:grid-cols-[0.8fr_1.2fr]">
+            <div className="flex items-center justify-center bg-[radial-gradient(120%_140%_at_15%_0%,#2A5E56_0%,#0E2622_65%,#081815_100%)] p-10">
               <div className="text-center">
-                <span className="text-[12px] font-bold uppercase tracking-[0.15em] text-gold">
+                <span className="text-[13px] font-bold text-gold">
                   Conseil du débutant
                 </span>
 
-                <div className="mt-4 font-serif text-[64px] font-semibold leading-none">
+                <div className="mt-4 font-serif text-[52px] font-semibold">
                   01
                 </div>
               </div>
             </div>
 
             <div className="p-8 md:p-12">
-              <h2 className="font-serif text-[30px] font-semibold leading-tight md:text-[36px]">
+              <h2 className="font-serif text-[30px] font-semibold">
                 Commencer petit, mais commencer correctement.
               </h2>
 
               <p className="mt-5 text-[15px] leading-7 text-paper/70">
                 Une bonne production commence par une bonne préparation.
                 Avant d’investir davantage, prenez le temps de comprendre
-                votre environnement, vos besoins, vos coûts, votre marché et
-                les exigences de l’activité choisie.
+                votre environnement, vos besoins, vos coûts, votre marché
+                et les exigences de l’activité choisie.
               </p>
 
               <p className="mt-4 text-[15px] leading-7 text-paper/70">
@@ -296,8 +358,8 @@ export default async function EspaceEducationPage() {
       {/* FORMATION INTENSIVE                                  */}
       {/* ===================================================== */}
 
-      <section className="bg-bgAlt px-5 py-[80px]">
-        <div className="mx-auto max-w-[900px] text-center">
+      <section className="bg-bgAlt px-5 py-[72px]">
+        <div className="mx-auto max-w-[1000px] text-center">
           <span className="text-[13px] font-bold text-goldDeep">
             Pour aller plus loin
           </span>
@@ -308,37 +370,40 @@ export default async function EspaceEducationPage() {
 
           <p className="mx-auto mt-5 max-w-[680px] text-[16px] leading-7 text-inkSoft">
             Pour celles et ceux qui souhaitent aller au-delà des conseils
-            gratuits, AgroFarms237 proposera des formations intensives
+            gratuits, Agrofarms237 proposera des formations intensives
             consacrées à la pratique et au développement d’une activité
             agricole ou d’élevage.
           </p>
 
           <div className="mt-7">
-            <Link href="/contact" className="btn btn-ink">
+            <a
+              href="/contact"
+              className="btn btn-ink"
+            >
               Découvrir les formations
-            </Link>
+            </a>
           </div>
         </div>
       </section>
 
       {/* ===================================================== */}
-      {/* CTA FINAL                                             */}
+      {/* CTA                                                    */}
       {/* ===================================================== */}
 
-      <section className="bg-ink px-5 py-[80px] text-paper">
+      <section className="bg-ink px-5 py-[72px] text-paper">
         <div className="mx-auto max-w-[850px] text-center">
           <span className="text-[13px] font-bold text-gold">
-            AgroFarms237
+            Agrofarms237
           </span>
 
-          <h2 className="mt-3 font-serif text-[clamp(30px,5vw,46px)] font-semibold leading-tight">
+          <h2 className="mt-3 font-serif text-[clamp(30px,5vw,46px)] font-semibold">
             Produire mieux commence par mieux comprendre.
           </h2>
 
           <p className="mx-auto mt-5 max-w-[650px] text-[16px] leading-7 text-paper/70">
             Nous continuerons à enrichir cet espace avec de nouveaux
-            contenus pédagogiques au fur et à mesure du développement de la
-            ferme.
+            contenus, photos et vidéos pédagogiques au fur et à mesure du
+            développement de la ferme.
           </p>
         </div>
       </section>
