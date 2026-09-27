@@ -66,6 +66,7 @@ export default async function EspaceEducationPage() {
 
   return (
     <main className="bg-paper">
+
       {/* ===================================================== */}
       {/* HERO PRINCIPAL                                        */}
       {/* ===================================================== */}
@@ -73,6 +74,7 @@ export default async function EspaceEducationPage() {
       <section className="px-5 pb-16 pt-8 md:pb-20 md:pt-10">
         <div className="mx-auto max-w-[1280px]">
           <div className="grid items-center gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:gap-14">
+
             {/* TEXTE À GAUCHE */}
             <div className="max-w-[520px]">
               <span className="mb-4 inline-flex items-center gap-3 text-[12px] font-bold uppercase tracking-[0.18em] text-goldDeep">
@@ -149,6 +151,7 @@ export default async function EspaceEducationPage() {
         className="px-5 py-[80px] md:py-[96px]"
       >
         <div className="mx-auto max-w-[1180px]">
+
           <div className="mb-12 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div>
               <span className="mb-2 inline-block text-[13px] font-bold text-goldDeep">
@@ -195,6 +198,7 @@ export default async function EspaceEducationPage() {
                   className="group overflow-hidden rounded-[24px] border border-ink/10 bg-paper transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(8,24,21,0.08)]"
                 >
                   <Link href={`/espace-education/${module.slug}`}>
+
                     <div className="relative aspect-[16/9] overflow-hidden bg-bgAlt">
                       {module.image_url ? (
                         <img
@@ -243,6 +247,7 @@ export default async function EspaceEducationPage() {
                         </span>
                       </div>
                     </div>
+
                   </Link>
                 </article>
               ))}
@@ -252,72 +257,89 @@ export default async function EspaceEducationPage() {
       </section>
 
       {/* ===================================================== */}
-      {/* CONSEIL                                               */}
+      {/* CONSEIL DU DÉBUTANT — VERSION ÉDITORIALE              */}
       {/* ===================================================== */}
 
-      <section className="px-5 pb-[80px] md:pb-[96px]">
-        <div className="mx-auto max-w-[1050px] overflow-hidden rounded-[28px] bg-ink text-paper">
-          <div className="grid md:grid-cols-[0.7fr_1.3fr]">
-            <div className="flex min-h-[260px] items-center justify-center bg-[radial-gradient(120%_140%_at_15%_0%,#2A5E56_0%,#0E2622_65%,#081815_100%)] p-10">
-              <div className="text-center">
-                <span className="text-[12px] font-bold uppercase tracking-[0.15em] text-gold">
+      <section className="px-5 pb-[88px] md:pb-[110px]">
+        <div className="mx-auto max-w-[1180px]">
+
+          <div className="grid items-center gap-8 border-y border-ink/10 py-10 md:grid-cols-[220px_1fr] md:gap-14 md:py-12">
+
+            {/* NUMÉRO */}
+            <div className="flex items-center gap-5 md:block">
+              <span className="font-serif text-[58px] font-semibold leading-none text-ink/15 md:text-[82px]">
+                01
+              </span>
+
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-goldDeep">
                   Conseil du débutant
                 </span>
 
-                <div className="mt-4 font-serif text-[64px] font-semibold leading-none">
-                  01
-                </div>
+                <div className="mt-3 h-px w-10 bg-goldDeep" />
               </div>
             </div>
 
-            <div className="p-8 md:p-12">
-              <h2 className="font-serif text-[30px] font-semibold leading-tight md:text-[36px]">
+            {/* CONTENU */}
+            <div className="max-w-[760px]">
+              <h2 className="font-serif text-[30px] font-semibold leading-tight text-ink md:text-[38px]">
                 Commencer petit, mais commencer correctement.
               </h2>
 
-              <p className="mt-5 text-[15px] leading-7 text-paper/70">
-                Une bonne production commence par une bonne préparation.
-                Avant d’investir davantage, prenez le temps de comprendre
-                votre environnement, vos besoins, vos coûts, votre marché et
-                les exigences de l’activité choisie.
-              </p>
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <p className="text-[15px] leading-7 text-inkSoft">
+                  Une bonne production commence par une bonne préparation.
+                  Avant d’investir davantage, prenez le temps de comprendre
+                  votre environnement, vos besoins, vos coûts, votre marché et
+                  les exigences de l’activité choisie.
+                </p>
 
-              <p className="mt-4 text-[15px] leading-7 text-paper/70">
-                L’objectif n’est pas seulement de produire, mais de
-                construire une activité que vous pouvez suivre, mesurer et
-                améliorer progressivement.
-              </p>
+                <p className="text-[15px] leading-7 text-inkSoft">
+                  L’objectif n’est pas seulement de produire, mais de
+                  construire une activité que vous pouvez suivre, mesurer et
+                  améliorer progressivement.
+                </p>
+              </div>
             </div>
+
           </div>
         </div>
       </section>
 
       {/* ===================================================== */}
-      {/* FORMATION INTENSIVE                                  */}
+      {/* POUR ALLER PLUS LOIN                                  */}
       {/* ===================================================== */}
 
-      <section className="bg-bgAlt px-5 py-[80px]">
+      <section className="bg-bgAlt px-5 py-[88px] md:py-[105px]">
         <div className="mx-auto max-w-[900px] text-center">
-          <span className="text-[13px] font-bold text-goldDeep">
+
+          <span className="inline-flex items-center gap-3 text-[12px] font-bold uppercase tracking-[0.18em] text-goldDeep">
+            <span className="h-px w-8 bg-goldDeep" />
             Pour aller plus loin
+            <span className="h-px w-8 bg-goldDeep" />
           </span>
 
-          <h2 className="mt-3 font-serif text-[clamp(30px,5vw,46px)] font-semibold">
+          <h2 className="mt-5 font-serif text-[clamp(32px,5vw,50px)] font-semibold leading-tight text-ink">
             Formation intensive
           </h2>
 
           <p className="mx-auto mt-5 max-w-[680px] text-[16px] leading-7 text-inkSoft">
-            Pour celles et ceux qui souhaitent aller au-delà des conseils
-            gratuits, AgroFarms237 proposera des formations intensives
-            consacrées à la pratique et au développement d’une activité
-            agricole ou d’élevage.
+            Pour celles et ceux qui souhaitent aller au-delà des contenus
+            gratuits, AgroFarms237 proposera des formations professionnelles
+            consacrées à la pratique, à la rentabilité et au développement
+            d’une activité agricole ou d’élevage.
           </p>
 
-          <div className="mt-7">
-            <Link href="/contact" className="btn btn-ink">
+          <div className="mt-8">
+            <Link
+              href="/contact"
+              className="inline-flex items-center rounded-full bg-ink px-7 py-3.5 text-[12px] font-bold text-paper transition hover:-translate-y-0.5 hover:opacity-90"
+            >
               Découvrir les formations
+              <span className="ml-2 text-base">→</span>
             </Link>
           </div>
+
         </div>
       </section>
 
@@ -327,6 +349,7 @@ export default async function EspaceEducationPage() {
 
       <section className="bg-ink px-5 py-[80px] text-paper">
         <div className="mx-auto max-w-[850px] text-center">
+
           <span className="text-[13px] font-bold text-gold">
             AgroFarms237
           </span>
@@ -340,8 +363,10 @@ export default async function EspaceEducationPage() {
             contenus pédagogiques au fur et à mesure du développement de la
             ferme.
           </p>
+
         </div>
       </section>
+
     </main>
   );
 }
