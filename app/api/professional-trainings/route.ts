@@ -4,11 +4,37 @@ import { isAdminAuthed } from "@/lib/adminAuth";
 
 export const runtime = "nodejs";
 
-/**
- * GET
- * Récupère les formations professionnelles avec
- * leurs sessions et leurs statistiques de base.
- */
+const DEFAULT_COVER_IMAGE =
+  "/images/education/modules/gestion-exploitation.jpg";
+
+const DEFAULT_MODULES = [
+  {
+    title: "Introduction et fondamentaux",
+    description:
+      "Comprendre les notions essentielles et les principes fondamentaux du domaine.",
+  },
+  {
+    title: "Préparation et mise en place",
+    description:
+      "Préparer correctement son activité, ses équipements et son environnement de travail.",
+  },
+  {
+    title: "Techniques pratiques",
+    description:
+      "Découvrir et appliquer les principales techniques nécessaires à la pratique.",
+  },
+  {
+    title: "Gestion et suivi",
+    description:
+      "Mettre en place un suivi efficace et apprendre à gérer les principaux indicateurs.",
+  },
+  {
+    title: "Rentabilité et développement",
+    description:
+      "Comprendre les coûts, la rentabilité et les leviers permettant de développer son activité.",
+  },
+];
+
 export async function GET() {
   try {
     if (!(await isAdminAuthed())) {
@@ -18,160 +44,134 @@ export async function GET() {
       );
     }
 
-    const supabase = supabaseAdmin();
-
-    const [
-      trainingsResult,
-      sessionsResult,
-      registrationsResult,
-    ] = await Promise.all([
-      supabase
+    const { data: trainings, error } =
+      await supabaseAdmin()
         .from("professional_trainings")
         .select("*")
-        .order("position", { ascending: true })
-        .order("created_at", { ascending: true }),
+        .order("position", {
+          ascending: true,
+        })
+        .order("created_at", {
+          ascending: false,
+        });
 
-      supabase
+    if (error) {
+      console.error(
+        "GET professional trainings error:",
+        error
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Impossible de récupérer les formations.",
+        },
+        { status: 500 }
+      );
+    }
+
+    const { data: sessions } =
+      await supabaseAdmin()
         .from("professional_training_sessions")
-        .select("*")
-        .order("start_date", { ascending: true }),
+        .select(
+          "id, training_id, capacity, status"
+        );
 
-      supabase
+    const { data: registrations } =
+      await supabaseAdmin()
         .from("professional_training_registrations")
-        .select("id, session_id, registration_status"),
-    ]);
+        .select(
+          "id, session_id, registration_status"
+        );
 
-    if (trainingsResult.error) {
-      console.error(
-        "Erreur récupération formations professionnelles :",
-        trainingsResult.error
-      );
+    const safeSessions = sessions || [];
+    const safeRegistrations = registrations || [];
 
-      return NextResponse.json(
-        {
-          error:
-            "Impossible de récupérer les formations professionnelles.",
-        },
-        { status: 500 }
-      );
-    }
-
-    if (sessionsResult.error) {
-      console.error(
-        "Erreur récupération sessions professionnelles :",
-        sessionsResult.error
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            "Impossible de récupérer les sessions de formation.",
-        },
-        { status: 500 }
-      );
-    }
-
-    if (registrationsResult.error) {
-      console.error(
-        "Erreur récupération inscriptions professionnelles :",
-        registrationsResult.error
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            "Impossible de récupérer les inscriptions.",
-        },
-        { status: 500 }
-      );
-    }
-
-    const trainings = trainingsResult.data ?? [];
-    const sessions = sessionsResult.data ?? [];
-    const registrations = registrationsResult.data ?? [];
-
-    const confirmedRegistrations = registrations.filter(
-      (registration) =>
-        registration.registration_status === "confirmed"
-    );
-
-    const availableSeats = sessions.reduce((total, session) => {
-      const confirmedForSession = confirmedRegistrations.filter(
-        (registration) =>
-          registration.session_id === session.id
-      ).length;
-
-      return total + Math.max(
-        session.capacity - confirmedForSession,
-        0
-      );
-    }, 0);
-
-    const trainingsWithStats = trainings.map((training) => {
-      const trainingSessions = sessions.filter(
-        (session) =>
-          session.training_id === training.id
-      );
-
-      const trainingRegistrations = confirmedRegistrations.filter(
-        (registration) =>
-          trainingSessions.some(
+    const enrichedTrainings = (trainings || []).map(
+      (training) => {
+        const trainingSessions =
+          safeSessions.filter(
             (session) =>
-              session.id === registration.session_id
-          )
-      );
+              session.training_id === training.id
+          );
 
-      const trainingAvailableSeats =
-        trainingSessions.reduce((total, session) => {
-          const confirmedForSession =
-            confirmedRegistrations.filter(
-              (registration) =>
-                registration.session_id === session.id
-            ).length;
+        const trainingSessionIds =
+          trainingSessions.map(
+            (session) => session.id
+          );
 
-          return total + Math.max(
-            session.capacity - confirmedForSession,
+        const confirmedRegistrations =
+          safeRegistrations.filter(
+            (registration) =>
+              trainingSessionIds.includes(
+                registration.session_id
+              ) &&
+              registration.registration_status ===
+                "confirmed"
+          );
+
+        const usedSeats =
+          confirmedRegistrations.length;
+
+        const totalCapacity =
+          trainingSessions.reduce(
+            (total, session) =>
+              total + Number(session.capacity || 0),
             0
           );
-        }, 0);
 
-      return {
-        ...training,
-        session_count: trainingSessions.length,
-        registration_count: trainingRegistrations.length,
-        available_seats: trainingAvailableSeats,
-      };
-    });
+        return {
+          ...training,
+          session_count:
+            trainingSessions.length,
+          registration_count:
+            confirmedRegistrations.length,
+          available_seats: Math.max(
+            totalCapacity - usedSeats,
+            0
+          ),
+        };
+      }
+    );
+
+    const stats = {
+      trainings: enrichedTrainings.length,
+
+      sessions: safeSessions.length,
+
+      registrations: safeRegistrations.filter(
+        (registration) =>
+          registration.registration_status ===
+          "confirmed"
+      ).length,
+
+      available_seats: enrichedTrainings.reduce(
+        (total, training) =>
+          total + training.available_seats,
+        0
+      ),
+    };
 
     return NextResponse.json({
-      trainings: trainingsWithStats,
-
-      stats: {
-        trainings: trainings.length,
-        sessions: sessions.length,
-        registrations: confirmedRegistrations.length,
-        available_seats: availableSeats,
-      },
+      trainings: enrichedTrainings,
+      stats,
     });
   } catch (error) {
     console.error(
-      "Erreur inattendue formations professionnelles :",
+      "GET professional trainings unexpected error:",
       error
     );
 
     return NextResponse.json(
       {
-        error: "Erreur serveur.",
+        error:
+          "Une erreur est survenue lors du chargement des formations.",
       },
       { status: 500 }
     );
   }
 }
 
-/**
- * POST
- * Création d'une formation professionnelle.
- */
 export async function POST(request: Request) {
   try {
     if (!(await isAdminAuthed())) {
@@ -196,7 +196,8 @@ export async function POST(request: Request) {
     if (!title) {
       return NextResponse.json(
         {
-          error: "Le titre de la formation est obligatoire.",
+          error:
+            "Le titre de la formation est obligatoire.",
         },
         { status: 400 }
       );
@@ -205,23 +206,20 @@ export async function POST(request: Request) {
     if (!slug) {
       return NextResponse.json(
         {
-          error: "Le slug de la formation est obligatoire.",
+          error:
+            "Le slug de la formation est obligatoire.",
         },
         { status: 400 }
       );
     }
 
     const durationDays =
-      body.duration_days === undefined ||
-      body.duration_days === null ||
-      body.duration_days === ""
+      body.duration_days === undefined
         ? 3
         : Number(body.duration_days);
 
     const priceXaf =
-      body.price_xaf === undefined ||
-      body.price_xaf === null ||
-      body.price_xaf === ""
+      body.price_xaf === undefined
         ? 60000
         : Number(body.price_xaf);
 
@@ -232,7 +230,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "La durée de la formation doit être un nombre entier positif.",
+            "La durée de la formation est invalide.",
         },
         { status: 400 }
       );
@@ -251,76 +249,87 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = supabaseAdmin();
+    const { data: existingTraining } =
+      await supabaseAdmin()
+        .from("professional_trainings")
+        .select("id")
+        .eq("slug", slug)
+        .maybeSingle();
 
-    const { data, error } = await supabase
-      .from("professional_trainings")
-      .insert({
-        title,
-        slug,
+    if (existingTraining) {
+      return NextResponse.json(
+        {
+          error:
+            "Une formation utilise déjà ce slug.",
+        },
+        { status: 409 }
+      );
+    }
 
-        short_description:
-          typeof body.short_description === "string"
-            ? body.short_description.trim() || null
-            : null,
+    const { data: training, error } =
+      await supabaseAdmin()
+        .from("professional_trainings")
+        .insert({
+          title,
 
-        description:
-          typeof body.description === "string"
-            ? body.description.trim() || null
-            : null,
+          slug,
 
-        cover_image_url:
-          typeof body.cover_image_url === "string"
-            ? body.cover_image_url.trim() || null
-            : null,
+          short_description:
+            typeof body.short_description === "string"
+              ? body.short_description.trim() ||
+                null
+              : null,
 
-        category:
-          typeof body.category === "string"
-            ? body.category.trim() || null
-            : null,
+          description:
+            typeof body.description === "string"
+              ? body.description.trim() || null
+              : null,
 
-        level:
-          typeof body.level === "string"
-            ? body.level.trim() || null
-            : null,
+          cover_image_url:
+            typeof body.cover_image_url === "string"
+              ? body.cover_image_url.trim() ||
+                DEFAULT_COVER_IMAGE
+              : DEFAULT_COVER_IMAGE,
 
-        duration_days: durationDays,
-        price_xaf: priceXaf,
+          category:
+            typeof body.category === "string"
+              ? body.category.trim() || "Agriculture"
+              : "Agriculture",
 
-        format:
-          typeof body.format === "string"
-            ? body.format.trim() || null
-            : null,
+          level:
+            typeof body.level === "string"
+              ? body.level.trim() || "Débutant"
+              : "Débutant",
 
-        certificate:
-          body.certificate === true,
+          duration_days: durationDays,
 
-        published:
-          body.published === true,
+          price_xaf: priceXaf,
 
-        position:
-          Number.isFinite(Number(body.position))
-            ? Number(body.position)
-            : 0,
-      })
-      .select("*")
-      .single();
+          format:
+            typeof body.format === "string"
+              ? body.format.trim() || "Présentiel"
+              : "Présentiel",
 
-    if (error) {
+          certificate:
+            typeof body.certificate === "boolean"
+              ? body.certificate
+              : false,
+
+          published:
+            typeof body.published === "boolean"
+              ? body.published
+              : false,
+
+          position: 0,
+        })
+        .select("*")
+        .single();
+
+    if (error || !training) {
       console.error(
-        "Erreur création formation professionnelle :",
+        "Create professional training error:",
         error
       );
-
-      if (error.code === "23505") {
-        return NextResponse.json(
-          {
-            error:
-              "Une formation avec ce slug existe déjà.",
-          },
-          { status: 409 }
-        );
-      }
 
       return NextResponse.json(
         {
@@ -331,32 +340,71 @@ export async function POST(request: Request) {
       );
     }
 
+    /*
+     * Création automatique du programme de base.
+     */
+    const modules = DEFAULT_MODULES.map(
+      (module, index) => ({
+        training_id: training.id,
+        title: module.title,
+        description: module.description,
+        position: index,
+      })
+    );
+
+    const { error: modulesError } =
+      await supabaseAdmin()
+        .from("professional_training_modules")
+        .insert(modules);
+
+    /*
+     * Si les modules ne peuvent pas être créés,
+     * on supprime également la formation pour
+     * éviter de laisser une création incomplète.
+     */
+    if (modulesError) {
+      console.error(
+        "Create default training modules error:",
+        modulesError
+      );
+
+      await supabaseAdmin()
+        .from("professional_trainings")
+        .delete()
+        .eq("id", training.id);
+
+      return NextResponse.json(
+        {
+          error:
+            "La formation n'a pas pu être initialisée correctement.",
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       {
-        success: true,
-        training: data,
+        training,
+        default_modules_created: true,
       },
       { status: 201 }
     );
   } catch (error) {
     console.error(
-      "Erreur inattendue création formation :",
+      "POST professional trainings unexpected error:",
       error
     );
 
     return NextResponse.json(
       {
-        error: "Erreur serveur.",
+        error:
+          "Une erreur est survenue lors de la création de la formation.",
       },
       { status: 500 }
     );
   }
 }
 
-/**
- * PATCH
- * Modification d'une formation professionnelle.
- */
 export async function PATCH(request: Request) {
   try {
     if (!(await isAdminAuthed())) {
@@ -370,147 +418,114 @@ export async function PATCH(request: Request) {
 
     const id =
       typeof body.id === "string"
-        ? body.id.trim()
+        ? body.id
         : "";
 
     if (!id) {
       return NextResponse.json(
         {
-          error: "Identifiant de formation manquant.",
+          error:
+            "Identifiant de formation manquant.",
         },
         { status: 400 }
       );
     }
 
-    const updates: Record<string, unknown> = {};
+    const updates: Record<
+      string,
+      string | number | boolean | null
+    > = {
+      updated_at: new Date().toISOString(),
+    };
 
-    if (typeof body.title === "string") {
-      updates.title = body.title.trim();
-    }
+    const textFields = [
+      "title",
+      "slug",
+      "short_description",
+      "description",
+      "cover_image_url",
+      "category",
+      "level",
+      "format",
+    ];
 
-    if (typeof body.slug === "string") {
-      updates.slug = body.slug.trim();
-    }
-
-    if (typeof body.short_description === "string") {
-      updates.short_description =
-        body.short_description.trim() || null;
-    }
-
-    if (typeof body.description === "string") {
-      updates.description =
-        body.description.trim() || null;
-    }
-
-    if (typeof body.cover_image_url === "string") {
-      updates.cover_image_url =
-        body.cover_image_url.trim() || null;
-    }
-
-    if (typeof body.category === "string") {
-      updates.category =
-        body.category.trim() || null;
-    }
-
-    if (typeof body.level === "string") {
-      updates.level =
-        body.level.trim() || null;
+    for (const field of textFields) {
+      if (body[field] !== undefined) {
+        if (
+          typeof body[field] === "string"
+        ) {
+          updates[field] =
+            body[field].trim() || null;
+        }
+      }
     }
 
     if (body.duration_days !== undefined) {
-      const durationDays = Number(body.duration_days);
+      const value = Number(
+        body.duration_days
+      );
 
       if (
-        !Number.isInteger(durationDays) ||
-        durationDays <= 0
+        !Number.isInteger(value) ||
+        value <= 0
       ) {
         return NextResponse.json(
           {
             error:
-              "La durée de la formation est invalide.",
+              "La durée est invalide.",
           },
           { status: 400 }
         );
       }
 
-      updates.duration_days = durationDays;
+      updates.duration_days = value;
     }
 
     if (body.price_xaf !== undefined) {
-      const priceXaf = Number(body.price_xaf);
+      const value = Number(body.price_xaf);
 
       if (
-        !Number.isInteger(priceXaf) ||
-        priceXaf < 0
+        !Number.isInteger(value) ||
+        value < 0
       ) {
         return NextResponse.json(
           {
             error:
-              "Le prix de la formation est invalide.",
+              "Le prix est invalide.",
           },
           { status: 400 }
         );
       }
 
-      updates.price_xaf = priceXaf;
+      updates.price_xaf = value;
     }
 
-    if (typeof body.format === "string") {
-      updates.format =
-        body.format.trim() || null;
-    }
-
-    if (body.certificate !== undefined) {
+    if (
+      typeof body.certificate === "boolean"
+    ) {
       updates.certificate =
-        body.certificate === true;
+        body.certificate;
     }
 
-    if (body.published !== undefined) {
-      updates.published =
-        body.published === true;
+    if (
+      typeof body.published === "boolean"
+    ) {
+      updates.published = body.published;
     }
 
-    if (body.position !== undefined) {
-      const position = Number(body.position);
-
-      if (!Number.isFinite(position)) {
-        return NextResponse.json(
-          {
-            error: "La position est invalide.",
-          },
-          { status: 400 }
-        );
-      }
-
-      updates.position = position;
-    }
-
-    updates.updated_at = new Date().toISOString();
-
-    const supabase = supabaseAdmin();
-
-    const { data, error } = await supabase
-      .from("professional_trainings")
-      .update(updates)
-      .eq("id", id)
-      .select("*")
-      .single();
+    const { data, error } =
+      await supabaseAdmin()
+        .from("professional_trainings")
+        .update(updates)
+        .eq("id", id)
+        .select("*")
+        .single();
 
     if (error) {
       console.error(
-        "Erreur modification formation professionnelle :",
+        "Update professional training error:",
         error
       );
-
-      if (error.code === "23505") {
-        return NextResponse.json(
-          {
-            error:
-              "Une autre formation utilise déjà ce slug.",
-          },
-          { status: 409 }
-        );
-      }
 
       return NextResponse.json(
         {
@@ -522,28 +537,24 @@ export async function PATCH(request: Request) {
     }
 
     return NextResponse.json({
-      success: true,
       training: data,
     });
   } catch (error) {
     console.error(
-      "Erreur inattendue modification formation :",
+      "PATCH professional training unexpected error:",
       error
     );
 
     return NextResponse.json(
       {
-        error: "Erreur serveur.",
+        error:
+          "Une erreur est survenue lors de la modification.",
       },
       { status: 500 }
     );
   }
 }
 
-/**
- * DELETE
- * Suppression d'une formation professionnelle.
- */
 export async function DELETE(request: Request) {
   try {
     if (!(await isAdminAuthed())) {
@@ -553,32 +564,29 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const body = await request.json();
+    const url = new URL(request.url);
 
-    const id =
-      typeof body.id === "string"
-        ? body.id.trim()
-        : "";
+    const id = url.searchParams.get("id");
 
     if (!id) {
       return NextResponse.json(
         {
-          error: "Identifiant de formation manquant.",
+          error:
+            "Identifiant de formation manquant.",
         },
         { status: 400 }
       );
     }
 
-    const supabase = supabaseAdmin();
-
-    const { error } = await supabase
-      .from("professional_trainings")
-      .delete()
-      .eq("id", id);
+    const { error } =
+      await supabaseAdmin()
+        .from("professional_trainings")
+        .delete()
+        .eq("id", id);
 
     if (error) {
       console.error(
-        "Erreur suppression formation professionnelle :",
+        "Delete professional training error:",
         error
       );
 
@@ -596,13 +604,14 @@ export async function DELETE(request: Request) {
     });
   } catch (error) {
     console.error(
-      "Erreur inattendue suppression formation :",
+      "DELETE professional training unexpected error:",
       error
     );
 
     return NextResponse.json(
       {
-        error: "Erreur serveur.",
+        error:
+          "Une erreur est survenue lors de la suppression.",
       },
       { status: 500 }
     );
