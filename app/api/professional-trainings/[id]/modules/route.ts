@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { isAdminAuthed } from "@/lib/isAdminAuthed";
+import { isAdminAuthed } from "@/lib/adminAuth";
 
 export const runtime = "nodejs";
 
@@ -10,14 +10,16 @@ type RouteContext = {
   }>;
 };
 
+/**
+ * GET
+ * Récupère tous les modules d'une formation.
+ */
 export async function GET(
   _request: Request,
   context: RouteContext
 ) {
   try {
-    const isAuthed = await isAdminAuthed();
-
-    if (!isAuthed) {
+    if (!(await isAdminAuthed())) {
       return NextResponse.json(
         { error: "Non autorisé." },
         { status: 401 }
@@ -26,7 +28,7 @@ export async function GET(
 
     const { id } = await context.params;
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin()
       .from("professional_training_modules")
       .select("*")
       .eq("training_id", id)
@@ -71,14 +73,16 @@ export async function GET(
   }
 }
 
+/**
+ * POST
+ * Crée un nouveau module.
+ */
 export async function POST(
   request: Request,
   context: RouteContext
 ) {
   try {
-    const isAuthed = await isAdminAuthed();
-
-    if (!isAuthed) {
+    if (!(await isAdminAuthed())) {
       return NextResponse.json(
         { error: "Non autorisé." },
         { status: 401 }
@@ -109,9 +113,11 @@ export async function POST(
       );
     }
 
-    // Vérification de l'existence de la formation
+    /*
+     * Vérifier que la formation existe.
+     */
     const { data: training, error: trainingError } =
-      await supabaseAdmin
+      await supabaseAdmin()
         .from("professional_trainings")
         .select("id")
         .eq("id", id)
@@ -141,17 +147,21 @@ export async function POST(
       );
     }
 
-    // Détermination automatique de la position
-    const { data: lastModule, error: lastModuleError } =
-      await supabaseAdmin
-        .from("professional_training_modules")
-        .select("position")
-        .eq("training_id", id)
-        .order("position", {
-          ascending: false,
-        })
-        .limit(1)
-        .maybeSingle();
+    /*
+     * Déterminer automatiquement la prochaine position.
+     */
+    const {
+      data: lastModule,
+      error: lastModuleError,
+    } = await supabaseAdmin()
+      .from("professional_training_modules")
+      .select("position")
+      .eq("training_id", id)
+      .order("position", {
+        ascending: false,
+      })
+      .limit(1)
+      .maybeSingle();
 
     if (lastModuleError) {
       console.error(
@@ -173,7 +183,10 @@ export async function POST(
         ? lastModule.position + 1
         : 0;
 
-    const { data, error } = await supabaseAdmin
+    /*
+     * Création du module.
+     */
+    const { data, error } = await supabaseAdmin()
       .from("professional_training_modules")
       .insert({
         training_id: id,
@@ -221,14 +234,16 @@ export async function POST(
   }
 }
 
+/**
+ * PATCH
+ * Modifie un module existant.
+ */
 export async function PATCH(
   request: Request,
   context: RouteContext
 ) {
   try {
-    const isAuthed = await isAdminAuthed();
-
-    if (!isAuthed) {
+    if (!(await isAdminAuthed())) {
       return NextResponse.json(
         { error: "Non autorisé." },
         { status: 401 }
@@ -247,7 +262,8 @@ export async function PATCH(
     if (!moduleId) {
       return NextResponse.json(
         {
-          error: "Identifiant du module manquant.",
+          error:
+            "Identifiant du module manquant.",
         },
         { status: 400 }
       );
@@ -262,6 +278,9 @@ export async function PATCH(
       updated_at: new Date().toISOString(),
     };
 
+    /*
+     * Titre
+     */
     if (typeof body.title === "string") {
       const title = body.title.trim();
 
@@ -278,16 +297,25 @@ export async function PATCH(
       updates.title = title;
     }
 
+    /*
+     * Description
+     */
     if (typeof body.description === "string") {
       updates.description =
         body.description.trim() || null;
     }
 
+    /*
+     * Position
+     */
     if (typeof body.position === "number") {
       updates.position = body.position;
     }
 
-    const { data, error } = await supabaseAdmin
+    /*
+     * Mise à jour.
+     */
+    const { data, error } = await supabaseAdmin()
       .from("professional_training_modules")
       .update(updates)
       .eq("id", moduleId)
@@ -329,14 +357,16 @@ export async function PATCH(
   }
 }
 
+/**
+ * DELETE
+ * Supprime un module.
+ */
 export async function DELETE(
   request: Request,
   context: RouteContext
 ) {
   try {
-    const isAuthed = await isAdminAuthed();
-
-    if (!isAuthed) {
+    if (!(await isAdminAuthed())) {
       return NextResponse.json(
         { error: "Non autorisé." },
         { status: 401 }
@@ -353,13 +383,53 @@ export async function DELETE(
     if (!moduleId) {
       return NextResponse.json(
         {
-          error: "Identifiant du module manquant.",
+          error:
+            "Identifiant du module manquant.",
         },
         { status: 400 }
       );
     }
 
-    const { error } = await supabaseAdmin
+    /*
+     * Vérifier que le module appartient bien
+     * à la formation concernée.
+     */
+    const { data: module, error: moduleError } =
+      await supabaseAdmin()
+        .from("professional_training_modules")
+        .select("id")
+        .eq("id", moduleId)
+        .eq("training_id", trainingId)
+        .maybeSingle();
+
+    if (moduleError) {
+      console.error(
+        "Module verification error:",
+        moduleError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Impossible de vérifier le module.",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!module) {
+      return NextResponse.json(
+        {
+          error: "Module introuvable.",
+        },
+        { status: 404 }
+      );
+    }
+
+    /*
+     * Suppression.
+     */
+    const { error } = await supabaseAdmin()
       .from("professional_training_modules")
       .delete()
       .eq("id", moduleId)
