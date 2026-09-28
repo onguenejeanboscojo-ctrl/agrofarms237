@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import AdminNav from "@/components/AdminNav";
 
@@ -69,21 +70,15 @@ export default function AdminFormationsPage() {
 
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
-
   const [shortDescription, setShortDescription] = useState("");
   const [description, setDescription] = useState("");
-
   const [coverImageUrl, setCoverImageUrl] = useState("");
-
   const [category, setCategory] = useState("");
   const [level, setLevel] = useState("");
-
   const [durationDays, setDurationDays] = useState("3");
   const [priceXaf, setPriceXaf] = useState("60000");
-
   const [format, setFormat] = useState("");
   const [certificate, setCertificate] = useState(false);
-
   const [published, setPublished] = useState(false);
 
   async function loadTrainings() {
@@ -91,19 +86,15 @@ export default function AdminFormationsPage() {
     setError("");
 
     try {
-      const response = await fetch(
-        "/api/professional-trainings",
-        {
-          cache: "no-store",
-        }
-      );
+      const response = await fetch("/api/professional-trainings", {
+        cache: "no-store",
+      });
 
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data.error ||
-            "Impossible de charger les formations."
+          data.error || "Impossible de charger les formations."
         );
       }
 
@@ -141,7 +132,6 @@ export default function AdminFormationsPage() {
     setFormat("");
     setCertificate(false);
     setPublished(false);
-
     setFormMessage("");
     setShowForm(true);
   }
@@ -196,9 +186,7 @@ export default function AdminFormationsPage() {
       }
 
       if (!Number.isInteger(price) || price < 0) {
-        setFormMessage(
-          "Le prix indiqué est invalide."
-        );
+        setFormMessage("Le prix indiqué est invalide.");
         return;
       }
 
@@ -212,28 +200,16 @@ export default function AdminFormationsPage() {
           body: JSON.stringify({
             title: title.trim(),
             slug: slug.trim(),
-
             short_description:
               shortDescription.trim() || null,
-
-            description:
-              description.trim() || null,
-
+            description: description.trim() || null,
             cover_image_url:
               coverImageUrl.trim() || null,
-
-            category:
-              category.trim() || null,
-
-            level:
-              level.trim() || null,
-
+            category: category.trim() || null,
+            level: level.trim() || null,
             duration_days: duration,
             price_xaf: price,
-
-            format:
-              format.trim() || null,
-
+            format: format.trim() || null,
             certificate,
             published,
           }),
@@ -251,7 +227,6 @@ export default function AdminFormationsPage() {
       }
 
       setShowForm(false);
-
       await loadTrainings();
     } catch (err) {
       setFormMessage(
@@ -338,7 +313,7 @@ export default function AdminFormationsPage() {
               onSubmit={handleCreateTraining}
               className="space-y-7 p-6"
             >
-              {/* IDENTITÉ */}
+              {/* INFORMATIONS GÉNÉRALES */}
               <div>
                 <h3 className="font-serif text-lg font-semibold text-ink">
                   Informations générales
@@ -353,9 +328,7 @@ export default function AdminFormationsPage() {
                     <input
                       value={title}
                       onChange={(event) =>
-                        handleTitleChange(
-                          event.target.value
-                        )
+                        handleTitleChange(event.target.value)
                       }
                       placeholder="Ex. Maîtriser la pisciculture"
                       className="mt-2 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none transition focus:border-ink/30"
@@ -379,7 +352,7 @@ export default function AdminFormationsPage() {
                 </div>
               </div>
 
-              {/* DESCRIPTIONS */}
+              {/* PRÉSENTATION */}
               <div>
                 <h3 className="font-serif text-lg font-semibold text-ink">
                   Présentation
@@ -412,9 +385,7 @@ export default function AdminFormationsPage() {
                     <textarea
                       value={description}
                       onChange={(event) =>
-                        setDescription(
-                          event.target.value
-                        )
+                        setDescription(event.target.value)
                       }
                       rows={6}
                       placeholder="Présentez le contenu, les objectifs et le déroulement de la formation."
@@ -432,23 +403,21 @@ export default function AdminFormationsPage() {
 
                 <div className="mt-4">
                   <label className="text-sm font-semibold text-ink">
-                    URL de l'image
+                    URL de l&apos;image
                   </label>
 
                   <input
                     value={coverImageUrl}
                     onChange={(event) =>
-                      setCoverImageUrl(
-                        event.target.value
-                      )
+                      setCoverImageUrl(event.target.value)
                     }
                     placeholder="https://..."
                     className="mt-2 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none transition focus:border-ink/30"
                   />
 
                   <p className="mt-2 text-xs leading-5 text-inkSoft">
-                    L'upload d'image sera ajouté dans une
-                    prochaine étape.
+                    L&apos;upload d&apos;image sera ajouté dans
+                    une prochaine étape.
                   </p>
                 </div>
               </div>
@@ -537,9 +506,7 @@ export default function AdminFormationsPage() {
                         min="0"
                         value={priceXaf}
                         onChange={(event) =>
-                          setPriceXaf(
-                            event.target.value
-                          )
+                          setPriceXaf(event.target.value)
                         }
                         className="w-full rounded-l-xl border border-r-0 border-ink/10 bg-white px-4 py-3 text-sm outline-none focus:border-ink/30"
                       />
@@ -552,7 +519,7 @@ export default function AdminFormationsPage() {
                 </div>
               </div>
 
-              {/* FORMAT */}
+              {/* ORGANISATION */}
               <div>
                 <h3 className="font-serif text-lg font-semibold text-ink">
                   Organisation
@@ -866,12 +833,13 @@ export default function AdminFormationsPage() {
                           )}
                         </div>
 
-                        <button
-                          type="button"
-                          className="rounded-lg border border-ink/10 px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-bgAlt"
+                        {/* GÉRER */}
+                        <Link
+                          href={`/admin/formations/${training.id}`}
+                          className="inline-flex items-center justify-center rounded-lg border border-ink/10 px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-bgAlt"
                         >
                           Gérer la formation
-                        </button>
+                        </Link>
                       </div>
                     </div>
                   </div>
