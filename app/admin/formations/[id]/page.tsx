@@ -46,6 +46,52 @@ type TrainingSession = {
   updated_at: string;
 };
 
+type RegistrationStatus =
+  | "pending"
+  | "confirmed"
+  | "cancelled"
+  | "completed";
+
+type PaymentStatus =
+  | "pending"
+  | "paid"
+  | "failed"
+  | "refunded";
+
+type Registration = {
+  id: string;
+  training_id: string;
+  session_id: string | null;
+  full_name: string;
+  phone: string;
+  email: string | null;
+  organization: string | null;
+  registration_status: RegistrationStatus;
+  payment_status: PaymentStatus;
+  amount_xaf: number;
+  created_at: string;
+  updated_at: string;
+  session: {
+    id: string;
+    start_date: string;
+    end_date: string | null;
+    capacity: number;
+    status: string;
+    location: string | null;
+    format: string | null;
+  } | null;
+};
+
+type RegistrationStats = {
+  total: number;
+  pending: number;
+  confirmed: number;
+  cancelled: number;
+  completed: number;
+  paid: number;
+  payment_pending: number;
+};
+
 const SESSION_STATUSES = [
   {
     value: "draft",
@@ -69,6 +115,44 @@ const SESSION_STATUSES = [
   },
 ];
 
+const REGISTRATION_STATUSES = [
+  {
+    value: "pending",
+    label: "En attente",
+  },
+  {
+    value: "confirmed",
+    label: "Confirmée",
+  },
+  {
+    value: "cancelled",
+    label: "Annulée",
+  },
+  {
+    value: "completed",
+    label: "Terminée",
+  },
+];
+
+const PAYMENT_STATUSES = [
+  {
+    value: "pending",
+    label: "En attente",
+  },
+  {
+    value: "paid",
+    label: "Payé",
+  },
+  {
+    value: "failed",
+    label: "Échec",
+  },
+  {
+    value: "refunded",
+    label: "Remboursé",
+  },
+];
+
 function formatPrice(value: number) {
   return new Intl.NumberFormat("fr-FR").format(value);
 }
@@ -86,6 +170,24 @@ function formatDate(value: string | null) {
     day: "2-digit",
     month: "long",
     year: "numeric",
+  }).format(date);
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return "—";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(date);
 }
 
@@ -113,6 +215,58 @@ function getSessionStatusClass(status: string) {
 
     default:
       return "bg-bgAlt text-inkSoft";
+  }
+}
+
+function getRegistrationStatusLabel(
+  status: RegistrationStatus
+) {
+  return (
+    REGISTRATION_STATUSES.find(
+      (item) => item.value === status
+    )?.label || status
+  );
+}
+
+function getRegistrationStatusClass(
+  status: RegistrationStatus
+) {
+  switch (status) {
+    case "confirmed":
+      return "bg-green-100 text-green-800";
+
+    case "completed":
+      return "bg-blue-100 text-blue-800";
+
+    case "cancelled":
+      return "bg-red-100 text-red-800";
+
+    default:
+      return "bg-amber-100 text-amber-800";
+  }
+}
+
+function getPaymentStatusLabel(status: PaymentStatus) {
+  return (
+    PAYMENT_STATUSES.find(
+      (item) => item.value === status
+    )?.label || status
+  );
+}
+
+function getPaymentStatusClass(status: PaymentStatus) {
+  switch (status) {
+    case "paid":
+      return "bg-green-100 text-green-800";
+
+    case "failed":
+      return "bg-red-100 text-red-800";
+
+    case "refunded":
+      return "bg-blue-100 text-blue-800";
+
+    default:
+      return "bg-amber-100 text-amber-800";
   }
 }
 
@@ -205,6 +359,46 @@ export default function AdminFormationDetailPage() {
 
   const [deletingSessionId, setDeletingSessionId] =
     useState<string | null>(null);
+
+  /* =========================================================
+     REGISTRATIONS
+  ========================================================= */
+
+  const [registrations, setRegistrations] =
+    useState<Registration[]>([]);
+
+  const [registrationStats, setRegistrationStats] =
+    useState<RegistrationStats>({
+      total: 0,
+      pending: 0,
+      confirmed: 0,
+      cancelled: 0,
+      completed: 0,
+      paid: 0,
+      payment_pending: 0,
+    });
+
+  const [
+    registrationsLoading,
+    setRegistrationsLoading,
+  ] = useState(true);
+
+  const [
+    registrationsError,
+    setRegistrationsError,
+  ] = useState("");
+
+  const [
+    updatingRegistrationId,
+    setUpdatingRegistrationId,
+  ] = useState<string | null>(null);
+
+  const [
+    registrationFilter,
+    setRegistrationFilter,
+  ] = useState<
+    "all" | RegistrationStatus
+  >("all");
 
   /* =========================================================
      LOAD FORMATION
@@ -309,11 +503,65 @@ export default function AdminFormationDetailPage() {
     }
   }
 
+  /* =========================================================
+     LOAD REGISTRATIONS
+  ========================================================= */
+
+  async function loadRegistrations() {
+    setRegistrationsLoading(true);
+    setRegistrationsError("");
+
+    try {
+      const response = await fetch(
+        `/api/professional-training-registrations?training_id=${encodeURIComponent(
+          id
+        )}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Impossible de charger les inscriptions."
+        );
+      }
+
+      setRegistrations(
+        data.registrations || []
+      );
+
+      setRegistrationStats(
+        data.stats || {
+          total: 0,
+          pending: 0,
+          confirmed: 0,
+          cancelled: 0,
+          completed: 0,
+          paid: 0,
+          payment_pending: 0,
+        }
+      );
+    } catch (err) {
+      setRegistrationsError(
+        err instanceof Error
+          ? err.message
+          : "Impossible de charger les inscriptions."
+      );
+    } finally {
+      setRegistrationsLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!id) return;
 
     loadTraining();
     loadSessions();
+    loadRegistrations();
   }, [id]);
 
   /* =========================================================
@@ -493,11 +741,9 @@ export default function AdminFormationDetailPage() {
           method: editingSessionId
             ? "PATCH"
             : "POST",
-
           headers: {
             "Content-Type": "application/json",
           },
-
           body: JSON.stringify(
             editingSessionId
               ? {
@@ -552,6 +798,7 @@ export default function AdminFormationDetailPage() {
 
       await loadSessions();
       await loadTraining();
+      await loadRegistrations();
     } catch (err) {
       setSessionError(
         err instanceof Error
@@ -596,6 +843,7 @@ export default function AdminFormationDetailPage() {
 
       await loadSessions();
       await loadTraining();
+      await loadRegistrations();
     } catch (err) {
       setSessionError(
         err instanceof Error
@@ -606,6 +854,81 @@ export default function AdminFormationDetailPage() {
       setDeletingSessionId(null);
     }
   }
+
+  /* =========================================================
+     UPDATE REGISTRATION
+  ========================================================= */
+
+  async function updateRegistration(
+    registrationId: string,
+    changes: {
+      registration_status?: RegistrationStatus;
+      payment_status?: PaymentStatus;
+    }
+  ) {
+    setUpdatingRegistrationId(
+      registrationId
+    );
+    setRegistrationsError("");
+
+    try {
+      const response = await fetch(
+        "/api/professional-training-registrations",
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: registrationId,
+            ...changes,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Impossible de modifier l'inscription."
+        );
+      }
+
+      await loadRegistrations();
+      await loadSessions();
+      await loadTraining();
+    } catch (err) {
+      setRegistrationsError(
+        err instanceof Error
+          ? err.message
+          : "Impossible de modifier l'inscription."
+      );
+    } finally {
+      setUpdatingRegistrationId(null);
+    }
+  }
+
+  /* =========================================================
+     REGISTRATIONS — DERIVED DATA
+  ========================================================= */
+
+  const filteredRegistrations = useMemo(() => {
+    if (
+      registrationFilter === "all"
+    ) {
+      return registrations;
+    }
+
+    return registrations.filter(
+      (registration) =>
+        registration.registration_status ===
+        registrationFilter
+    );
+  }, [
+    registrations,
+    registrationFilter,
+  ]);
 
   /* =========================================================
      SESSIONS — DERIVED DATA
@@ -758,8 +1081,8 @@ export default function AdminFormationDetailPage() {
               </h1>
 
               <p className="mt-3 max-w-2xl text-[15px] leading-7 text-inkSoft">
-                Cette page sert uniquement à
-                programmer et gérer la disponibilité
+                Cette page sert à programmer,
+                suivre et gérer la disponibilité
                 commerciale de la formation.
               </p>
 
@@ -818,15 +1141,12 @@ export default function AdminFormationDetailPage() {
             </h2>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-inkSoft">
-              Gérez ici uniquement le prix et la
-              visibilité de la formation. Le contenu
-              de la landing page reste fixe.
+              Gérez ici le prix, la visibilité et
+              l'autorisation des pré-inscriptions.
             </p>
           </div>
 
           <div className="mt-7 grid gap-6 lg:grid-cols-[280px_1fr]">
-            {/* PRIX */}
-
             <div>
               <label className="text-sm font-semibold text-ink">
                 Tarif de la formation
@@ -851,12 +1171,9 @@ export default function AdminFormationDetailPage() {
               </div>
 
               <p className="mt-2 text-xs text-inkSoft">
-                Valeur actuelle recommandée :
-                60 000 FCFA.
+                Valeur actuelle : 60 000 FCFA.
               </p>
             </div>
-
-            {/* VISIBILITÉ */}
 
             <div className="space-y-4">
               <label className="flex cursor-pointer items-start gap-4 rounded-xl border border-ink/10 bg-bgAlt p-4">
@@ -878,10 +1195,9 @@ export default function AdminFormationDetailPage() {
                   </span>
 
                   <span className="mt-1 block text-xs leading-5 text-inkSoft">
-                    Si activé, AgroFarms237 peut
-                    afficher la disponibilité de
-                    la formation sur la landing
-                    page.
+                    Permet d'afficher la formation
+                    professionnelle sur la partie
+                    publique du site.
                   </span>
                 </span>
               </label>
@@ -907,11 +1223,9 @@ export default function AdminFormationDetailPage() {
                   </span>
 
                   <span className="mt-1 block text-xs leading-5 text-inkSoft">
-                    Permet aux personnes intéressées
-                    de réserver leur intérêt même
-                    lorsqu'aucune date n'est encore
-                    disponible. Aucun paiement n'est
-                    demandé.
+                    Permet de recueillir les personnes
+                    intéressées lorsqu'aucune session
+                    n'est encore disponible.
                   </span>
                 </span>
               </label>
@@ -960,8 +1274,8 @@ export default function AdminFormationDetailPage() {
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-inkSoft">
-                C'est ici que vous programmez la
-                prochaine date de formation.
+                Programmez et gérez les dates de
+                formation.
               </p>
             </div>
 
@@ -974,7 +1288,7 @@ export default function AdminFormationDetailPage() {
             </button>
           </div>
 
-          {/* FORMULAIRE */}
+          {/* FORMULAIRE SESSION */}
 
           {showSessionForm && (
             <div className="mt-7 rounded-2xl border border-ink/10 bg-bgAlt p-5 md:p-6">
@@ -998,8 +1312,6 @@ export default function AdminFormationDetailPage() {
                 }
                 className="space-y-6"
               >
-                {/* DATES */}
-
                 <div className="grid gap-5 md:grid-cols-2">
                   <div>
                     <label className="text-sm font-semibold text-ink">
@@ -1044,8 +1356,6 @@ export default function AdminFormationDetailPage() {
                   </div>
                 </div>
 
-                {/* LIEU */}
-
                 <div>
                   <label className="text-sm font-semibold text-ink">
                     Lieu
@@ -1062,8 +1372,6 @@ export default function AdminFormationDetailPage() {
                     className="mt-2 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none focus:border-ink/30"
                   />
                 </div>
-
-                {/* PLACES + FORMAT */}
 
                 <div className="grid gap-5 md:grid-cols-2">
                   <div>
@@ -1127,8 +1435,6 @@ export default function AdminFormationDetailPage() {
                   </div>
                 </div>
 
-                {/* STATUT */}
-
                 <div>
                   <label className="text-sm font-semibold text-ink">
                     Statut de la session
@@ -1154,12 +1460,6 @@ export default function AdminFormationDetailPage() {
                       )
                     )}
                   </select>
-
-                  <p className="mt-2 text-xs text-inkSoft">
-                    Pour afficher une session
-                    comme disponible, utilisez
-                    « Ouverte ».
-                  </p>
                 </div>
 
                 {sessionError && (
@@ -1301,10 +1601,7 @@ export default function AdminFormationDetailPage() {
 
                 <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-inkSoft">
                   Programmez une date lorsque vous
-                  serez prêt. Si les pré-inscriptions
-                  sont activées, le site pourra
-                  recueillir les personnes intéressées
-                  en attendant.
+                  serez prêt.
                 </p>
               </div>
             )}
@@ -1424,7 +1721,7 @@ export default function AdminFormationDetailPage() {
         ====================================================== */}
 
         <section className="mt-7 rounded-2xl border border-ink/10 bg-paper p-6 md:p-7">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-goldDeep">
                 Participants
@@ -1434,23 +1731,429 @@ export default function AdminFormationDetailPage() {
                 Inscriptions
               </h2>
 
-              <p className="mt-2 text-sm leading-6 text-inkSoft">
-                Les inscriptions et pré-inscriptions
-                seront affichées ici une fois le
-                formulaire public connecté.
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-inkSoft">
+                Suivez les demandes d'inscription,
+                confirmez les participants et
+                mettez à jour leur situation de
+                paiement.
               </p>
             </div>
 
-            <div className="rounded-xl bg-bgAlt px-5 py-4">
+            <button
+              type="button"
+              onClick={loadRegistrations}
+              disabled={registrationsLoading}
+              className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-bgAlt disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {registrationsLoading
+                ? "Actualisation..."
+                : "Actualiser"}
+            </button>
+          </div>
+
+          {/* STATS */}
+
+          <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="rounded-xl bg-bgAlt p-4">
               <p className="text-xs text-inkSoft">
-                Inscriptions confirmées
+                Total
               </p>
 
               <p className="mt-1 text-2xl font-semibold text-ink">
-                {training.registration_count}
+                {registrationStats.total}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-amber-50 p-4">
+              <p className="text-xs text-amber-700">
+                En attente
+              </p>
+
+              <p className="mt-1 text-2xl font-semibold text-amber-900">
+                {registrationStats.pending}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-green-50 p-4">
+              <p className="text-xs text-green-700">
+                Confirmées
+              </p>
+
+              <p className="mt-1 text-2xl font-semibold text-green-900">
+                {registrationStats.confirmed}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-blue-50 p-4">
+              <p className="text-xs text-blue-700">
+                Terminées
+              </p>
+
+              <p className="mt-1 text-2xl font-semibold text-blue-900">
+                {registrationStats.completed}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-green-50 p-4">
+              <p className="text-xs text-green-700">
+                Paiements reçus
+              </p>
+
+              <p className="mt-1 text-2xl font-semibold text-green-900">
+                {registrationStats.paid}
               </p>
             </div>
           </div>
+
+          {/* FILTRES */}
+
+          <div className="mt-7 flex flex-wrap gap-2 border-b border-ink/10 pb-5">
+            <button
+              type="button"
+              onClick={() =>
+                setRegistrationFilter("all")
+              }
+              className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+                registrationFilter === "all"
+                  ? "bg-ink text-white"
+                  : "border border-ink/10 bg-white text-inkSoft hover:bg-bgAlt"
+              }`}
+            >
+              Toutes ({registrationStats.total})
+            </button>
+
+            {REGISTRATION_STATUSES.map(
+              (status) => {
+                const count =
+                  registrationStats[
+                    status.value as keyof RegistrationStats
+                  ];
+
+                return (
+                  <button
+                    key={status.value}
+                    type="button"
+                    onClick={() =>
+                      setRegistrationFilter(
+                        status.value as RegistrationStatus
+                      )
+                    }
+                    className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+                      registrationFilter ===
+                      status.value
+                        ? "bg-ink text-white"
+                        : "border border-ink/10 bg-white text-inkSoft hover:bg-bgAlt"
+                    }`}
+                  >
+                    {status.label} ({count})
+                  </button>
+                );
+              }
+            )}
+          </div>
+
+          {registrationsError && (
+            <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {registrationsError}
+            </div>
+          )}
+
+          {/* LISTE */}
+
+          {registrationsLoading ? (
+            <div className="mt-6 rounded-2xl border border-dashed border-ink/15 bg-bgAlt px-6 py-12 text-center">
+              <p className="text-sm text-inkSoft">
+                Chargement des inscriptions…
+              </p>
+            </div>
+          ) : filteredRegistrations.length ===
+            0 ? (
+            <div className="mt-6 rounded-2xl border border-dashed border-ink/15 bg-bgAlt px-6 py-12 text-center">
+              <p className="font-serif text-xl font-semibold text-ink">
+                Aucune inscription
+              </p>
+
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-inkSoft">
+                {registrationFilter ===
+                "all"
+                  ? "Les nouvelles inscriptions envoyées depuis le site apparaîtront ici."
+                  : "Aucune inscription ne correspond à ce filtre."}
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-4">
+              {filteredRegistrations.map(
+                (registration) => {
+                  const isUpdating =
+                    updatingRegistrationId ===
+                    registration.id;
+
+                  return (
+                    <div
+                      key={registration.id}
+                      className="overflow-hidden rounded-2xl border border-ink/10 bg-white"
+                    >
+                      {/* PARTICIPANT */}
+
+                      <div className="p-5">
+                        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="text-base font-semibold text-ink">
+                                {
+                                  registration.full_name
+                                }
+                              </h3>
+
+                              <span
+                                className={`rounded-full px-3 py-1 text-xs font-semibold ${getRegistrationStatusClass(
+                                  registration.registration_status
+                                )}`}
+                              >
+                                {getRegistrationStatusLabel(
+                                  registration.registration_status
+                                )}
+                              </span>
+
+                              <span
+                                className={`rounded-full px-3 py-1 text-xs font-semibold ${getPaymentStatusClass(
+                                  registration.payment_status
+                                )}`}
+                              >
+                                {getPaymentStatusLabel(
+                                  registration.payment_status
+                                )}
+                              </span>
+                            </div>
+
+                            <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                              <div>
+                                <p className="text-xs text-inkSoft">
+                                  Téléphone
+                                </p>
+
+                                <a
+                                  href={`tel:${registration.phone}`}
+                                  className="mt-1 block font-medium text-ink hover:underline"
+                                >
+                                  {
+                                    registration.phone
+                                  }
+                                </a>
+                              </div>
+
+                              <div>
+                                <p className="text-xs text-inkSoft">
+                                  Email
+                                </p>
+
+                                <p className="mt-1 break-all font-medium text-ink">
+                                  {registration.email ||
+                                    "Non renseigné"}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-xs text-inkSoft">
+                                  Organisation / activité
+                                </p>
+
+                                <p className="mt-1 font-medium text-ink">
+                                  {registration.organization ||
+                                    "Non renseignée"}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-xs text-inkSoft">
+                                  Demande reçue
+                                </p>
+
+                                <p className="mt-1 font-medium text-ink">
+                                  {formatDateTime(
+                                    registration.created_at
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0 rounded-xl bg-bgAlt px-5 py-4 lg:min-w-[190px]">
+                            <p className="text-xs text-inkSoft">
+                              Montant
+                            </p>
+
+                            <p className="mt-1 text-lg font-semibold text-ink">
+                              {formatPrice(
+                                registration.amount_xaf
+                              )}{" "}
+                              FCFA
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* SESSION */}
+
+                      <div className="border-t border-ink/10 bg-paper px-5 py-4">
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                          <div>
+                            <p className="text-xs text-inkSoft">
+                              Session
+                            </p>
+
+                            <p className="mt-1 text-sm font-semibold text-ink">
+                              {registration.session
+                                ? formatDate(
+                                    registration
+                                      .session
+                                      .start_date
+                                  )
+                                : "Aucune session"}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-inkSoft">
+                              Lieu
+                            </p>
+
+                            <p className="mt-1 text-sm font-semibold text-ink">
+                              {registration.session
+                                ?.location ||
+                                "À confirmer"}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-inkSoft">
+                              Format
+                            </p>
+
+                            <p className="mt-1 text-sm font-semibold text-ink">
+                              {registration.session
+                                ?.format ||
+                                "Présentiel"}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-inkSoft">
+                              Capacité
+                            </p>
+
+                            <p className="mt-1 text-sm font-semibold text-ink">
+                              {registration.session
+                                ?.capacity
+                                ? `${registration.session.capacity} places`
+                                : "—"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ACTIONS */}
+
+                      <div className="border-t border-ink/10 p-5">
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div>
+                            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-inkSoft">
+                              Statut de l'inscription
+                            </label>
+
+                            <select
+                              value={
+                                registration.registration_status
+                              }
+                              disabled={
+                                isUpdating
+                              }
+                              onChange={(event) =>
+                                updateRegistration(
+                                  registration.id,
+                                  {
+                                    registration_status:
+                                      event
+                                        .target
+                                        .value as RegistrationStatus,
+                                  }
+                                )
+                              }
+                              className="mt-2 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm font-medium text-ink outline-none focus:border-ink/30 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {REGISTRATION_STATUSES.map(
+                                (status) => (
+                                  <option
+                                    key={
+                                      status.value
+                                    }
+                                    value={
+                                      status.value
+                                    }
+                                  >
+                                    {status.label}
+                                  </option>
+                                )
+                              )}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-inkSoft">
+                              Statut du paiement
+                            </label>
+
+                            <select
+                              value={
+                                registration.payment_status
+                              }
+                              disabled={
+                                isUpdating
+                              }
+                              onChange={(event) =>
+                                updateRegistration(
+                                  registration.id,
+                                  {
+                                    payment_status:
+                                      event
+                                        .target
+                                        .value as PaymentStatus,
+                                  }
+                                )
+                              }
+                              className="mt-2 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm font-medium text-ink outline-none focus:border-ink/30 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {PAYMENT_STATUSES.map(
+                                (status) => (
+                                  <option
+                                    key={
+                                      status.value
+                                    }
+                                    value={
+                                      status.value
+                                    }
+                                  >
+                                    {status.label}
+                                  </option>
+                                )
+                              )}
+                            </select>
+                          </div>
+                        </div>
+
+                        {isUpdating && (
+                          <p className="mt-3 text-xs text-inkSoft">
+                            Enregistrement de la
+                            modification…
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          )}
         </section>
       </main>
     </>
