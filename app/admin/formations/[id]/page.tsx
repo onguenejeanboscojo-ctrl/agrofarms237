@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import AdminNav from "@/components/AdminNav";
 
@@ -9,38 +9,21 @@ type Training = {
   id: string;
   title: string;
   slug: string;
-
   short_description: string | null;
   description: string | null;
-
   cover_image_url: string | null;
-
   category: string | null;
   level: string | null;
-
   duration_days: number;
   price_xaf: number;
-
   format: string | null;
   certificate: boolean;
-
   published: boolean;
+  pre_registration_enabled: boolean;
   position: number;
-
   session_count: number;
   registration_count: number;
   available_seats: number;
-
-  created_at: string;
-  updated_at: string;
-};
-
-type TrainingModule = {
-  id: string;
-  training_id: string;
-  title: string;
-  description: string | null;
-  position: number;
   created_at: string;
   updated_at: string;
 };
@@ -93,11 +76,17 @@ function formatPrice(value: number) {
 function formatDate(value: string | null) {
   if (!value) return "—";
 
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
   return new Intl.DateTimeFormat("fr-FR", {
     day: "2-digit",
     month: "long",
     year: "numeric",
-  }).format(new Date(`${value}T00:00:00`));
+  }).format(date);
 }
 
 function getSessionStatusLabel(status: string) {
@@ -127,6 +116,18 @@ function getSessionStatusClass(status: string) {
   }
 }
 
+function isFutureSession(session: TrainingSession) {
+  const today = new Date();
+
+  today.setHours(0, 0, 0, 0);
+
+  const start = new Date(
+    `${session.start_date}T00:00:00`
+  );
+
+  return start >= today;
+}
+
 export default function AdminFormationDetailPage() {
   const params = useParams();
 
@@ -135,51 +136,45 @@ export default function AdminFormationDetailPage() {
   const [training, setTraining] =
     useState<Training | null>(null);
 
-  const [modules, setModules] = useState<
-    TrainingModule[]
-  >([]);
-
   const [sessions, setSessions] = useState<
     TrainingSession[]
   >([]);
 
-  const [loading, setLoading] = useState(true);
-  const [modulesLoading, setModulesLoading] =
+  const [loading, setLoading] =
     useState(true);
+
   const [sessionsLoading, setSessionsLoading] =
     useState(true);
 
   const [error, setError] = useState("");
-  const [moduleError, setModuleError] =
-    useState("");
+
   const [sessionError, setSessionError] =
     useState("");
 
-  /* =========================
-     MODULE FORM
-  ========================= */
+  /* =========================================================
+     FORMATION SETTINGS
+  ========================================================= */
 
-  const [showModuleForm, setShowModuleForm] =
-    useState(false);
-
-  const [editingModuleId, setEditingModuleId] =
-    useState<string | null>(null);
-
-  const [moduleTitle, setModuleTitle] =
+  const [price, setPrice] =
     useState("");
 
-  const [moduleDescription, setModuleDescription] =
-    useState("");
-
-  const [savingModule, setSavingModule] =
+  const [published, setPublished] =
     useState(false);
 
-  const [deletingModuleId, setDeletingModuleId] =
-    useState<string | null>(null);
+  const [
+    preRegistrationEnabled,
+    setPreRegistrationEnabled,
+  ] = useState(false);
 
-  /* =========================
+  const [savingSettings, setSavingSettings] =
+    useState(false);
+
+  const [settingsMessage, setSettingsMessage] =
+    useState("");
+
+  /* =========================================================
      SESSION FORM
-  ========================= */
+  ========================================================= */
 
   const [showSessionForm, setShowSessionForm] =
     useState(false);
@@ -203,7 +198,7 @@ export default function AdminFormationDetailPage() {
     useState("");
 
   const [sessionFormat, setSessionFormat] =
-    useState("");
+    useState("Présentiel");
 
   const [savingSession, setSavingSession] =
     useState(false);
@@ -211,9 +206,9 @@ export default function AdminFormationDetailPage() {
   const [deletingSessionId, setDeletingSessionId] =
     useState<string | null>(null);
 
-  /* =========================
-     LOAD TRAINING
-  ========================= */
+  /* =========================================================
+     LOAD FORMATION
+  ========================================================= */
 
   async function loadTraining() {
     setLoading(true);
@@ -236,8 +231,11 @@ export default function AdminFormationDetailPage() {
         );
       }
 
-      const found = (data.trainings || []).find(
-        (item: Training) => item.id === id
+      const found = (
+        data.trainings || []
+      ).find(
+        (item: Training) =>
+          item.id === id
       );
 
       if (!found) {
@@ -247,6 +245,20 @@ export default function AdminFormationDetailPage() {
       }
 
       setTraining(found);
+
+      setPrice(
+        String(found.price_xaf ?? 60000)
+      );
+
+      setPublished(
+        Boolean(found.published)
+      );
+
+      setPreRegistrationEnabled(
+        Boolean(
+          found.pre_registration_enabled
+        )
+      );
     } catch (err) {
       setError(
         err instanceof Error
@@ -258,46 +270,9 @@ export default function AdminFormationDetailPage() {
     }
   }
 
-  /* =========================
-     LOAD MODULES
-  ========================= */
-
-  async function loadModules() {
-    setModulesLoading(true);
-    setModuleError("");
-
-    try {
-      const response = await fetch(
-        `/api/professional-trainings/${id}/modules`,
-        {
-          cache: "no-store",
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.error ||
-            "Impossible de charger le programme."
-        );
-      }
-
-      setModules(data.modules || []);
-    } catch (err) {
-      setModuleError(
-        err instanceof Error
-          ? err.message
-          : "Impossible de charger le programme."
-      );
-    } finally {
-      setModulesLoading(false);
-    }
-  }
-
-  /* =========================
+  /* =========================================================
      LOAD SESSIONS
-  ========================= */
+  ========================================================= */
 
   async function loadSessions() {
     setSessionsLoading(true);
@@ -320,7 +295,9 @@ export default function AdminFormationDetailPage() {
         );
       }
 
-      setSessions(data.sessions || []);
+      setSessions(
+        data.sessions || []
+      );
     } catch (err) {
       setSessionError(
         err instanceof Error
@@ -336,87 +313,44 @@ export default function AdminFormationDetailPage() {
     if (!id) return;
 
     loadTraining();
-    loadModules();
     loadSessions();
   }, [id]);
 
-  /* =========================
-     MODULE ACTIONS
-  ========================= */
+  /* =========================================================
+     FORMATION SETTINGS
+  ========================================================= */
 
-  function openNewModuleForm() {
-    setEditingModuleId(null);
-    setModuleTitle("");
-    setModuleDescription("");
-    setModuleError("");
-    setShowModuleForm(true);
-  }
-
-  function openEditModuleForm(
-    module: TrainingModule
-  ) {
-    setEditingModuleId(module.id);
-    setModuleTitle(module.title);
-    setModuleDescription(
-      module.description || ""
-    );
-    setModuleError("");
-    setShowModuleForm(true);
-  }
-
-  function closeModuleForm() {
-    if (savingModule) return;
-
-    setShowModuleForm(false);
-    setEditingModuleId(null);
-    setModuleTitle("");
-    setModuleDescription("");
-    setModuleError("");
-  }
-
-  async function handleSaveModule(
-    event: FormEvent<HTMLFormElement>
-  ) {
-    event.preventDefault();
-
-    setSavingModule(true);
-    setModuleError("");
+  async function saveSettings() {
+    setSavingSettings(true);
+    setSettingsMessage("");
+    setError("");
 
     try {
-      if (!moduleTitle.trim()) {
-        setModuleError(
-          "Le titre du module est obligatoire."
+      const numericPrice = Number(price);
+
+      if (
+        !Number.isInteger(numericPrice) ||
+        numericPrice < 0
+      ) {
+        throw new Error(
+          "Le prix doit être un montant valide."
         );
-        return;
       }
 
       const response = await fetch(
-        `/api/professional-trainings/${id}/modules`,
+        "/api/professional-trainings",
         {
-          method: editingModuleId
-            ? "PATCH"
-            : "POST",
-
+          method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
-
-          body: JSON.stringify(
-            editingModuleId
-              ? {
-                  module_id: editingModuleId,
-                  title: moduleTitle.trim(),
-                  description:
-                    moduleDescription.trim() ||
-                    null,
-                }
-              : {
-                  title: moduleTitle.trim(),
-                  description:
-                    moduleDescription.trim() ||
-                    null,
-                }
-          ),
+          body: JSON.stringify({
+            id,
+            price_xaf: numericPrice,
+            published,
+            pre_registration_enabled:
+              preRegistrationEnabled,
+          }),
         }
       );
 
@@ -425,78 +359,44 @@ export default function AdminFormationDetailPage() {
       if (!response.ok) {
         throw new Error(
           data.error ||
-            "Impossible d'enregistrer le module."
+            "Impossible d'enregistrer les paramètres."
         );
       }
 
-      closeModuleForm();
+      setTraining(data.training);
 
-      await loadModules();
-      await loadTraining();
+      setSettingsMessage(
+        "Les paramètres ont été enregistrés."
+      );
+
+      setTimeout(() => {
+        setSettingsMessage("");
+      }, 3000);
     } catch (err) {
-      setModuleError(
+      setError(
         err instanceof Error
           ? err.message
-          : "Impossible d'enregistrer le module."
+          : "Impossible d'enregistrer les paramètres."
       );
     } finally {
-      setSavingModule(false);
+      setSavingSettings(false);
     }
   }
 
-  async function handleDeleteModule(
-    moduleId: string
-  ) {
-    const confirmed = window.confirm(
-      "Voulez-vous vraiment supprimer ce module ?"
-    );
-
-    if (!confirmed) return;
-
-    setDeletingModuleId(moduleId);
-    setModuleError("");
-
-    try {
-      const response = await fetch(
-        `/api/professional-trainings/${id}/modules?module_id=${moduleId}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.error ||
-            "Impossible de supprimer le module."
-        );
-      }
-
-      await loadModules();
-    } catch (err) {
-      setModuleError(
-        err instanceof Error
-          ? err.message
-          : "Impossible de supprimer le module."
-      );
-    } finally {
-      setDeletingModuleId(null);
-    }
-  }
-
-  /* =========================
-     SESSION ACTIONS
-  ========================= */
+  /* =========================================================
+     SESSION FORM
+  ========================================================= */
 
   function openNewSessionForm() {
     setEditingSessionId(null);
+
     setSessionStartDate("");
     setSessionEndDate("");
     setSessionCapacity("15");
     setSessionStatus("draft");
     setSessionLocation("");
-    setSessionFormat("");
+    setSessionFormat("Présentiel");
+
     setSessionError("");
     setShowSessionForm(true);
   }
@@ -505,16 +405,31 @@ export default function AdminFormationDetailPage() {
     session: TrainingSession
   ) {
     setEditingSessionId(session.id);
-    setSessionStartDate(session.start_date);
-    setSessionEndDate(session.end_date || "");
+
+    setSessionStartDate(
+      session.start_date
+    );
+
+    setSessionEndDate(
+      session.end_date || ""
+    );
+
     setSessionCapacity(
       String(session.capacity)
     );
-    setSessionStatus(session.status);
+
+    setSessionStatus(
+      session.status
+    );
+
     setSessionLocation(
       session.location || ""
     );
-    setSessionFormat(session.format || "");
+
+    setSessionFormat(
+      session.format || "Présentiel"
+    );
+
     setSessionError("");
     setShowSessionForm(true);
   }
@@ -524,12 +439,14 @@ export default function AdminFormationDetailPage() {
 
     setShowSessionForm(false);
     setEditingSessionId(null);
+
     setSessionStartDate("");
     setSessionEndDate("");
     setSessionCapacity("15");
     setSessionStatus("draft");
     setSessionLocation("");
-    setSessionFormat("");
+    setSessionFormat("Présentiel");
+
     setSessionError("");
   }
 
@@ -543,33 +460,31 @@ export default function AdminFormationDetailPage() {
 
     try {
       if (!sessionStartDate) {
-        setSessionError(
+        throw new Error(
           "La date de début est obligatoire."
         );
-        return;
       }
 
-      const capacity = Number(sessionCapacity);
+      const capacity =
+        Number(sessionCapacity);
 
       if (
         !Number.isInteger(capacity) ||
         capacity < 1 ||
         capacity > 50
       ) {
-        setSessionError(
+        throw new Error(
           "La capacité doit être comprise entre 1 et 50 participants."
         );
-        return;
       }
 
       if (
         sessionEndDate &&
         sessionEndDate < sessionStartDate
       ) {
-        setSessionError(
+        throw new Error(
           "La date de fin ne peut pas être antérieure à la date de début."
         );
-        return;
       }
 
       const response = await fetch(
@@ -586,37 +501,45 @@ export default function AdminFormationDetailPage() {
           body: JSON.stringify(
             editingSessionId
               ? {
-                  session_id: editingSessionId,
-                  start_date: sessionStartDate,
+                  session_id:
+                    editingSessionId,
+                  start_date:
+                    sessionStartDate,
                   end_date:
-                    sessionEndDate || null,
+                    sessionEndDate ||
+                    null,
                   capacity,
-                  status: sessionStatus,
+                  status:
+                    sessionStatus,
                   location:
                     sessionLocation.trim() ||
                     null,
                   format:
                     sessionFormat.trim() ||
-                    null,
+                    "Présentiel",
                 }
               : {
-                  start_date: sessionStartDate,
+                  start_date:
+                    sessionStartDate,
                   end_date:
-                    sessionEndDate || null,
+                    sessionEndDate ||
+                    null,
                   capacity,
-                  status: sessionStatus,
+                  status:
+                    sessionStatus,
                   location:
                     sessionLocation.trim() ||
                     null,
                   format:
                     sessionFormat.trim() ||
-                    null,
+                    "Présentiel",
                 }
           ),
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -643,9 +566,10 @@ export default function AdminFormationDetailPage() {
   async function handleDeleteSession(
     sessionId: string
   ) {
-    const confirmed = window.confirm(
-      "Voulez-vous vraiment supprimer cette session ?"
-    );
+    const confirmed =
+      window.confirm(
+        "Voulez-vous vraiment supprimer cette session ?"
+      );
 
     if (!confirmed) return;
 
@@ -660,7 +584,8 @@ export default function AdminFormationDetailPage() {
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -682,16 +607,52 @@ export default function AdminFormationDetailPage() {
     }
   }
 
-  /* =========================
+  /* =========================================================
+     SESSIONS — DERIVED DATA
+  ========================================================= */
+
+  const nextSession = useMemo(() => {
+    return (
+      sessions
+        .filter(
+          (session) =>
+            isFutureSession(session) &&
+            session.status !==
+              "cancelled" &&
+            session.status !==
+              "completed"
+        )
+        .sort((a, b) =>
+          a.start_date.localeCompare(
+            b.start_date
+          )
+        )[0] || null
+    );
+  }, [sessions]);
+
+  const pastSessions = useMemo(() => {
+    return [...sessions]
+      .filter(
+        (session) =>
+          !isFutureSession(session)
+      )
+      .sort((a, b) =>
+        b.start_date.localeCompare(
+          a.start_date
+        )
+      );
+  }, [sessions]);
+
+  /* =========================================================
      LOADING
-  ========================= */
+  ========================================================= */
 
   if (loading) {
     return (
       <>
         <AdminNav />
 
-        <main className="mx-auto max-w-[1180px] px-5 py-12">
+        <main className="mx-auto max-w-[1100px] px-5 py-12">
           <div className="rounded-2xl border border-ink/10 bg-paper px-6 py-14 text-center">
             <p className="text-sm text-inkSoft">
               Chargement de la formation…
@@ -702,19 +663,20 @@ export default function AdminFormationDetailPage() {
     );
   }
 
-  /* =========================
+  /* =========================================================
      ERROR
-  ========================= */
+  ========================================================= */
 
   if (error || !training) {
     return (
       <>
         <AdminNav />
 
-        <main className="mx-auto max-w-[1180px] px-5 py-12">
+        <main className="mx-auto max-w-[1100px] px-5 py-12">
           <div className="rounded-2xl border border-red-200 bg-red-50 px-6 py-8">
             <p className="font-semibold text-red-800">
-              {error || "Formation introuvable."}
+              {error ||
+                "Formation introuvable."}
             </p>
 
             <Link
@@ -729,16 +691,17 @@ export default function AdminFormationDetailPage() {
     );
   }
 
-  /* =========================
+  /* =========================================================
      PAGE
-  ========================= */
+  ========================================================= */
 
   return (
     <>
       <AdminNav />
 
-      <main className="mx-auto max-w-[1180px] px-5 py-9">
+      <main className="mx-auto max-w-[1100px] px-5 py-9">
         {/* RETOUR */}
+
         <Link
           href="/admin/formations"
           className="inline-flex items-center text-sm font-semibold text-inkSoft transition hover:text-ink"
@@ -746,27 +709,36 @@ export default function AdminFormationDetailPage() {
           ← Retour aux formations
         </Link>
 
-        {/* HEADER */}
-        <section className="mt-5 overflow-hidden rounded-2xl border border-ink/10 bg-paper">
-          <div className="grid lg:grid-cols-[360px_1fr]">
-            <div className="min-h-[260px] bg-bgAlt">
+        {/* =====================================================
+            HEADER
+        ====================================================== */}
+
+        <section className="mt-6 overflow-hidden rounded-2xl border border-ink/10 bg-paper">
+          <div className="flex flex-col lg:flex-row">
+            <div className="relative min-h-[260px] bg-bgAlt lg:w-[340px]">
               {training.cover_image_url ? (
                 <img
-                  src={training.cover_image_url}
-                  alt={training.title}
+                  src={
+                    training.cover_image_url
+                  }
+                  alt="Formation professionnelle AgroFarms237"
                   className="h-full min-h-[260px] w-full object-cover"
                 />
               ) : (
                 <div className="flex min-h-[260px] items-center justify-center px-6 text-center">
                   <span className="text-sm text-inkSoft">
-                    Aucune image de couverture
+                    AgroFarms237
                   </span>
                 </div>
               )}
             </div>
 
-            <div className="p-7 lg:p-9">
+            <div className="flex-1 p-7 lg:p-9">
               <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-gold/15 px-3 py-1 text-xs font-bold text-goldDeep">
+                  Formation professionnelle
+                </span>
+
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-semibold ${
                     training.published
@@ -775,31 +747,26 @@ export default function AdminFormationDetailPage() {
                   }`}
                 >
                   {training.published
-                    ? "Publiée"
-                    : "Brouillon"}
+                    ? "Visible sur le site"
+                    : "Masquée du site"}
                 </span>
-
-                {training.category && (
-                  <span className="rounded-full border border-ink/10 px-3 py-1 text-xs font-semibold text-inkSoft">
-                    {training.category}
-                  </span>
-                )}
               </div>
 
               <h1 className="mt-4 font-serif text-3xl font-semibold text-ink">
-                {training.title}
+                Formation professionnelle
+                AgroFarms237
               </h1>
 
-              {training.short_description && (
-                <p className="mt-3 max-w-2xl text-[15px] leading-7 text-inkSoft">
-                  {training.short_description}
-                </p>
-              )}
+              <p className="mt-3 max-w-2xl text-[15px] leading-7 text-inkSoft">
+                Cette page sert uniquement à
+                programmer et gérer la disponibilité
+                commerciale de la formation.
+              </p>
 
-              <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-7 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl bg-bgAlt p-4">
                   <p className="text-xs text-inkSoft">
-                    Prix
+                    Prix actuel
                   </p>
 
                   <p className="mt-1 font-semibold text-ink">
@@ -816,10 +783,8 @@ export default function AdminFormationDetailPage() {
                   </p>
 
                   <p className="mt-1 font-semibold text-ink">
-                    {training.duration_days} jour
-                    {training.duration_days > 1
-                      ? "s"
-                      : ""}
+                    {training.duration_days}{" "}
+                    jours
                   </p>
                 </div>
 
@@ -830,19 +795,7 @@ export default function AdminFormationDetailPage() {
 
                   <p className="mt-1 font-semibold text-ink">
                     {training.format ||
-                      "Non précisé"}
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-bgAlt p-4">
-                  <p className="text-xs text-inkSoft">
-                    Certificat
-                  </p>
-
-                  <p className="mt-1 font-semibold text-ink">
-                    {training.certificate
-                      ? "Oui"
-                      : "Non"}
+                      "Présentiel"}
                   </p>
                 </div>
               </div>
@@ -850,298 +803,165 @@ export default function AdminFormationDetailPage() {
           </div>
         </section>
 
-        {/* KPI */}
-        <section className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-2xl border border-ink/10 bg-paper p-5">
-            <p className="text-sm text-inkSoft">
-              Sessions
-            </p>
+        {/* =====================================================
+            PARAMÈTRES COMMERCIAUX
+        ====================================================== */}
 
-            <p className="mt-2 text-3xl font-semibold text-ink">
-              {training.session_count}
-            </p>
-
-            <p className="mt-1 text-xs text-inkSoft">
-              Sessions programmées
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-ink/10 bg-paper p-5">
-            <p className="text-sm text-inkSoft">
-              Inscriptions confirmées
-            </p>
-
-            <p className="mt-2 text-3xl font-semibold text-ink">
-              {training.registration_count}
-            </p>
-
-            <p className="mt-1 text-xs text-inkSoft">
-              Participants confirmés
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-ink/10 bg-paper p-5">
-            <p className="text-sm text-inkSoft">
-              Places disponibles
-            </p>
-
-            <p className="mt-2 text-3xl font-semibold text-ink">
-              {training.available_seats}
-            </p>
-
-            <p className="mt-1 text-xs text-inkSoft">
-              Sur les sessions existantes
-            </p>
-          </div>
-        </section>
-
-        {/* DESCRIPTION */}
-        {training.description && (
-          <section className="mt-7 rounded-2xl border border-ink/10 bg-paper p-7">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-inkSoft">
-              Présentation
+        <section className="mt-7 rounded-2xl border border-ink/10 bg-paper p-6 md:p-7">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-goldDeep">
+              Configuration
             </p>
 
             <h2 className="mt-2 font-serif text-2xl font-semibold text-ink">
-              À propos de cette formation
+              Paramètres commerciaux
             </h2>
 
-            <div className="mt-4 max-w-4xl whitespace-pre-line text-[15px] leading-8 text-inkSoft">
-              {training.description}
-            </div>
-          </section>
-        )}
-
-        {/* =====================================================
-            PROGRAMME
-        ====================================================== */}
-        <section className="mt-7 rounded-2xl border border-ink/10 bg-paper p-7">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-inkSoft">
-                Étape 01
-              </p>
-
-              <h2 className="mt-1 font-serif text-2xl font-semibold text-ink">
-                Programme de formation
-              </h2>
-
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-inkSoft">
-                Organisez les différents modules qui
-                composent cette formation.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={openNewModuleForm}
-              className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
-            >
-              + Ajouter un module
-            </button>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-inkSoft">
+              Gérez ici uniquement le prix et la
+              visibilité de la formation. Le contenu
+              de la landing page reste fixe.
+            </p>
           </div>
 
-          {/* FORMULAIRE MODULE */}
-          {showModuleForm && (
-            <div className="mt-7 rounded-2xl border border-ink/10 bg-bgAlt p-5">
-              <div className="mb-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-inkSoft">
-                  {editingModuleId
-                    ? "Modifier le module"
-                    : "Nouveau module"}
-                </p>
+          <div className="mt-7 grid gap-6 lg:grid-cols-[280px_1fr]">
+            {/* PRIX */}
 
-                <h3 className="mt-1 font-serif text-xl font-semibold text-ink">
-                  {editingModuleId
-                    ? "Modifier le programme"
-                    : "Ajouter un module au programme"}
-                </h3>
+            <div>
+              <label className="text-sm font-semibold text-ink">
+                Tarif de la formation
+              </label>
+
+              <div className="mt-2 flex">
+                <input
+                  type="number"
+                  min="0"
+                  value={price}
+                  onChange={(event) =>
+                    setPrice(
+                      event.target.value
+                    )
+                  }
+                  className="w-full rounded-l-xl border border-r-0 border-ink/10 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-ink/30"
+                />
+
+                <span className="flex items-center rounded-r-xl border border-ink/10 bg-bgAlt px-4 text-sm font-semibold text-inkSoft">
+                  FCFA
+                </span>
               </div>
 
-              <form
-                onSubmit={handleSaveModule}
-                className="space-y-5"
-              >
-                <div>
-                  <label className="text-sm font-semibold text-ink">
-                    Titre du module *
-                  </label>
+              <p className="mt-2 text-xs text-inkSoft">
+                Valeur actuelle recommandée :
+                60 000 FCFA.
+              </p>
+            </div>
 
-                  <input
-                    value={moduleTitle}
-                    onChange={(event) =>
-                      setModuleTitle(
-                        event.target.value
-                      )
-                    }
-                    placeholder="Ex. Fondamentaux de la pisciculture"
-                    className="mt-2 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none transition focus:border-ink/30"
-                  />
-                </div>
+            {/* VISIBILITÉ */}
 
-                <div>
-                  <label className="text-sm font-semibold text-ink">
-                    Description
-                  </label>
+            <div className="space-y-4">
+              <label className="flex cursor-pointer items-start gap-4 rounded-xl border border-ink/10 bg-bgAlt p-4">
+                <input
+                  type="checkbox"
+                  checked={published}
+                  onChange={(event) =>
+                    setPublished(
+                      event.target.checked
+                    )
+                  }
+                  className="mt-1 h-4 w-4"
+                />
 
-                  <textarea
-                    value={moduleDescription}
-                    onChange={(event) =>
-                      setModuleDescription(
-                        event.target.value
-                      )
-                    }
-                    rows={4}
-                    placeholder="Décrivez brièvement ce que contient ce module."
-                    className="mt-2 w-full resize-y rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none transition focus:border-ink/30"
-                  />
-                </div>
+                <span>
+                  <span className="block text-sm font-semibold text-ink">
+                    Afficher la formation sur
+                    le site public
+                  </span>
 
-                {moduleError && (
-                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {moduleError}
-                  </div>
-                )}
+                  <span className="mt-1 block text-xs leading-5 text-inkSoft">
+                    Si activé, AgroFarms237 peut
+                    afficher la disponibilité de
+                    la formation sur la landing
+                    page.
+                  </span>
+                </span>
+              </label>
 
-                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                  <button
-                    type="button"
-                    onClick={closeModuleForm}
-                    disabled={savingModule}
-                    className="cursor-pointer rounded-xl border border-ink/10 bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:bg-paper disabled:opacity-50"
-                  >
-                    Annuler
-                  </button>
+              <label className="flex cursor-pointer items-start gap-4 rounded-xl border border-ink/10 bg-bgAlt p-4">
+                <input
+                  type="checkbox"
+                  checked={
+                    preRegistrationEnabled
+                  }
+                  onChange={(event) =>
+                    setPreRegistrationEnabled(
+                      event.target.checked
+                    )
+                  }
+                  className="mt-1 h-4 w-4"
+                />
 
-                  <button
-                    type="submit"
-                    disabled={savingModule}
-                    className="cursor-pointer rounded-xl bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {savingModule
-                      ? "Enregistrement..."
-                      : editingModuleId
-                      ? "Enregistrer les modifications"
-                      : "Ajouter le module"}
-                  </button>
-                </div>
-              </form>
+                <span>
+                  <span className="block text-sm font-semibold text-ink">
+                    Autoriser les
+                    pré-inscriptions
+                  </span>
+
+                  <span className="mt-1 block text-xs leading-5 text-inkSoft">
+                    Permet aux personnes intéressées
+                    de réserver leur intérêt même
+                    lorsqu'aucune date n'est encore
+                    disponible. Aucun paiement n'est
+                    demandé.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {settingsMessage && (
+            <div className="mt-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+              {settingsMessage}
             </div>
           )}
 
-          {/* ERREUR MODULE */}
-          {moduleError && !showModuleForm && (
-            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {moduleError}
+          {error && (
+            <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
             </div>
           )}
 
-          {/* LISTE MODULES */}
-          <div className="mt-7">
-            {modulesLoading ? (
-              <div className="rounded-xl border border-dashed border-ink/15 bg-bgAlt px-5 py-10 text-center">
-                <p className="text-sm text-inkSoft">
-                  Chargement du programme…
-                </p>
-              </div>
-            ) : modules.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-ink/15 bg-bgAlt px-5 py-10 text-center">
-                <p className="font-medium text-ink">
-                  Aucun module configuré
-                </p>
-
-                <p className="mt-2 text-sm text-inkSoft">
-                  Commencez par ajouter le premier module
-                  de cette formation.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {modules.map((module, index) => (
-                  <article
-                    key={module.id}
-                    className="rounded-xl border border-ink/10 bg-white p-5"
-                  >
-                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="flex gap-4">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-sm font-semibold text-white">
-                          {index + 1}
-                        </div>
-
-                        <div>
-                          <h3 className="font-serif text-lg font-semibold text-ink">
-                            {module.title}
-                          </h3>
-
-                          {module.description ? (
-                            <p className="mt-2 max-w-2xl text-sm leading-6 text-inkSoft">
-                              {module.description}
-                            </p>
-                          ) : (
-                            <p className="mt-2 text-sm italic text-inkSoft">
-                              Aucune description.
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            openEditModuleForm(
-                              module
-                            )
-                          }
-                          className="cursor-pointer rounded-lg border border-ink/10 px-3 py-2 text-xs font-semibold text-ink transition hover:bg-bgAlt"
-                        >
-                          Modifier
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleDeleteModule(
-                              module.id
-                            )
-                          }
-                          disabled={
-                            deletingModuleId ===
-                            module.id
-                          }
-                          className="cursor-pointer rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {deletingModuleId ===
-                          module.id
-                            ? "Suppression..."
-                            : "Supprimer"}
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
+          <div className="mt-6 flex justify-end border-t border-ink/10 pt-5">
+            <button
+              type="button"
+              onClick={saveSettings}
+              disabled={savingSettings}
+              className="cursor-pointer rounded-xl bg-ink px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {savingSettings
+                ? "Enregistrement..."
+                : "Enregistrer les paramètres"}
+            </button>
           </div>
         </section>
 
         {/* =====================================================
-            SESSIONS
+            PROCHAINE SESSION
         ====================================================== */}
-        <section className="mt-7 rounded-2xl border border-ink/10 bg-paper p-7">
+
+        <section className="mt-7 rounded-2xl border border-ink/10 bg-paper p-6 md:p-7">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-inkSoft">
-                Étape 02
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-goldDeep">
+                Disponibilité
               </p>
 
-              <h2 className="mt-1 font-serif text-2xl font-semibold text-ink">
-                Sessions
+              <h2 className="mt-2 font-serif text-2xl font-semibold text-ink">
+                Prochaine session
               </h2>
 
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-inkSoft">
-                Programmez les dates, lieux et capacités
-                des différentes sessions.
+              <p className="mt-2 text-sm leading-6 text-inkSoft">
+                C'est ici que vous programmez la
+                prochaine date de formation.
               </p>
             </div>
 
@@ -1150,32 +970,36 @@ export default function AdminFormationDetailPage() {
               onClick={openNewSessionForm}
               className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
             >
-              + Ajouter une session
+              + Programmer une session
             </button>
           </div>
 
-          {/* FORMULAIRE SESSION */}
+          {/* FORMULAIRE */}
+
           {showSessionForm && (
-            <div className="mt-7 rounded-2xl border border-ink/10 bg-bgAlt p-5">
-              <div className="mb-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-inkSoft">
+            <div className="mt-7 rounded-2xl border border-ink/10 bg-bgAlt p-5 md:p-6">
+              <div className="mb-6">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-inkSoft">
                   {editingSessionId
-                    ? "Modifier la session"
+                    ? "Modification"
                     : "Nouvelle session"}
                 </p>
 
                 <h3 className="mt-1 font-serif text-xl font-semibold text-ink">
                   {editingSessionId
-                    ? "Modifier les informations"
+                    ? "Modifier la session"
                     : "Programmer une nouvelle session"}
                 </h3>
               </div>
 
               <form
-                onSubmit={handleSaveSession}
+                onSubmit={
+                  handleSaveSession
+                }
                 className="space-y-6"
               >
                 {/* DATES */}
+
                 <div className="grid gap-5 md:grid-cols-2">
                   <div>
                     <label className="text-sm font-semibold text-ink">
@@ -1184,7 +1008,9 @@ export default function AdminFormationDetailPage() {
 
                     <input
                       type="date"
-                      value={sessionStartDate}
+                      value={
+                        sessionStartDate
+                      }
                       onChange={(event) =>
                         setSessionStartDate(
                           event.target.value
@@ -1201,8 +1027,13 @@ export default function AdminFormationDetailPage() {
 
                     <input
                       type="date"
-                      value={sessionEndDate}
-                      min={sessionStartDate || undefined}
+                      value={
+                        sessionEndDate
+                      }
+                      min={
+                        sessionStartDate ||
+                        undefined
+                      }
                       onChange={(event) =>
                         setSessionEndDate(
                           event.target.value
@@ -1213,11 +1044,31 @@ export default function AdminFormationDetailPage() {
                   </div>
                 </div>
 
-                {/* CAPACITÉ + STATUT */}
+                {/* LIEU */}
+
+                <div>
+                  <label className="text-sm font-semibold text-ink">
+                    Lieu
+                  </label>
+
+                  <input
+                    value={sessionLocation}
+                    onChange={(event) =>
+                      setSessionLocation(
+                        event.target.value
+                      )
+                    }
+                    placeholder="Ex. Yaoundé — lieu à confirmer"
+                    className="mt-2 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none focus:border-ink/30"
+                  />
+                </div>
+
+                {/* PLACES + FORMAT */}
+
                 <div className="grid gap-5 md:grid-cols-2">
                   <div>
                     <label className="text-sm font-semibold text-ink">
-                      Capacité *
+                      Nombre de places *
                     </label>
 
                     <div className="mt-2 flex">
@@ -1225,7 +1076,9 @@ export default function AdminFormationDetailPage() {
                         type="number"
                         min="1"
                         max="50"
-                        value={sessionCapacity}
+                        value={
+                          sessionCapacity
+                        }
                         onChange={(event) =>
                           setSessionCapacity(
                             event.target.value
@@ -1235,60 +1088,14 @@ export default function AdminFormationDetailPage() {
                       />
 
                       <span className="flex items-center rounded-r-xl border border-ink/10 bg-white px-4 text-sm text-inkSoft">
-                        participants
+                        places
                       </span>
                     </div>
 
                     <p className="mt-2 text-xs text-inkSoft">
-                      Par défaut : 15. Maximum : 50.
+                      Par défaut : 15. Maximum :
+                      50.
                     </p>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold text-ink">
-                      Statut
-                    </label>
-
-                    <select
-                      value={sessionStatus}
-                      onChange={(event) =>
-                        setSessionStatus(
-                          event.target.value
-                        )
-                      }
-                      className="mt-2 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none focus:border-ink/30"
-                    >
-                      {SESSION_STATUSES.map(
-                        (status) => (
-                          <option
-                            key={status.value}
-                            value={status.value}
-                          >
-                            {status.label}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </div>
-                </div>
-
-                {/* LIEU + FORMAT */}
-                <div className="grid gap-5 md:grid-cols-2">
-                  <div>
-                    <label className="text-sm font-semibold text-ink">
-                      Lieu
-                    </label>
-
-                    <input
-                      value={sessionLocation}
-                      onChange={(event) =>
-                        setSessionLocation(
-                          event.target.value
-                        )
-                      }
-                      placeholder="Ex. Yaoundé, Centre de formation AgroFarms237"
-                      className="mt-2 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none focus:border-ink/30"
-                    />
                   </div>
 
                   <div>
@@ -1305,20 +1112,54 @@ export default function AdminFormationDetailPage() {
                       }
                       className="mt-2 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none focus:border-ink/30"
                     >
-                      <option value="">
-                        Non précisé
-                      </option>
                       <option value="Présentiel">
                         Présentiel
                       </option>
+
                       <option value="En ligne">
                         En ligne
                       </option>
+
                       <option value="Hybride">
                         Hybride
                       </option>
                     </select>
                   </div>
+                </div>
+
+                {/* STATUT */}
+
+                <div>
+                  <label className="text-sm font-semibold text-ink">
+                    Statut de la session
+                  </label>
+
+                  <select
+                    value={sessionStatus}
+                    onChange={(event) =>
+                      setSessionStatus(
+                        event.target.value
+                      )
+                    }
+                    className="mt-2 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none focus:border-ink/30"
+                  >
+                    {SESSION_STATUSES.map(
+                      (status) => (
+                        <option
+                          key={status.value}
+                          value={status.value}
+                        >
+                          {status.label}
+                        </option>
+                      )
+                    )}
+                  </select>
+
+                  <p className="mt-2 text-xs text-inkSoft">
+                    Pour afficher une session
+                    comme disponible, utilisez
+                    « Ouverte ».
+                  </p>
                 </div>
 
                 {sessionError && (
@@ -1330,7 +1171,9 @@ export default function AdminFormationDetailPage() {
                 <div className="flex flex-col-reverse gap-3 border-t border-ink/10 pt-5 sm:flex-row sm:justify-end">
                   <button
                     type="button"
-                    onClick={closeSessionForm}
+                    onClick={
+                      closeSessionForm
+                    }
                     disabled={savingSession}
                     className="cursor-pointer rounded-xl border border-ink/10 bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:bg-paper disabled:opacity-50"
                   >
@@ -1345,214 +1188,268 @@ export default function AdminFormationDetailPage() {
                     {savingSession
                       ? "Enregistrement..."
                       : editingSessionId
-                      ? "Enregistrer les modifications"
-                      : "Créer la session"}
+                      ? "Enregistrer"
+                      : "Programmer la session"}
                   </button>
                 </div>
               </form>
             </div>
           )}
 
-          {/* ERREUR SESSION */}
-          {sessionError && !showSessionForm && (
-            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {sessionError}
-            </div>
-          )}
+          {/* PROCHAINE SESSION */}
 
-          {/* LISTE SESSIONS */}
-          <div className="mt-7">
-            {sessionsLoading ? (
-              <div className="rounded-xl border border-dashed border-ink/15 bg-bgAlt px-5 py-10 text-center">
-                <p className="text-sm text-inkSoft">
-                  Chargement des sessions…
-                </p>
-              </div>
-            ) : sessions.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-ink/15 bg-bgAlt px-5 py-10 text-center">
-                <p className="font-medium text-ink">
-                  Aucune session configurée
-                </p>
+          {!sessionsLoading &&
+            nextSession && (
+              <div className="mt-7 overflow-hidden rounded-2xl border border-green-200 bg-green-50/50">
+                <div className="border-b border-green-200 px-5 py-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-800">
+                      Prochaine session
+                    </span>
 
-                <p className="mt-2 text-sm text-inkSoft">
-                  Créez une session pour ouvrir des
-                  inscriptions.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {sessions.map((session, index) => (
-                  <article
-                    key={session.id}
-                    className="rounded-xl border border-ink/10 bg-white p-5"
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${getSessionStatusClass(
+                        nextSession.status
+                      )}`}
+                    >
+                      {getSessionStatusLabel(
+                        nextSession.status
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid gap-0 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="border-b border-green-200 p-5 lg:border-b-0 lg:border-r">
+                    <p className="text-xs text-inkSoft">
+                      Date
+                    </p>
+
+                    <p className="mt-2 font-semibold text-ink">
+                      {formatDate(
+                        nextSession.start_date
+                      )}
+                    </p>
+
+                    {nextSession.end_date && (
+                      <p className="mt-1 text-sm text-inkSoft">
+                        au{" "}
+                        {formatDate(
+                          nextSession.end_date
+                        )}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="border-b border-green-200 p-5 lg:border-b-0 lg:border-r">
+                    <p className="text-xs text-inkSoft">
+                      Lieu
+                    </p>
+
+                    <p className="mt-2 font-semibold text-ink">
+                      {nextSession.location ||
+                        "Lieu à confirmer"}
+                    </p>
+                  </div>
+
+                  <div className="border-b border-green-200 p-5 lg:border-b-0 lg:border-r">
+                    <p className="text-xs text-inkSoft">
+                      Places
+                    </p>
+
+                    <p className="mt-2 font-semibold text-ink">
+                      {nextSession.capacity}
+                    </p>
+                  </div>
+
+                  <div className="p-5">
+                    <p className="text-xs text-inkSoft">
+                      Tarif
+                    </p>
+
+                    <p className="mt-2 font-semibold text-ink">
+                      {formatPrice(
+                        training.price_xaf
+                      )}{" "}
+                      FCFA
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end border-t border-green-200 p-4">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openEditSessionForm(
+                        nextSession
+                      )
+                    }
+                    className="cursor-pointer rounded-lg border border-ink/10 bg-white px-4 py-2.5 text-xs font-semibold text-ink hover:bg-bgAlt"
                   >
-                    <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ink text-xs font-semibold text-white">
-                            {index + 1}
-                          </span>
-
-                          <h3 className="font-serif text-lg font-semibold text-ink">
-                            Session du{" "}
-                            {formatDate(
-                              session.start_date
-                            )}
-                          </h3>
-
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${getSessionStatusClass(
-                              session.status
-                            )}`}
-                          >
-                            {getSessionStatusLabel(
-                              session.status
-                            )}
-                          </span>
-                        </div>
-
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                          <div className="rounded-lg bg-bgAlt p-3">
-                            <p className="text-xs text-inkSoft">
-                              Date de fin
-                            </p>
-
-                            <p className="mt-1 text-sm font-semibold text-ink">
-                              {formatDate(
-                                session.end_date
-                              )}
-                            </p>
-                          </div>
-
-                          <div className="rounded-lg bg-bgAlt p-3">
-                            <p className="text-xs text-inkSoft">
-                              Capacité
-                            </p>
-
-                            <p className="mt-1 text-sm font-semibold text-ink">
-                              {session.capacity}{" "}
-                              participants
-                            </p>
-                          </div>
-
-                          <div className="rounded-lg bg-bgAlt p-3">
-                            <p className="text-xs text-inkSoft">
-                              Lieu
-                            </p>
-
-                            <p className="mt-1 text-sm font-semibold text-ink">
-                              {session.location ||
-                                "Non précisé"}
-                            </p>
-                          </div>
-
-                          <div className="rounded-lg bg-bgAlt p-3">
-                            <p className="text-xs text-inkSoft">
-                              Format
-                            </p>
-
-                            <p className="mt-1 text-sm font-semibold text-ink">
-                              {session.format ||
-                                "Non précisé"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            openEditSessionForm(
-                              session
-                            )
-                          }
-                          className="cursor-pointer rounded-lg border border-ink/10 px-3 py-2 text-xs font-semibold text-ink transition hover:bg-bgAlt"
-                        >
-                          Modifier
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleDeleteSession(
-                              session.id
-                            )
-                          }
-                          disabled={
-                            deletingSessionId ===
-                            session.id
-                          }
-                          className="cursor-pointer rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {deletingSessionId ===
-                          session.id
-                            ? "Suppression..."
-                            : "Supprimer"}
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                ))}
+                    Modifier la session
+                  </button>
+                </div>
               </div>
             )}
+
+          {!sessionsLoading &&
+            !nextSession && (
+              <div className="mt-7 rounded-2xl border border-dashed border-ink/15 bg-bgAlt px-6 py-10 text-center">
+                <p className="font-serif text-xl font-semibold text-ink">
+                  Aucune prochaine session
+                </p>
+
+                <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-inkSoft">
+                  Programmez une date lorsque vous
+                  serez prêt. Si les pré-inscriptions
+                  sont activées, le site pourra
+                  recueillir les personnes intéressées
+                  en attendant.
+                </p>
+              </div>
+            )}
+        </section>
+
+        {/* =====================================================
+            HISTORIQUE
+        ====================================================== */}
+
+        <section className="mt-7 rounded-2xl border border-ink/10 bg-paper p-6 md:p-7">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-goldDeep">
+              Historique
+            </p>
+
+            <h2 className="mt-2 font-serif text-2xl font-semibold text-ink">
+              Sessions passées
+            </h2>
           </div>
+
+          {sessionsLoading ? (
+            <div className="mt-6 rounded-xl border border-dashed border-ink/15 bg-bgAlt px-5 py-10 text-center">
+              <p className="text-sm text-inkSoft">
+                Chargement…
+              </p>
+            </div>
+          ) : pastSessions.length ===
+            0 ? (
+            <div className="mt-6 rounded-xl border border-dashed border-ink/15 bg-bgAlt px-5 py-10 text-center">
+              <p className="text-sm text-inkSoft">
+                Aucune session passée pour le
+                moment.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 divide-y divide-ink/10 overflow-hidden rounded-xl border border-ink/10 bg-white">
+              {pastSessions.map(
+                (session) => (
+                  <div
+                    key={session.id}
+                    className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-ink">
+                          {formatDate(
+                            session.start_date
+                          )}
+                          {session.end_date
+                            ? ` — ${formatDate(
+                                session.end_date
+                              )}`
+                            : ""}
+                        </p>
+
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${getSessionStatusClass(
+                            session.status
+                          )}`}
+                        >
+                          {getSessionStatusLabel(
+                            session.status
+                          )}
+                        </span>
+                      </div>
+
+                      <p className="mt-1 text-sm text-inkSoft">
+                        {session.location ||
+                          "Lieu non renseigné"}{" "}
+                        •{" "}
+                        {session.capacity}{" "}
+                        places
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openEditSessionForm(
+                            session
+                          )
+                        }
+                        className="cursor-pointer rounded-lg border border-ink/10 px-3 py-2 text-xs font-semibold text-ink hover:bg-bgAlt"
+                      >
+                        Modifier
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleDeleteSession(
+                            session.id
+                          )
+                        }
+                        disabled={
+                          deletingSessionId ===
+                          session.id
+                        }
+                        className="cursor-pointer rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {deletingSessionId ===
+                        session.id
+                          ? "Suppression..."
+                          : "Supprimer"}
+                      </button>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          )}
         </section>
 
         {/* =====================================================
             INSCRIPTIONS
         ====================================================== */}
-        <section className="mt-7 rounded-2xl border border-ink/10 bg-paper p-7">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-inkSoft">
-              Étape 03
-            </p>
 
-            <h2 className="mt-1 font-serif text-2xl font-semibold text-ink">
-              Inscriptions
-            </h2>
+        <section className="mt-7 rounded-2xl border border-ink/10 bg-paper p-6 md:p-7">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-goldDeep">
+                Participants
+              </p>
 
-            <p className="mt-2 text-sm leading-6 text-inkSoft">
-              Consultez et gérez les participants inscrits
-              aux sessions de cette formation.
-            </p>
-          </div>
+              <h2 className="mt-2 font-serif text-2xl font-semibold text-ink">
+                Inscriptions
+              </h2>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl bg-bgAlt p-5">
-              <p className="text-sm text-inkSoft">
+              <p className="mt-2 text-sm leading-6 text-inkSoft">
+                Les inscriptions et pré-inscriptions
+                seront affichées ici une fois le
+                formulaire public connecté.
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-bgAlt px-5 py-4">
+              <p className="text-xs text-inkSoft">
                 Inscriptions confirmées
               </p>
 
-              <p className="mt-2 text-2xl font-semibold text-ink">
+              <p className="mt-1 text-2xl font-semibold text-ink">
                 {training.registration_count}
               </p>
             </div>
-
-            <div className="rounded-xl bg-bgAlt p-5">
-              <p className="text-sm text-inkSoft">
-                Places disponibles
-              </p>
-
-              <p className="mt-2 text-2xl font-semibold text-ink">
-                {training.available_seats}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5">
-            <button
-              type="button"
-              disabled
-              className="cursor-not-allowed rounded-xl border border-ink/10 px-5 py-3 text-sm font-semibold text-inkSoft opacity-60"
-            >
-              Voir les inscriptions
-            </button>
-
-            <p className="mt-2 text-xs text-inkSoft">
-              La gestion des inscriptions sera activée
-              après la mise en place du formulaire public.
-            </p>
           </div>
         </section>
       </main>
