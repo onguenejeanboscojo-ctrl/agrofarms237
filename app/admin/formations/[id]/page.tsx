@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useParams } from "next/navigation";
 import AdminNav from "@/components/AdminNav";
 
@@ -60,11 +65,10 @@ type PaymentStatus =
 
 type Registration = {
   id: string;
-  training_id: string;
-  session_id: string | null;
+  session_id: string;
   full_name: string;
-  phone: string;
   email: string | null;
+  phone: string;
   organization: string | null;
   registration_status: RegistrationStatus;
   payment_status: PaymentStatus;
@@ -78,7 +82,7 @@ type Registration = {
     capacity: number;
     status: string;
     location: string | null;
-    format: string | null;
+    format: string;
   } | null;
 };
 
@@ -90,6 +94,16 @@ type RegistrationStats = {
   completed: number;
   paid: number;
   payment_pending: number;
+};
+
+const EMPTY_REGISTRATION_STATS: RegistrationStats = {
+  total: 0,
+  pending: 0,
+  confirmed: 0,
+  cancelled: 0,
+  completed: 0,
+  paid: 0,
+  payment_pending: 0,
 };
 
 const SESSION_STATUSES = [
@@ -154,7 +168,9 @@ const PAYMENT_STATUSES = [
 ];
 
 function formatPrice(value: number) {
-  return new Intl.NumberFormat("fr-FR").format(value);
+  return new Intl.NumberFormat("fr-FR").format(
+    Number(value || 0)
+  );
 }
 
 function formatDate(value: string | null) {
@@ -173,9 +189,7 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
-function formatDateTime(value: string | null) {
-  if (!value) return "—";
-
+function formatDateTime(value: string) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
@@ -228,6 +242,16 @@ function getRegistrationStatusLabel(
   );
 }
 
+function getPaymentStatusLabel(
+  status: PaymentStatus
+) {
+  return (
+    PAYMENT_STATUSES.find(
+      (item) => item.value === status
+    )?.label || status
+  );
+}
+
 function getRegistrationStatusClass(
   status: RegistrationStatus
 ) {
@@ -246,15 +270,9 @@ function getRegistrationStatusClass(
   }
 }
 
-function getPaymentStatusLabel(status: PaymentStatus) {
-  return (
-    PAYMENT_STATUSES.find(
-      (item) => item.value === status
-    )?.label || status
-  );
-}
-
-function getPaymentStatusClass(status: PaymentStatus) {
+function getPaymentStatusClass(
+  status: PaymentStatus
+) {
   switch (status) {
     case "paid":
       return "bg-green-100 text-green-800";
@@ -309,8 +327,7 @@ export default function AdminFormationDetailPage() {
      FORMATION SETTINGS
   ========================================================= */
 
-  const [price, setPrice] =
-    useState("");
+  const [price, setPrice] = useState("");
 
   const [published, setPublished] =
     useState(false);
@@ -368,30 +385,15 @@ export default function AdminFormationDetailPage() {
     useState<Registration[]>([]);
 
   const [registrationStats, setRegistrationStats] =
-    useState<RegistrationStats>({
-      total: 0,
-      pending: 0,
-      confirmed: 0,
-      cancelled: 0,
-      completed: 0,
-      paid: 0,
-      payment_pending: 0,
-    });
+    useState<RegistrationStats>(
+      EMPTY_REGISTRATION_STATS
+    );
 
-  const [
-    registrationsLoading,
-    setRegistrationsLoading,
-  ] = useState(true);
+  const [registrationsLoading, setRegistrationsLoading] =
+    useState(true);
 
-  const [
-    registrationsError,
-    setRegistrationsError,
-  ] = useState("");
-
-  const [
-    updatingRegistrationId,
-    setUpdatingRegistrationId,
-  ] = useState<string | null>(null);
+  const [registrationError, setRegistrationError] =
+    useState("");
 
   const [
     registrationFilter,
@@ -399,6 +401,11 @@ export default function AdminFormationDetailPage() {
   ] = useState<
     "all" | RegistrationStatus
   >("all");
+
+  const [
+    updatingRegistrationId,
+    setUpdatingRegistrationId,
+  ] = useState<string | null>(null);
 
   /* =========================================================
      LOAD FORMATION
@@ -509,7 +516,7 @@ export default function AdminFormationDetailPage() {
 
   async function loadRegistrations() {
     setRegistrationsLoading(true);
-    setRegistrationsError("");
+    setRegistrationError("");
 
     try {
       const response = await fetch(
@@ -535,18 +542,11 @@ export default function AdminFormationDetailPage() {
       );
 
       setRegistrationStats(
-        data.stats || {
-          total: 0,
-          pending: 0,
-          confirmed: 0,
-          cancelled: 0,
-          completed: 0,
-          paid: 0,
-          payment_pending: 0,
-        }
+        data.stats ||
+          EMPTY_REGISTRATION_STATS
       );
     } catch (err) {
-      setRegistrationsError(
+      setRegistrationError(
         err instanceof Error
           ? err.message
           : "Impossible de charger les inscriptions."
@@ -565,7 +565,7 @@ export default function AdminFormationDetailPage() {
   }, [id]);
 
   /* =========================================================
-     FORMATION SETTINGS
+     SAVE SETTINGS
   ========================================================= */
 
   async function saveSettings() {
@@ -741,9 +741,11 @@ export default function AdminFormationDetailPage() {
           method: editingSessionId
             ? "PATCH"
             : "POST",
+
           headers: {
             "Content-Type": "application/json",
           },
+
           body: JSON.stringify(
             editingSessionId
               ? {
@@ -869,7 +871,7 @@ export default function AdminFormationDetailPage() {
     setUpdatingRegistrationId(
       registrationId
     );
-    setRegistrationsError("");
+    setRegistrationError("");
 
     try {
       const response = await fetch(
@@ -880,7 +882,8 @@ export default function AdminFormationDetailPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            id: registrationId,
+            registration_id:
+              registrationId,
             ...changes,
           }),
         }
@@ -899,7 +902,7 @@ export default function AdminFormationDetailPage() {
       await loadSessions();
       await loadTraining();
     } catch (err) {
-      setRegistrationsError(
+      setRegistrationError(
         err instanceof Error
           ? err.message
           : "Impossible de modifier l'inscription."
@@ -910,28 +913,7 @@ export default function AdminFormationDetailPage() {
   }
 
   /* =========================================================
-     REGISTRATIONS — DERIVED DATA
-  ========================================================= */
-
-  const filteredRegistrations = useMemo(() => {
-    if (
-      registrationFilter === "all"
-    ) {
-      return registrations;
-    }
-
-    return registrations.filter(
-      (registration) =>
-        registration.registration_status ===
-        registrationFilter
-    );
-  }, [
-    registrations,
-    registrationFilter,
-  ]);
-
-  /* =========================================================
-     SESSIONS — DERIVED DATA
+     DERIVED DATA
   ========================================================= */
 
   const nextSession = useMemo(() => {
@@ -965,6 +947,24 @@ export default function AdminFormationDetailPage() {
         )
       );
   }, [sessions]);
+
+  const filteredRegistrations =
+    useMemo(() => {
+      if (
+        registrationFilter === "all"
+      ) {
+        return registrations;
+      }
+
+      return registrations.filter(
+        (registration) =>
+          registration.registration_status ===
+          registrationFilter
+      );
+    }, [
+      registrations,
+      registrationFilter,
+    ]);
 
   /* =========================================================
      LOADING
@@ -1006,7 +1006,7 @@ export default function AdminFormationDetailPage() {
               href="/admin/formations"
               className="mt-5 inline-flex rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-white"
             >
-              ← Retour aux formations
+              Retour aux formations
             </Link>
           </div>
         </main>
@@ -1029,7 +1029,7 @@ export default function AdminFormationDetailPage() {
           href="/admin/formations"
           className="inline-flex items-center text-sm font-semibold text-inkSoft transition hover:text-ink"
         >
-          ← Retour aux formations
+          Retour aux formations
         </Link>
 
         {/* =====================================================
@@ -1081,9 +1081,10 @@ export default function AdminFormationDetailPage() {
               </h1>
 
               <p className="mt-3 max-w-2xl text-[15px] leading-7 text-inkSoft">
-                Cette page sert à programmer,
-                suivre et gérer la disponibilité
-                commerciale de la formation.
+                Gérez ici les paramètres,
+                les sessions et les
+                inscriptions de cette
+                formation.
               </p>
 
               <div className="mt-7 grid gap-3 sm:grid-cols-3">
@@ -1141,8 +1142,8 @@ export default function AdminFormationDetailPage() {
             </h2>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-inkSoft">
-              Gérez ici le prix, la visibilité et
-              l'autorisation des pré-inscriptions.
+              Gérez le tarif, la visibilité
+              et les pré-inscriptions.
             </p>
           </div>
 
@@ -1171,7 +1172,7 @@ export default function AdminFormationDetailPage() {
               </div>
 
               <p className="mt-2 text-xs text-inkSoft">
-                Valeur actuelle : 60 000 FCFA.
+                Tarif prévu : 60 000 FCFA.
               </p>
             </div>
 
@@ -1190,13 +1191,13 @@ export default function AdminFormationDetailPage() {
 
                 <span>
                   <span className="block text-sm font-semibold text-ink">
-                    Afficher la formation sur
-                    le site public
+                    Afficher la formation
+                    sur le site public
                   </span>
 
                   <span className="mt-1 block text-xs leading-5 text-inkSoft">
-                    Permet d'afficher la formation
-                    professionnelle sur la partie
+                    Rend la formation
+                    disponible sur la partie
                     publique du site.
                   </span>
                 </span>
@@ -1223,9 +1224,10 @@ export default function AdminFormationDetailPage() {
                   </span>
 
                   <span className="mt-1 block text-xs leading-5 text-inkSoft">
-                    Permet de recueillir les personnes
-                    intéressées lorsqu'aucune session
-                    n'est encore disponible.
+                    Permet de recueillir
+                    l'intérêt des personnes
+                    lorsqu'aucune session
+                    n'est disponible.
                   </span>
                 </span>
               </label>
@@ -1259,7 +1261,7 @@ export default function AdminFormationDetailPage() {
         </section>
 
         {/* =====================================================
-            PROCHAINE SESSION
+            SESSION
         ====================================================== */}
 
         <section className="mt-7 rounded-2xl border border-ink/10 bg-paper p-6 md:p-7">
@@ -1274,17 +1276,19 @@ export default function AdminFormationDetailPage() {
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-inkSoft">
-                Programmez et gérez les dates de
-                formation.
+                Programmez et gérez les
+                dates disponibles.
               </p>
             </div>
 
             <button
               type="button"
-              onClick={openNewSessionForm}
+              onClick={
+                openNewSessionForm
+              }
               className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
             >
-              + Programmer une session
+              Programmer une session
             </button>
           </div>
 
@@ -1379,30 +1383,23 @@ export default function AdminFormationDetailPage() {
                       Nombre de places *
                     </label>
 
-                    <div className="mt-2 flex">
-                      <input
-                        type="number"
-                        min="1"
-                        max="50"
-                        value={
-                          sessionCapacity
-                        }
-                        onChange={(event) =>
-                          setSessionCapacity(
-                            event.target.value
-                          )
-                        }
-                        className="w-full rounded-l-xl border border-r-0 border-ink/10 bg-white px-4 py-3 text-sm outline-none focus:border-ink/30"
-                      />
-
-                      <span className="flex items-center rounded-r-xl border border-ink/10 bg-white px-4 text-sm text-inkSoft">
-                        places
-                      </span>
-                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      max="50"
+                      value={
+                        sessionCapacity
+                      }
+                      onChange={(event) =>
+                        setSessionCapacity(
+                          event.target.value
+                        )
+                      }
+                      className="mt-2 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none focus:border-ink/30"
+                    />
 
                     <p className="mt-2 text-xs text-inkSoft">
-                      Par défaut : 15. Maximum :
-                      50.
+                      Maximum : 50.
                     </p>
                   </div>
 
@@ -1412,7 +1409,9 @@ export default function AdminFormationDetailPage() {
                     </label>
 
                     <select
-                      value={sessionFormat}
+                      value={
+                        sessionFormat
+                      }
                       onChange={(event) =>
                         setSessionFormat(
                           event.target.value
@@ -1437,11 +1436,13 @@ export default function AdminFormationDetailPage() {
 
                 <div>
                   <label className="text-sm font-semibold text-ink">
-                    Statut de la session
+                    Statut
                   </label>
 
                   <select
-                    value={sessionStatus}
+                    value={
+                      sessionStatus
+                    }
                     onChange={(event) =>
                       setSessionStatus(
                         event.target.value
@@ -1452,8 +1453,12 @@ export default function AdminFormationDetailPage() {
                     {SESSION_STATUSES.map(
                       (status) => (
                         <option
-                          key={status.value}
-                          value={status.value}
+                          key={
+                            status.value
+                          }
+                          value={
+                            status.value
+                          }
                         >
                           {status.label}
                         </option>
@@ -1474,16 +1479,20 @@ export default function AdminFormationDetailPage() {
                     onClick={
                       closeSessionForm
                     }
-                    disabled={savingSession}
-                    className="cursor-pointer rounded-xl border border-ink/10 bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:bg-paper disabled:opacity-50"
+                    disabled={
+                      savingSession
+                    }
+                    className="cursor-pointer rounded-xl border border-ink/10 bg-white px-5 py-3 text-sm font-semibold text-ink hover:bg-paper disabled:opacity-50"
                   >
                     Annuler
                   </button>
 
                   <button
                     type="submit"
-                    disabled={savingSession}
-                    className="cursor-pointer rounded-xl bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={
+                      savingSession
+                    }
+                    className="cursor-pointer rounded-xl bg-ink px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
                   >
                     {savingSession
                       ? "Enregistrement..."
@@ -1600,8 +1609,8 @@ export default function AdminFormationDetailPage() {
                 </p>
 
                 <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-inkSoft">
-                  Programmez une date lorsque vous
-                  serez prêt.
+                  Programmez une date lorsque
+                  vous serez prêt.
                 </p>
               </div>
             )}
@@ -1732,18 +1741,21 @@ export default function AdminFormationDetailPage() {
               </h2>
 
               <p className="mt-2 max-w-2xl text-sm leading-6 text-inkSoft">
-                Suivez les demandes d'inscription,
-                confirmez les participants et
-                mettez à jour leur situation de
-                paiement.
+                Toutes les inscriptions
+                enregistrées pour cette
+                formation sont centralisées ici.
               </p>
             </div>
 
             <button
               type="button"
-              onClick={loadRegistrations}
-              disabled={registrationsLoading}
-              className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-bgAlt disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={
+                loadRegistrations
+              }
+              disabled={
+                registrationsLoading
+              }
+              className="cursor-pointer rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm font-semibold text-ink hover:bg-bgAlt disabled:opacity-50"
             >
               {registrationsLoading
                 ? "Actualisation..."
@@ -1751,7 +1763,7 @@ export default function AdminFormationDetailPage() {
             </button>
           </div>
 
-          {/* STATS */}
+          {/* STATISTIQUES */}
 
           <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <div className="rounded-xl bg-bgAlt p-4">
@@ -1765,7 +1777,7 @@ export default function AdminFormationDetailPage() {
             </div>
 
             <div className="rounded-xl bg-amber-50 p-4">
-              <p className="text-xs text-amber-700">
+              <p className="text-xs text-amber-800">
                 En attente
               </p>
 
@@ -1775,7 +1787,7 @@ export default function AdminFormationDetailPage() {
             </div>
 
             <div className="rounded-xl bg-green-50 p-4">
-              <p className="text-xs text-green-700">
+              <p className="text-xs text-green-800">
                 Confirmées
               </p>
 
@@ -1785,7 +1797,7 @@ export default function AdminFormationDetailPage() {
             </div>
 
             <div className="rounded-xl bg-blue-50 p-4">
-              <p className="text-xs text-blue-700">
+              <p className="text-xs text-blue-800">
                 Terminées
               </p>
 
@@ -1795,7 +1807,7 @@ export default function AdminFormationDetailPage() {
             </div>
 
             <div className="rounded-xl bg-green-50 p-4">
-              <p className="text-xs text-green-700">
+              <p className="text-xs text-green-800">
                 Paiements reçus
               </p>
 
@@ -1805,79 +1817,122 @@ export default function AdminFormationDetailPage() {
             </div>
           </div>
 
+          {/* ERREUR */}
+
+          {registrationError && (
+            <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {registrationError}
+            </div>
+          )}
+
           {/* FILTRES */}
 
-          <div className="mt-7 flex flex-wrap gap-2 border-b border-ink/10 pb-5">
+          <div className="mt-7 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() =>
-                setRegistrationFilter("all")
+                setRegistrationFilter(
+                  "all"
+                )
               }
-              className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
-                registrationFilter === "all"
+              className={`rounded-full px-4 py-2 text-xs font-semibold ${
+                registrationFilter ===
+                "all"
                   ? "bg-ink text-white"
-                  : "border border-ink/10 bg-white text-inkSoft hover:bg-bgAlt"
+                  : "bg-bgAlt text-inkSoft hover:text-ink"
               }`}
             >
               Toutes ({registrationStats.total})
             </button>
 
-            {REGISTRATION_STATUSES.map(
-              (status) => {
-                const count =
-                  registrationStats[
-                    status.value as keyof RegistrationStats
-                  ];
-
-                return (
-                  <button
-                    key={status.value}
-                    type="button"
-                    onClick={() =>
-                      setRegistrationFilter(
-                        status.value as RegistrationStatus
-                      )
-                    }
-                    className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
-                      registrationFilter ===
-                      status.value
-                        ? "bg-ink text-white"
-                        : "border border-ink/10 bg-white text-inkSoft hover:bg-bgAlt"
-                    }`}
-                  >
-                    {status.label} ({count})
-                  </button>
-                );
+            <button
+              type="button"
+              onClick={() =>
+                setRegistrationFilter(
+                  "pending"
+                )
               }
-            )}
-          </div>
+              className={`rounded-full px-4 py-2 text-xs font-semibold ${
+                registrationFilter ===
+                "pending"
+                  ? "bg-ink text-white"
+                  : "bg-bgAlt text-inkSoft hover:text-ink"
+              }`}
+            >
+              En attente ({registrationStats.pending})
+            </button>
 
-          {registrationsError && (
-            <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {registrationsError}
-            </div>
-          )}
+            <button
+              type="button"
+              onClick={() =>
+                setRegistrationFilter(
+                  "confirmed"
+                )
+              }
+              className={`rounded-full px-4 py-2 text-xs font-semibold ${
+                registrationFilter ===
+                "confirmed"
+                  ? "bg-ink text-white"
+                  : "bg-bgAlt text-inkSoft hover:text-ink"
+              }`}
+            >
+              Confirmées ({registrationStats.confirmed})
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setRegistrationFilter(
+                  "cancelled"
+                )
+              }
+              className={`rounded-full px-4 py-2 text-xs font-semibold ${
+                registrationFilter ===
+                "cancelled"
+                  ? "bg-ink text-white"
+                  : "bg-bgAlt text-inkSoft hover:text-ink"
+              }`}
+            >
+              Annulées ({registrationStats.cancelled})
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setRegistrationFilter(
+                  "completed"
+                )
+              }
+              className={`rounded-full px-4 py-2 text-xs font-semibold ${
+                registrationFilter ===
+                "completed"
+                  ? "bg-ink text-white"
+                  : "bg-bgAlt text-inkSoft hover:text-ink"
+              }`}
+            >
+              Terminées ({registrationStats.completed})
+            </button>
+          </div>
 
           {/* LISTE */}
 
           {registrationsLoading ? (
-            <div className="mt-6 rounded-2xl border border-dashed border-ink/15 bg-bgAlt px-6 py-12 text-center">
+            <div className="mt-6 rounded-xl border border-dashed border-ink/15 bg-bgAlt px-5 py-12 text-center">
               <p className="text-sm text-inkSoft">
                 Chargement des inscriptions…
               </p>
             </div>
           ) : filteredRegistrations.length ===
             0 ? (
-            <div className="mt-6 rounded-2xl border border-dashed border-ink/15 bg-bgAlt px-6 py-12 text-center">
+            <div className="mt-6 rounded-xl border border-dashed border-ink/15 bg-bgAlt px-5 py-12 text-center">
               <p className="font-serif text-xl font-semibold text-ink">
                 Aucune inscription
               </p>
 
               <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-inkSoft">
-                {registrationFilter ===
-                "all"
-                  ? "Les nouvelles inscriptions envoyées depuis le site apparaîtront ici."
-                  : "Aucune inscription ne correspond à ce filtre."}
+                Aucune inscription ne
+                correspond actuellement au
+                filtre sélectionné.
               </p>
             </div>
           ) : (
@@ -1889,20 +1944,18 @@ export default function AdminFormationDetailPage() {
                     registration.id;
 
                   return (
-                    <div
+                    <article
                       key={registration.id}
                       className="overflow-hidden rounded-2xl border border-ink/10 bg-white"
                     >
-                      {/* PARTICIPANT */}
+                      {/* HEADER PARTICIPANT */}
 
-                      <div className="p-5">
-                        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                          <div className="min-w-0">
+                      <div className="border-b border-ink/10 p-5">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div>
                             <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-base font-semibold text-ink">
-                                {
-                                  registration.full_name
-                                }
+                              <h3 className="text-lg font-semibold text-ink">
+                                {registration.full_name}
                               </h3>
 
                               <span
@@ -1914,71 +1967,17 @@ export default function AdminFormationDetailPage() {
                                   registration.registration_status
                                 )}
                               </span>
-
-                              <span
-                                className={`rounded-full px-3 py-1 text-xs font-semibold ${getPaymentStatusClass(
-                                  registration.payment_status
-                                )}`}
-                              >
-                                {getPaymentStatusLabel(
-                                  registration.payment_status
-                                )}
-                              </span>
                             </div>
 
-                            <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                              <div>
-                                <p className="text-xs text-inkSoft">
-                                  Téléphone
-                                </p>
-
-                                <a
-                                  href={`tel:${registration.phone}`}
-                                  className="mt-1 block font-medium text-ink hover:underline"
-                                >
-                                  {
-                                    registration.phone
-                                  }
-                                </a>
-                              </div>
-
-                              <div>
-                                <p className="text-xs text-inkSoft">
-                                  Email
-                                </p>
-
-                                <p className="mt-1 break-all font-medium text-ink">
-                                  {registration.email ||
-                                    "Non renseigné"}
-                                </p>
-                              </div>
-
-                              <div>
-                                <p className="text-xs text-inkSoft">
-                                  Organisation / activité
-                                </p>
-
-                                <p className="mt-1 font-medium text-ink">
-                                  {registration.organization ||
-                                    "Non renseignée"}
-                                </p>
-                              </div>
-
-                              <div>
-                                <p className="text-xs text-inkSoft">
-                                  Demande reçue
-                                </p>
-
-                                <p className="mt-1 font-medium text-ink">
-                                  {formatDateTime(
-                                    registration.created_at
-                                  )}
-                                </p>
-                              </div>
-                            </div>
+                            <p className="mt-2 text-sm text-inkSoft">
+                              Inscription reçue le{" "}
+                              {formatDateTime(
+                                registration.created_at
+                              )}
+                            </p>
                           </div>
 
-                          <div className="shrink-0 rounded-xl bg-bgAlt px-5 py-4 lg:min-w-[190px]">
+                          <div className="text-left lg:text-right">
                             <p className="text-xs text-inkSoft">
                               Montant
                             </p>
@@ -1993,72 +1992,150 @@ export default function AdminFormationDetailPage() {
                         </div>
                       </div>
 
-                      {/* SESSION */}
+                      {/* INFORMATIONS */}
 
-                      <div className="border-t border-ink/10 bg-paper px-5 py-4">
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                          <div>
-                            <p className="text-xs text-inkSoft">
-                              Session
-                            </p>
+                      <div className="grid gap-0 md:grid-cols-2 lg:grid-cols-4">
+                        <div className="border-b border-ink/10 p-5 lg:border-r">
+                          <p className="text-xs text-inkSoft">
+                            Téléphone
+                          </p>
 
-                            <p className="mt-1 text-sm font-semibold text-ink">
-                              {registration.session
-                                ? formatDate(
-                                    registration
-                                      .session
-                                      .start_date
-                                  )
-                                : "Aucune session"}
-                            </p>
-                          </div>
+                          <p className="mt-1 break-all text-sm font-semibold text-ink">
+                            {registration.phone ||
+                              "—"}
+                          </p>
+                        </div>
 
-                          <div>
-                            <p className="text-xs text-inkSoft">
-                              Lieu
-                            </p>
+                        <div className="border-b border-ink/10 p-5 lg:border-r">
+                          <p className="text-xs text-inkSoft">
+                            Email
+                          </p>
 
-                            <p className="mt-1 text-sm font-semibold text-ink">
-                              {registration.session
-                                ?.location ||
-                                "À confirmer"}
-                            </p>
-                          </div>
+                          <p className="mt-1 break-all text-sm font-semibold text-ink">
+                            {registration.email ||
+                              "Non renseigné"}
+                          </p>
+                        </div>
 
-                          <div>
-                            <p className="text-xs text-inkSoft">
-                              Format
-                            </p>
+                        <div className="border-b border-ink/10 p-5 lg:border-r">
+                          <p className="text-xs text-inkSoft">
+                            Organisation / activité
+                          </p>
 
-                            <p className="mt-1 text-sm font-semibold text-ink">
-                              {registration.session
-                                ?.format ||
-                                "Présentiel"}
-                            </p>
-                          </div>
+                          <p className="mt-1 text-sm font-semibold text-ink">
+                            {registration.organization ||
+                              "Non renseignée"}
+                          </p>
+                        </div>
 
-                          <div>
-                            <p className="text-xs text-inkSoft">
-                              Capacité
-                            </p>
+                        <div className="border-b border-ink/10 p-5">
+                          <p className="text-xs text-inkSoft">
+                            Session
+                          </p>
 
-                            <p className="mt-1 text-sm font-semibold text-ink">
-                              {registration.session
-                                ?.capacity
-                                ? `${registration.session.capacity} places`
-                                : "—"}
-                            </p>
-                          </div>
+                          <p className="mt-1 text-sm font-semibold text-ink">
+                            {registration.session
+                              ? formatDate(
+                                  registration
+                                    .session
+                                    .start_date
+                                )
+                              : "—"}
+                          </p>
                         </div>
                       </div>
 
+                      {/* SESSION */}
+
+                      {registration.session && (
+                        <div className="border-b border-ink/10 bg-bgAlt p-5">
+                          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            <div>
+                              <p className="text-xs text-inkSoft">
+                                Date
+                              </p>
+
+                              <p className="mt-1 text-sm font-semibold text-ink">
+                                {formatDate(
+                                  registration
+                                    .session
+                                    .start_date
+                                )}
+
+                                {registration
+                                  .session
+                                  .end_date
+                                  ? ` — ${formatDate(
+                                      registration
+                                        .session
+                                        .end_date
+                                    )}`
+                                  : ""}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-xs text-inkSoft">
+                                Lieu
+                              </p>
+
+                              <p className="mt-1 text-sm font-semibold text-ink">
+                                {registration
+                                  .session
+                                  .location ||
+                                  "Lieu à confirmer"}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-xs text-inkSoft">
+                                Format
+                              </p>
+
+                              <p className="mt-1 text-sm font-semibold text-ink">
+                                {registration
+                                  .session
+                                  .format ||
+                                  "Présentiel"}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-xs text-inkSoft">
+                                Capacité
+                              </p>
+
+                              <p className="mt-1 text-sm font-semibold text-ink">
+                                {registration
+                                  .session
+                                  .capacity}{" "}
+                                places
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* ACTIONS */}
 
-                      <div className="border-t border-ink/10 p-5">
-                        <div className="grid gap-4 md:grid-cols-2">
+                      <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-end lg:justify-between">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-inkSoft">
+                            Gestion de l'inscription
+                          </p>
+
+                          <p className="mt-1 text-xs text-inkSoft">
+                            Modifiez le statut
+                            lorsque le participant
+                            est confirmé ou que le
+                            paiement est reçu.
+                          </p>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
                           <div>
-                            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-inkSoft">
-                              Statut de l'inscription
+                            <label className="text-xs font-semibold text-inkSoft">
+                              Statut inscription
                             </label>
 
                             <select
@@ -2079,7 +2156,7 @@ export default function AdminFormationDetailPage() {
                                   }
                                 )
                               }
-                              className="mt-2 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm font-medium text-ink outline-none focus:border-ink/30 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="mt-1 w-full min-w-[190px] rounded-lg border border-ink/10 bg-white px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-ink/30 disabled:opacity-50"
                             >
                               {REGISTRATION_STATUSES.map(
                                 (status) => (
@@ -2091,7 +2168,9 @@ export default function AdminFormationDetailPage() {
                                       status.value
                                     }
                                   >
-                                    {status.label}
+                                    {
+                                      status.label
+                                    }
                                   </option>
                                 )
                               )}
@@ -2099,8 +2178,8 @@ export default function AdminFormationDetailPage() {
                           </div>
 
                           <div>
-                            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-inkSoft">
-                              Statut du paiement
+                            <label className="text-xs font-semibold text-inkSoft">
+                              Paiement
                             </label>
 
                             <select
@@ -2121,7 +2200,7 @@ export default function AdminFormationDetailPage() {
                                   }
                                 )
                               }
-                              className="mt-2 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm font-medium text-ink outline-none focus:border-ink/30 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="mt-1 w-full min-w-[190px] rounded-lg border border-ink/10 bg-white px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-ink/30 disabled:opacity-50"
                             >
                               {PAYMENT_STATUSES.map(
                                 (status) => (
@@ -2133,22 +2212,43 @@ export default function AdminFormationDetailPage() {
                                       status.value
                                     }
                                   >
-                                    {status.label}
+                                    {
+                                      status.label
+                                    }
                                   </option>
                                 )
                               )}
                             </select>
                           </div>
                         </div>
-
-                        {isUpdating && (
-                          <p className="mt-3 text-xs text-inkSoft">
-                            Enregistrement de la
-                            modification…
-                          </p>
-                        )}
                       </div>
-                    </div>
+
+                      {/* PAIEMENT STATUS */}
+
+                      <div className="border-t border-ink/10 bg-bgAlt px-5 py-4">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="text-xs text-inkSoft">
+                            État du paiement :
+                          </span>
+
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${getPaymentStatusClass(
+                              registration.payment_status
+                            )}`}
+                          >
+                            {getPaymentStatusLabel(
+                              registration.payment_status
+                            )}
+                          </span>
+
+                          {isUpdating && (
+                            <span className="text-xs text-inkSoft">
+                              Enregistrement…
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </article>
                   );
                 }
               )}
