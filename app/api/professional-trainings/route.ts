@@ -35,6 +35,11 @@ const DEFAULT_MODULES = [
   },
 ];
 
+/**
+ * GET
+ * Récupère toutes les formations professionnelles.
+ * Réservé à l'administration.
+ */
 export async function GET() {
   try {
     if (!(await isAdminAuthed())) {
@@ -172,6 +177,19 @@ export async function GET() {
   }
 }
 
+/**
+ * POST
+ * Crée une nouvelle formation professionnelle.
+ *
+ * À la création :
+ * - la formation est créée
+ * - 5 modules par défaut sont créés
+ * - une première session est créée automatiquement
+ *
+ * La session est volontairement créée en statut "draft"
+ * afin que l'administrateur puisse définir/modifier les
+ * informations avant de l'ouvrir au public.
+ */
 export async function POST(request: Request) {
   try {
     if (!(await isAdminAuthed())) {
@@ -266,6 +284,12 @@ export async function POST(request: Request) {
       );
     }
 
+    /*
+     * ---------------------------------------------------------
+     * CRÉATION DE LA FORMATION
+     * ---------------------------------------------------------
+     */
+
     const { data: training, error } =
       await supabaseAdmin()
         .from("professional_trainings")
@@ -341,8 +365,11 @@ export async function POST(request: Request) {
     }
 
     /*
-     * Création automatique du programme de base.
+     * ---------------------------------------------------------
+     * CRÉATION AUTOMATIQUE DU PROGRAMME
+     * ---------------------------------------------------------
      */
+
     const modules = DEFAULT_MODULES.map(
       (module, index) => ({
         training_id: training.id,
@@ -359,8 +386,7 @@ export async function POST(request: Request) {
 
     /*
      * Si les modules ne peuvent pas être créés,
-     * on supprime également la formation pour
-     * éviter de laisser une création incomplète.
+     * on supprime également la formation.
      */
     if (modulesError) {
       console.error(
@@ -382,10 +408,121 @@ export async function POST(request: Request) {
       );
     }
 
+    /*
+     * ---------------------------------------------------------
+     * CRÉATION AUTOMATIQUE DE LA PREMIÈRE SESSION
+     * ---------------------------------------------------------
+     *
+     * On prépare une première session à J+7.
+     * La session reste en "draft" afin que l'admin puisse
+     * modifier la date, le lieu, le format ou la capacité
+     * avant de l'ouvrir au public.
+     */
+
+    const startDate = new Date();
+
+    startDate.setDate(
+      startDate.getDate() + 7
+    );
+
+    const endDate = new Date(
+      startDate
+    );
+
+    endDate.setDate(
+      endDate.getDate() +
+        Math.max(durationDays - 1, 0)
+    );
+
+    const formatDate = (
+      date: Date
+    ) => {
+      const year =
+        date.getFullYear();
+
+      const month = String(
+        date.getMonth() + 1
+      ).padStart(2, "0");
+
+      const day = String(
+        date.getDate()
+      ).padStart(2, "0");
+
+      return `${year}-${month}-${day}`;
+    };
+
+    const { data: session, error: sessionError } =
+      await supabaseAdmin()
+        .from("professional_training_sessions")
+        .insert({
+          training_id: training.id,
+
+          start_date:
+            formatDate(startDate),
+
+          end_date:
+            formatDate(endDate),
+
+          capacity: 15,
+
+          status: "draft",
+
+          location:
+            "Yaoundé — lieu à confirmer",
+
+          format:
+            typeof body.format === "string"
+              ? body.format.trim() ||
+                "Présentiel"
+              : "Présentiel",
+        })
+        .select("*")
+        .single();
+
+    /*
+     * Si la session ne peut pas être créée,
+     * on supprime la formation.
+     *
+     * Les modules seront également supprimés
+     * grâce à la relation ON DELETE CASCADE.
+     */
+    if (sessionError || !session) {
+      console.error(
+        "Create default training session error:",
+        sessionError
+      );
+
+      await supabaseAdmin()
+        .from("professional_trainings")
+        .delete()
+        .eq("id", training.id);
+
+      return NextResponse.json(
+        {
+          error:
+            "La formation n'a pas pu être initialisée avec sa première session.",
+        },
+        { status: 500 }
+      );
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * RÉPONSE
+     * ---------------------------------------------------------
+     */
+
     return NextResponse.json(
       {
         training,
-        default_modules_created: true,
+
+        session,
+
+        default_modules_created:
+          true,
+
+        default_session_created:
+          true,
       },
       { status: 201 }
     );
@@ -405,6 +542,10 @@ export async function POST(request: Request) {
   }
 }
 
+/**
+ * PATCH
+ * Modifie une formation professionnelle.
+ */
 export async function PATCH(request: Request) {
   try {
     if (!(await isAdminAuthed())) {
@@ -510,7 +651,8 @@ export async function PATCH(request: Request) {
     if (
       typeof body.published === "boolean"
     ) {
-      updates.published = body.published;
+      updates.published =
+        body.published;
     }
 
     const { data, error } =
@@ -555,6 +697,10 @@ export async function PATCH(request: Request) {
   }
 }
 
+/**
+ * DELETE
+ * Supprime une formation professionnelle.
+ */
 export async function DELETE(request: Request) {
   try {
     if (!(await isAdminAuthed())) {
