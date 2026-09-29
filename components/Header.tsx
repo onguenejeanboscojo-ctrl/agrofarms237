@@ -10,6 +10,10 @@ const LINKS = [
   { href: "/notre-elevage", label: "Notre élevage" },
   { href: "/galerie", label: "Galerie" },
   { href: "/espace-education", label: "Éducation" },
+  {
+    href: "/espace-education/formations-professionnelles",
+    label: "Formations pro",
+  },
   { href: "/professionnels", label: "Professionnels" },
   { href: "/partenaires", label: "Partenaires" },
   { href: "/contact", label: "Contact" },
@@ -83,7 +87,6 @@ export default function Header() {
       {open && (
         <div className="border-t border-ink/10 bg-paper px-5 pb-6 md:hidden">
           <nav className="flex flex-col">
-
             {LINKS.map((link) => (
               <Link
                 key={link.href}
@@ -102,7 +105,6 @@ export default function Header() {
             >
               Commander
             </Link>
-
           </nav>
         </div>
       )}
