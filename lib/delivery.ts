@@ -25,7 +25,7 @@ export function isOtherNeighborhood(value: string) {
 export function getDeliveryFee(neighborhood: string): number | null {
   if (!neighborhood || isOtherNeighborhood(neighborhood)) return null;
   for (const zone of DELIVERY_ZONES) {
-    if (zone.neighborhoods.includes(neighborhood)) return zone.fee;
+    if ((zone.neighborhoods as readonly string[]).includes(neighborhood)) return zone.fee;
   }
   return null;
 }
