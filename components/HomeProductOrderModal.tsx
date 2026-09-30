@@ -254,10 +254,15 @@ export default function HomeProductOrderModal({ product }: Props) {
   }
 
   function close() {
-    if (!submitting) {
-      setOpen(false);
+    if (submitting) return;
+
+    // Fermer d'abord pour que l'interface réagisse immédiatement.
+    setOpen(false);
+
+    // Réinitialiser les champs après le rendu de fermeture.
+    requestAnimationFrame(() => {
       reset();
-    }
+    });
   }
 
   function validateOptions() {
@@ -375,7 +380,7 @@ export default function HomeProductOrderModal({ product }: Props) {
 
       {open ? (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#10291f]/55 px-4 py-6 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#10291f]/55 px-4 py-6"
           role="dialog"
           aria-modal="true"
           aria-label={`Commander ${product.name}`}
