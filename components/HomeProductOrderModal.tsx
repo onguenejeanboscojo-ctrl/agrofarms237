@@ -228,9 +228,11 @@ export default function HomeProductOrderModal({ product }: Props) {
     deliveryMode === "Livraison" ? getDeliveryFee(neighborhood) : 0;
 
   const estimatedTotal =
-    productTotal === null || (deliveryMode === "Livraison" && deliveryFee === null)
+    productTotal === null ||
+    (deliveryMode === "Livraison" && deliveryFee === null)
       ? null
-      : productTotal + deliveryFee;
+      : productTotal + (deliveryFee ?? 0);
+
 
   const deliveryLocation =
     neighborhood && isOtherNeighborhood(neighborhood)
