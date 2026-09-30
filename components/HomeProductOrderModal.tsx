@@ -818,7 +818,7 @@ export default function HomeProductOrderModal({
                 </div>
               )}
             </div>
-
+          </div>
         </div>
       </dialog>
     </>
