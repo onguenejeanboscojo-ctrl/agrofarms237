@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useMemo, useState } from "react";
 import { DELIVERY_ZONES, getDeliveryFee, isOtherNeighborhood } from "@/lib/delivery";
 import { formatFCFA } from "@/lib/whatsapp";
 
@@ -200,6 +201,7 @@ export default function HomeProductOrderModal({
   useDefaultOptions = true,
 }: HomeProductOrderModalProps) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState<"order" | "customer" | "summary">("order");
   const [quantity, setQuantity] = useState(1);
   const [selections, setSelections] = useState<Record<string, string>>({});
@@ -211,6 +213,43 @@ export default function HomeProductOrderModal({
   const [otherNeighborhood, setOtherNeighborhood] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.paddingRight = "";
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const previousPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !submitting) {
+        setOpen(false);
+        reset();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.paddingRight = previousPaddingRight;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, submitting]);
 
   const options = useMemo(() => {
     if (!useDefaultOptions) return [];
@@ -377,13 +416,17 @@ export default function HomeProductOrderModal({
         Commander
       </button>
 
-      {open ? (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#10291f]/55 px-4 py-6 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Commander ${product.name}`}
-        >
+      {mounted && open
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[9999] flex min-h-[100dvh] items-center justify-center bg-[#10291f]/55 px-4 py-4 backdrop-blur-sm sm:px-6 sm:py-6"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Commander ${product.name}`}
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) close();
+              }}
+            >
           <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[28px] bg-[#FBFAF6] shadow-2xl">
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#173D2D]/10 bg-[#FBFAF6]/95 px-6 py-5 backdrop-blur">
               <div>
@@ -780,8 +823,10 @@ export default function HomeProductOrderModal({
               )}
             </div>
           </div>
-        </div>
-      ) : null}
+            </div>,
+            document.body
+          )
+        : null}
     </>
   );
 }
