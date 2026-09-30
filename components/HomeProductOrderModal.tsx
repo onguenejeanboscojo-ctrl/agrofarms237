@@ -39,8 +39,9 @@ export type HomeOrderProduct = {
   order_options?: OrderOption[] | null;
 };
 
-type Props = {
+export type HomeProductOrderModalProps = {
   product: HomeOrderProduct;
+  useDefaultOptions?: boolean;
 };
 
 const DEFAULT_OPTIONS: Record<string, OrderOption[]> = {
@@ -194,7 +195,10 @@ function optionText(
   });
 }
 
-export default function HomeProductOrderModal({ product }: Props) {
+export default function HomeProductOrderModal({
+  product,
+  useDefaultOptions = true,
+}: HomeProductOrderModalProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"order" | "customer" | "summary">("order");
   const [quantity, setQuantity] = useState(1);
@@ -208,13 +212,13 @@ export default function HomeProductOrderModal({ product }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const options = useMemo(
-    () =>
-      Array.isArray(product.order_options) && product.order_options.length > 0
-        ? product.order_options
-        : defaultOptions(product.name),
-    [product.order_options, product.name]
-  );
+  const options = useMemo(() => {
+    if (!useDefaultOptions) return [];
+
+    return Array.isArray(product.order_options) && product.order_options.length > 0
+      ? product.order_options
+      : defaultOptions(product.name);
+  }, [product.order_options, product.name, useDefaultOptions]);
 
   const unitPrice = useMemo(
     () => getUnitPrice(product, options, selections, quantity),
@@ -254,15 +258,10 @@ export default function HomeProductOrderModal({ product }: Props) {
   }
 
   function close() {
-    if (submitting) return;
-
-    // Fermer d'abord pour que l'interface réagisse immédiatement.
-    setOpen(false);
-
-    // Réinitialiser les champs après le rendu de fermeture.
-    requestAnimationFrame(() => {
+    if (!submitting) {
+      setOpen(false);
       reset();
-    });
+    }
   }
 
   function validateOptions() {
@@ -380,7 +379,7 @@ export default function HomeProductOrderModal({ product }: Props) {
 
       {open ? (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#10291f]/55 px-4 py-6"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#10291f]/55 px-4 py-6 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-label={`Commander ${product.name}`}
