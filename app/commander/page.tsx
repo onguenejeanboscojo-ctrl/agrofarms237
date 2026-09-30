@@ -486,7 +486,7 @@ export default function CommanderPage() {
               : null,
 
           unit_price: unitPrice,
-          total_price: total,
+          total_price: estimatedTotal ?? productTotal,
 
           client_type: type,
           client_name: nom,
