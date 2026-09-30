@@ -1,6 +1,9 @@
-import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { formatFCFA } from "@/lib/whatsapp";
 import ProductCarousel from "@/components/ProductCarousel";
+import HomeProductOrderModal, {
+  HomeOrderProduct,
+} from "@/components/HomeProductOrderModal";
 
 export const revalidate = 30;
 
@@ -12,7 +15,51 @@ type MediaItem = {
   caption?: string | null;
 };
 
-async function getMedia() {
+type Product = {
+  id: string;
+  name: string;
+  price_standard: number | null;
+  price_bulk: number | null;
+  bulk_min_kg: number | null;
+  stock_status: "disponible" | "stock_limite" | "indisponible" | string;
+  stock_quantity: number;
+  stock_threshold: number;
+  category: string | null;
+  product_group: string | null;
+  variant: string | null;
+  unit: string | null;
+  display_order: number;
+};
+
+const CATEGORY_ORDER = ["Pisciculture", "Élevage porcin", "Aviculture"];
+
+const CATEGORY_INTRO: Record<string, string> = {
+  Pisciculture:
+    "Poissons issus de notre production piscicole, proposés selon les formes disponibles à la ferme.",
+  "Élevage porcin":
+    "Une gamme porcine qui s’élargira progressivement selon la production et les disponibilités.",
+  Aviculture:
+    "Poulets et œufs issus de notre activité avicole, avec des formats adaptés aux particuliers et aux professionnels.",
+};
+
+async function getProducts(): Promise<Product[]> {
+  try {
+    const { data, error } = await supabaseAdmin()
+      .from("products")
+      .select(
+        "id,name,price_standard,price_bulk,bulk_min_kg,stock_status,stock_quantity,stock_threshold,category,product_group,variant,unit,display_order"
+      )
+      .order("display_order", { ascending: true })
+      .order("name", { ascending: true });
+
+    if (error) return [];
+    return (data || []) as Product[];
+  } catch {
+    return [];
+  }
+}
+
+async function getMedia(): Promise<MediaItem[]> {
   try {
     const { data } = await supabaseAdmin()
       .from("media")
@@ -28,134 +75,93 @@ async function getMedia() {
   }
 }
 
-/*
- * ============================================================
- * PRODUITS AGROFARMS237
- * ============================================================
- *
- * Le silure frais est actuellement disponible.
- *
- * Tous les autres produits sont en développement et restent
- * volontairement affichés comme "Bientôt disponible".
- *
- * IMPORTANT :
- * Le statut d'un produit est indépendant des photos.
- * Ajouter une photo depuis l'administration ne rend donc pas
- * automatiquement un produit disponible.
- */
+function mediaCategories(product: Product) {
+  const group = (product.product_group || "").toLowerCase();
+  const variant = (product.variant || "").toLowerCase();
 
-const PRODUCTS = [
-  {
-    category: "elevage_silure",
-    title: "Silure frais",
-    eyebrow: "Pisciculture",
-    status: "disponible",
-    statusLabel: "Disponible",
-    description:
-      "Notre production actuelle de silure, élevée localement à la ferme Agrofarms237 et proposée fraîche aux familles et aux professionnels.",
-    note: "Produit actuellement disponible.",
-  },
-  {
-    category: "produit_poisson_fume",
-    title: "Poisson fumé",
-    eyebrow: "Pisciculture",
-    status: "avenir",
-    statusLabel: "Bientôt disponible",
-    description:
-      "Une future gamme de poisson fumé développée à partir de notre production piscicole.",
-  },
-  {
-    category: "produit_porc_fume",
-    title: "Porc fumé",
-    eyebrow: "Élevage porcin",
-    status: "avenir",
-    statusLabel: "Bientôt disponible",
-    description:
-      "Une future gamme de porc fumé qui sera développée avec l'évolution de notre élevage porcin.",
-  },
-  {
-    category: "produit_poulet_fume",
-    title: "Poulet fumé",
-    eyebrow: "Aviculture",
-    status: "avenir",
-    statusLabel: "Bientôt disponible",
-    description:
-      "Une future offre de poulet fumé qui viendra compléter progressivement notre gamme.",
-  },
-  {
-    category: "produit_poulet_frais",
-    title: "Poulet frais nettoyé",
-    eyebrow: "Aviculture",
-    status: "avenir",
-    statusLabel: "Bientôt disponible",
-    description:
-      "Poulet frais nettoyé et préparé pour faciliter la commande et la préparation chez nos clients.",
-    note: "Vente au kilogramme prévue ultérieurement.",
-  },
-  {
-    category: "produit_porcelet",
-    title: "Porcelet",
-    eyebrow: "Élevage porcin",
-    status: "avenir",
-    statusLabel: "Bientôt disponible",
-    description:
-      "Des porcelets seront proposés lorsque notre activité d'élevage porcin sera opérationnelle.",
-  },
-  {
-    category: "produit_poussins",
-    title: "Poussins",
-    eyebrow: "Aviculture",
-    status: "avenir",
-    statusLabel: "Bientôt disponible",
-    description:
-      "Une future offre destinée aux éleveurs souhaitant démarrer ou développer leur activité avicole.",
-  },
-  {
-    category: "produit_alevins",
-    title: "Alevins",
-    eyebrow: "Pisciculture",
-    status: "avenir",
-    statusLabel: "Bientôt disponible",
-    description:
-      "Des alevins destinés aux éleveurs souhaitant démarrer ou renforcer leur production piscicole.",
-  },
-];
+  if (group === "silure") return ["elevage_silure", "silure"];
+  if (group === "carpe") return ["carpe", "produit_carpe"];
+  if (group === "porc" && variant.includes("fum")) return ["produit_porc_fume"];
+  if (group === "porc") return ["porc", "elevage_porc"];
+  if (group === "poulet de chair" && variant.includes("fum")) {
+    return ["produit_poulet_fume"];
+  }
+  if (group === "poulet de chair") return ["produit_poulet_frais", "poulet"];
+  if (group === "œufs" || group === "oeufs") return ["oeufs", "œufs"];
 
-function StatusBadge({
-  status,
-  label,
-}: {
-  status: string;
-  label: string;
-}) {
-  const available = status === "disponible";
-
-  return (
-    <span
-      className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12.5px] font-bold ${
-        available
-          ? "border-ok/20 bg-ok/10 text-ok"
-          : "border-gold/25 bg-gold/10 text-goldDeep"
-      }`}
-    >
-      <span
-        className={`h-2 w-2 rounded-full ${
-          available ? "bg-ok" : "bg-gold"
-        }`}
-      />
-
-      {label}
-    </span>
-  );
+  return [];
 }
 
-function ProductMedia({
-  images,
-  title,
-}: {
-  images: string[];
-  title: string;
-}) {
+function getImages(product: Product, media: MediaItem[]) {
+  const categories = mediaCategories(product);
+  if (!categories.length) return [];
+
+  return media
+    .filter((item) => item.category && categories.includes(item.category))
+    .map((item) => item.url);
+}
+
+function statusLabel(status: string) {
+  if (status === "disponible") return "Disponible";
+  if (status === "stock_limite") return "Stock limité";
+  return "Indisponible";
+}
+
+function statusClass(status: string) {
+  if (status === "disponible") {
+    return "border-ok/20 bg-ok/10 text-ok";
+  }
+
+  if (status === "stock_limite") {
+    return "border-gold/25 bg-gold/10 text-goldDeep";
+  }
+
+  return "border-ink/10 bg-ink/5 text-inkSoft";
+}
+
+function priceText(product: Product) {
+  if (typeof product.price_standard !== "number") {
+    return "Prix à confirmer";
+  }
+
+  const unit = product.unit ? `/${product.unit}` : "";
+  const standard = `${formatFCFA(product.price_standard)}${unit}`;
+
+  if (
+    typeof product.price_bulk === "number" &&
+    typeof product.bulk_min_kg === "number" &&
+    product.bulk_min_kg > 0 &&
+    product.unit === "kg"
+  ) {
+    return `${standard} · ${formatFCFA(product.price_bulk)}/kg dès ${product.bulk_min_kg} kg`;
+  }
+
+  return standard;
+}
+
+function toOrderProduct(product: Product): HomeOrderProduct {
+  return {
+    id: product.id,
+    name: product.name,
+    description: null,
+    status: product.stock_status,
+    price: product.price_standard,
+    price_unit: product.unit,
+    price_1_label: null,
+    price_1: product.price_standard,
+    price_2_label:
+      typeof product.bulk_min_kg === "number"
+        ? `À partir de ${product.bulk_min_kg} kg`
+        : null,
+    price_2: product.price_bulk,
+    order_enabled:
+      product.stock_status !== "indisponible" &&
+      typeof product.price_standard === "number",
+    order_options: [],
+  };
+}
+
+function ProductImage({ images, title }: { images: string[]; title: string }) {
   if (images.length > 0) {
     return <ProductCarousel images={images} />;
   }
@@ -163,248 +169,181 @@ function ProductMedia({
   return (
     <div className="flex aspect-[4/3] items-center justify-center bg-[radial-gradient(120%_140%_at_15%_0%,#2A5E56_0%,#0E2622_65%,#081815_100%)]">
       <div className="px-6 text-center">
-        <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-gold">
+        <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-gold">
           Agrofarms237
         </span>
-
-        <p className="mt-2 font-serif text-[22px] font-semibold text-paper">
+        <p className="mt-2 font-serif text-[23px] font-semibold text-paper">
           {title}
         </p>
-
-        <p className="mt-1 text-[13px] text-paper/60">
-          Photo à venir
-        </p>
+        <p className="mt-1 text-[13px] text-paper/60">Photo à venir</p>
       </div>
     </div>
   );
 }
 
+function ProductCard({ product, media }: { product: Product; media: MediaItem[] }) {
+  const images = getImages(product, media);
+  const hasPrice = typeof product.price_standard === "number";
+  const canOrder =
+    product.stock_status !== "indisponible" && hasPrice;
+
+  return (
+    <article className="overflow-hidden rounded-l border border-ink/10 bg-paper shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg">
+      <ProductImage images={images} title={product.name} />
+
+      <div className="p-6 md:p-7">
+        <div className="flex items-center justify-between gap-3">
+          <span
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11.5px] font-bold ${statusClass(
+              product.stock_status
+            )}`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            {statusLabel(product.stock_status)}
+          </span>
+
+          <span className="text-[12px] font-medium text-inkSoft">
+            {product.unit || ""}
+          </span>
+        </div>
+
+        <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.14em] text-goldDeep">
+          {product.product_group}
+        </p>
+
+        <h3 className="mt-1 font-serif text-[28px] font-semibold text-ink">
+          {product.variant || product.name}
+        </h3>
+
+        <p className="mt-3 text-[14px] leading-6 text-inkSoft">
+          {product.variant} · vendu au {product.unit || "format indiqué"}.
+        </p>
+
+        <div className="mt-5 rounded-2xl bg-bgAlt px-4 py-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-inkSoft">
+            Tarif actuel
+          </p>
+          <p className="mt-1 text-[17px] font-semibold text-ink">
+            {priceText(product)}
+          </p>
+        </div>
+
+        <div className="mt-5">
+          {canOrder ? (
+            <HomeProductOrderModal
+              product={toOrderProduct(product)}
+              useDefaultOptions={false}
+            />
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="flex w-full cursor-not-allowed items-center justify-center rounded-full border border-ink/10 bg-ink/5 px-5 py-3.5 text-sm font-semibold text-inkSoft"
+            >
+              {hasPrice ? "Commande indisponible" : "Prix à confirmer"}
+            </button>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default async function ProduitsPage() {
-  const media = await getMedia();
+  const [products, media] = await Promise.all([getProducts(), getMedia()]);
 
-  const getImages = (category: string) =>
-    media
-      .filter((item) => item.category === category)
-      .map((item) => item.url);
-
-  const availableProducts = PRODUCTS.filter(
-    (product) => product.status === "disponible"
+  const categories = CATEGORY_ORDER.filter((category) =>
+    products.some((product) => product.category === category)
   );
 
-  const upcomingProducts = PRODUCTS.filter(
-    (product) => product.status === "avenir"
-  );
+  const availableCount = products.filter(
+    (product) =>
+      product.stock_status !== "indisponible" &&
+      typeof product.price_standard === "number"
+  ).length;
 
   return (
     <main>
-      {/* ===================================================== */}
-      {/* HERO                                                   */}
-      {/* ===================================================== */}
-
       <section className="relative overflow-hidden bg-ink px-5 py-[100px] text-paper">
         <div className="absolute inset-0 bg-[radial-gradient(120%_140%_at_15%_0%,#1D4B44_0%,#0E2622_60%,#081815_100%)]" />
-
         <div className="relative mx-auto max-w-[1180px]">
           <span className="mb-3 inline-block text-[13px] font-bold text-gold">
-            Nos produits
+            Notre catalogue
           </span>
-
           <h1 className="max-w-[850px] font-serif text-[clamp(40px,7vw,68px)] font-semibold leading-[1.05]">
-            Des produits issus de notre ferme.
+            Toute la gamme Agrofarms237, au même endroit.
           </h1>
-
-          <p className="mt-5 max-w-[680px] text-[17px] leading-7 text-paper/75">
-            Découvrez les produits proposés par Agrofarms237 aujourd’hui
-            ainsi que ceux qui viendront progressivement compléter notre
-            gamme.
+          <p className="mt-5 max-w-[700px] text-[17px] leading-7 text-paper/75">
+            Découvrez les produits issus de nos différentes activités agricoles.
+            Les tarifs sont actualisés selon les conditions du marché et la
+            disponibilité est pilotée directement depuis notre administration.
           </p>
+
+          <div className="mt-8 flex flex-wrap gap-3 text-[12px] font-semibold">
+            <span className="rounded-full border border-paper/15 bg-paper/5 px-4 py-2">
+              {products.length} produits au catalogue
+            </span>
+            <span className="rounded-full border border-paper/15 bg-paper/5 px-4 py-2">
+              {availableCount} disponible{availableCount > 1 ? "s" : ""} à la commande
+            </span>
+          </div>
         </div>
       </section>
-
-      {/* ===================================================== */}
-      {/* PRODUIT DISPONIBLE                                    */}
-      {/* ===================================================== */}
 
       <section className="px-5 py-[72px]">
-        <div className="mx-auto max-w-[1180px]">
-          <div className="mb-10">
-            <span className="mb-2 inline-block text-[13px] font-bold text-ok">
-              Disponible aujourd’hui
-            </span>
+        <div className="mx-auto max-w-[1180px] space-y-20">
+          {categories.map((category) => {
+            const categoryProducts = products.filter(
+              (product) => product.category === category
+            );
 
-            <h2 className="font-serif text-[clamp(30px,5vw,44px)] font-semibold">
-              Notre produit disponible
-            </h2>
+            return (
+              <section key={category}>
+                <div className="mb-9 max-w-[760px]">
+                  <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-goldDeep">
+                    {category}
+                  </span>
+                  <h2 className="mt-2 font-serif text-[clamp(31px,5vw,46px)] font-semibold">
+                    {category}
+                  </h2>
+                  <p className="mt-3 text-[15px] leading-7 text-inkSoft">
+                    {CATEGORY_INTRO[category]}
+                  </p>
+                </div>
 
-            <p className="mt-2 max-w-[680px] text-[15px] leading-7 text-inkSoft">
-              Pour le moment, notre production commercialisée est centrée
-              sur le silure frais issu de notre élevage.
-            </p>
-          </div>
-
-          <div className="grid gap-8">
-            {availableProducts.map((product) => {
-              const images = getImages(product.category);
-
-              return (
-                <article
-                  key={product.category}
-                  className="grid overflow-hidden rounded-l border border-ink/10 bg-bgAlt md:grid-cols-2"
-                >
-                  <ProductMedia
-                    images={images}
-                    title={product.title}
-                  />
-
-                  <div className="flex flex-col justify-center p-7 md:p-10">
-                    <StatusBadge
-                      status={product.status}
-                      label={product.statusLabel}
+                <div className="grid gap-7 md:grid-cols-2 lg:grid-cols-3">
+                  {categoryProducts.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      media={media}
                     />
-
-                    <span className="mt-5 text-[12px] font-bold uppercase tracking-[0.12em] text-goldDeep">
-                      {product.eyebrow}
-                    </span>
-
-                    <h3 className="mt-2 font-serif text-[32px] font-semibold">
-                      {product.title}
-                    </h3>
-
-                    <p className="mt-3 max-w-[55ch] text-[15px] leading-7 text-inkSoft">
-                      {product.description}
-                    </p>
-
-                    {product.note && (
-                      <p className="mt-4 text-[14px] font-bold text-goldDeep">
-                        {product.note}
-                      </p>
-                    )}
-
-                    {/* Bouton uniquement pour le produit disponible */}
-                    <div className="mt-7">
-                      <Link
-                        href="/commander"
-                        className="btn btn-ink"
-                      >
-                        Commander
-                      </Link>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
       </section>
 
-      {/* ===================================================== */}
-      {/* PRODUITS À VENIR                                      */}
-      {/* ===================================================== */}
-
-      <section className="bg-bgAlt px-5 py-[72px]">
-        <div className="mx-auto max-w-[1180px]">
-          <div className="mb-10">
-            <span className="mb-2 inline-block text-[13px] font-bold text-goldDeep">
-              Prochainement
-            </span>
-
-            <h2 className="font-serif text-[clamp(30px,5vw,44px)] font-semibold">
-              Bientôt disponibles
-            </h2>
-
-            <p className="mt-2 max-w-[680px] text-[15px] leading-7 text-inkSoft">
-              Ces produits font partie du développement progressif
-              d’Agrofarms237. Leur disponibilité sera annoncée au fur et à
-              mesure de leur mise en production.
-            </p>
-          </div>
-
-          <div className="grid gap-8 md:grid-cols-2">
-            {upcomingProducts.map((product) => {
-              const images = getImages(product.category);
-
-              return (
-                <article
-                  key={product.category}
-                  className="overflow-hidden rounded-l border border-ink/10 bg-paper"
-                >
-                  <ProductMedia
-                    images={images}
-                    title={product.title}
-                  />
-
-                  <div className="p-7 md:p-8">
-                    <StatusBadge
-                      status={product.status}
-                      label={product.statusLabel}
-                    />
-
-                    <span className="mt-5 block text-[12px] font-bold uppercase tracking-[0.12em] text-goldDeep">
-                      {product.eyebrow}
-                    </span>
-
-                    <h3 className="mt-2 font-serif text-[27px] font-semibold">
-                      {product.title}
-                    </h3>
-
-                    <p className="mt-3 text-[15px] leading-7 text-inkSoft">
-                      {product.description}
-                    </p>
-
-                    {product.note && (
-                      <p className="mt-4 text-[14px] font-bold text-goldDeep">
-                        {product.note}
-                      </p>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ===================================================== */}
-      {/* SITUATION ACTUELLE                                    */}
-      {/* ===================================================== */}
-
-      <section className="px-5 py-[72px]">
-        <div className="mx-auto max-w-[900px] text-center">
-          <span className="text-[13px] font-bold text-goldDeep">
-            Aujourd’hui
-          </span>
-
-          <h2 className="mt-3 font-serif text-[clamp(30px,5vw,46px)] font-semibold">
-            La production commence avec le silure.
-          </h2>
-
-          <p className="mx-auto mt-5 max-w-[650px] text-[16px] leading-7 text-inkSoft">
-            Agrofarms237 développe progressivement ses activités. Pour le
-            moment, le silure frais constitue notre produit actuellement
-            disponible. Les autres produits seront ajoutés au catalogue
-            au fur et à mesure de leur disponibilité.
+      {products.length === 0 && (
+        <section className="px-5 py-20 text-center">
+          <p className="text-inkSoft">
+            Le catalogue est momentanément indisponible.
           </p>
-        </div>
-      </section>
-
-      {/* ===================================================== */}
-      {/* VISION                                                 */}
-      {/* ===================================================== */}
+        </section>
+      )}
 
       <section className="bg-ink px-5 py-[72px] text-paper">
         <div className="mx-auto max-w-[850px] text-center">
-          <span className="text-[13px] font-bold text-gold">
-            Agrofarms237
-          </span>
-
+          <span className="text-[13px] font-bold text-gold">Agrofarms237</span>
           <h2 className="mt-3 font-serif text-[clamp(30px,5vw,46px)] font-semibold">
             Une gamme qui grandit avec la ferme.
           </h2>
-
           <p className="mx-auto mt-5 max-w-[650px] text-[16px] leading-7 text-paper/70">
-            Chaque nouveau produit sera introduit progressivement, avec
-            l’objectif de proposer une offre issue directement de nos
-            activités agricoles et d’élevage.
+            Les produits, les prix et les disponibilités peuvent évoluer avec
+            notre production et les conditions du marché. Le catalogue public
+            est alimenté directement depuis notre espace d’administration.
           </p>
         </div>
       </section>
