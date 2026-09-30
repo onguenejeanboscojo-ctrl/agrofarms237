@@ -1,7 +1,6 @@
 "use client";
 
-import { createPortal } from "react-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DELIVERY_ZONES, getDeliveryFee, isOtherNeighborhood } from "@/lib/delivery";
 import { formatFCFA } from "@/lib/whatsapp";
 
@@ -201,7 +200,7 @@ export default function HomeProductOrderModal({
   useDefaultOptions = true,
 }: HomeProductOrderModalProps) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
   const [step, setStep] = useState<"order" | "customer" | "summary">("order");
   const [quantity, setQuantity] = useState(1);
   const [selections, setSelections] = useState<Record<string, string>>({});
@@ -215,13 +214,15 @@ export default function HomeProductOrderModal({
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setMounted(true);
+    const dialog = dialogRef.current;
+    if (!dialog) return;
 
-    return () => {
-      document.body.style.overflow = "";
-      document.body.style.paddingRight = "";
-    };
-  }, []);
+    if (open && !dialog.open) {
+      dialog.showModal();
+    } else if (!open && dialog.open) {
+      dialog.close();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -235,21 +236,11 @@ export default function HomeProductOrderModal({
       document.body.style.paddingRight = `${scrollbarWidth}px`;
     }
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !submitting) {
-        setOpen(false);
-        reset();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
     return () => {
       document.body.style.overflow = previousOverflow;
       document.body.style.paddingRight = previousPaddingRight;
-      window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, submitting]);
+  }, [open]);
 
   const options = useMemo(() => {
     if (!useDefaultOptions) return [];
@@ -298,6 +289,7 @@ export default function HomeProductOrderModal({
 
   function close() {
     if (!submitting) {
+      dialogRef.current?.close();
       setOpen(false);
       reset();
     }
@@ -416,18 +408,22 @@ export default function HomeProductOrderModal({
         Commander
       </button>
 
-      {mounted && open
-        ? createPortal(
-            <div
-              className="fixed inset-0 z-[9999] flex min-h-[100dvh] items-center justify-center bg-[#10291f]/55 px-4 py-4 backdrop-blur-sm sm:px-6 sm:py-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label={`Commander ${product.name}`}
-              onMouseDown={(event) => {
-                if (event.target === event.currentTarget) close();
-              }}
-            >
-          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[28px] bg-[#FBFAF6] shadow-2xl">
+      <dialog
+        ref={dialogRef}
+        aria-label={`Commander ${product.name}`}
+        onClose={() => {
+          setOpen(false);
+          reset();
+        }}
+        className="m-0 h-[100dvh] max-h-none w-full max-w-none border-0 bg-transparent p-0 text-left outline-none backdrop:bg-[#10291f]/55 backdrop:backdrop-blur-sm"
+      >
+        <div
+          className="flex min-h-[100dvh] items-center justify-center px-4 py-4 sm:px-6 sm:py-6"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) close();
+          }}
+        >
+          <div className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-[28px] bg-[#FBFAF6] shadow-2xl">
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#173D2D]/10 bg-[#FBFAF6]/95 px-6 py-5 backdrop-blur">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#B7863D]">
@@ -822,11 +818,9 @@ export default function HomeProductOrderModal({
                 </div>
               )}
             </div>
-          </div>
-            </div>,
-            document.body
-          )
-        : null}
+
+        </div>
+      </dialog>
     </>
   );
 }
