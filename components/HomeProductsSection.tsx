@@ -1,18 +1,9 @@
-
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import HomeProductOrderModal, {
+  type HomeOrderProduct,
+} from "@/components/HomeProductOrderModal";
 
-type HomeProduct = {
-  id: string;
-  name: string;
-  description: string | null;
-  status: string;
-  price: number | null;
-  price_unit: string | null;
-  price_1_label: string | null;
-  price_1: number | null;
-  price_2_label: string | null;
-  price_2: number | null;
-  order_enabled: boolean;
+type HomeProduct = HomeOrderProduct & {
   position: number;
   published: boolean;
 };
@@ -59,7 +50,7 @@ export default async function HomeProductsSection() {
     const { data, error } = await supabaseAdmin()
       .from("home_products")
       .select(
-        "id, name, description, status, price, price_unit, price_1_label, price_1, price_2_label, price_2, order_enabled, position, published"
+        "id, name, description, status, price, price_unit, price_1_label, price_1, price_2_label, price_2, order_enabled, order_options, position, published"
       )
       .eq("published", true)
       .order("position", { ascending: true });
@@ -171,16 +162,7 @@ export default async function HomeProductsSection() {
                     </div>
 
                     {available ? (
-                      <a
-                        href={`https://wa.me/237697983119?text=${encodeURIComponent(
-                          `Bonjour Agrofarms237, je souhaite commander : ${product.name}.`
-                        )}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#173D2D] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#28563F]"
-                      >
-                        Commander sur WhatsApp ↗
-                      </a>
+                      <HomeProductOrderModal product={product} />
                     ) : (
                       <div className="mt-5 flex w-full cursor-not-allowed items-center justify-center rounded-full bg-[#E8E7E0] px-5 py-3.5 text-sm font-semibold text-[#858B81]">
                         {getStatusLabel(product.status)}
