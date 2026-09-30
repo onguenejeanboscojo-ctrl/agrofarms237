@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatFCFA } from "@/lib/whatsapp";
+import { DELIVERY_ZONES, getDeliveryFee, isOtherNeighborhood } from "@/lib/delivery";
 
 type OrderOptionValue = {
   id?: string;
@@ -221,6 +222,7 @@ export default function CommanderPage() {
 
   const [mode, setMode] = useState("Livraison");
   const [lieu, setLieu] = useState("");
+  const [deliveryNeighborhood, setDeliveryNeighborhood] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -320,9 +322,19 @@ export default function CommanderPage() {
     : null;
   const unitPrice = optionPrice ?? getProductPrice(selectedProduct, quantity);
 
-  const total =
+  const productTotal =
     typeof unitPrice === "number"
       ? unitPrice * quantity
+      : null;
+
+  const deliveryFee =
+    mode === "Livraison"
+      ? getDeliveryFee(deliveryNeighborhood)
+      : 0;
+
+  const estimatedTotal =
+    productTotal !== null && deliveryFee !== null
+      ? productTotal + deliveryFee
       : null;
 
   function selectProduct(product: HomeProduct) {
@@ -418,13 +430,22 @@ export default function CommanderPage() {
       return;
     }
 
+    if (!Number.isFinite(quantity) || quantity < 1) {
+      setError("Merci de renseigner une quantité valide.");
+      return;
+    }
+
+    if (mode === "Livraison" && !deliveryNeighborhood) {
+      setError("Merci de préciser votre quartier.");
+      return;
+    }
+
     if (
       mode === "Livraison" &&
+      isOtherNeighborhood(deliveryNeighborhood) &&
       !lieu.trim()
     ) {
-      setError(
-        "Merci de renseigner le lieu de livraison."
-      );
+      setError("Merci de saisir votre quartier.");
       return;
     }
 
@@ -470,7 +491,12 @@ export default function CommanderPage() {
           client_type: type,
           client_name: nom,
           delivery_mode: mode,
-          delivery_location: lieu,
+          delivery_location:
+            mode === "Livraison"
+              ? isOtherNeighborhood(deliveryNeighborhood)
+                ? lieu.trim()
+                : deliveryNeighborhood
+              : null,
           phone: tel,
         }),
       });
@@ -747,17 +773,19 @@ export default function CommanderPage() {
                     <input
                       type="number"
                       min={1}
-                      value={quantity}
-                      onChange={(e) =>
-                        setQuantity(
-                          Math.max(
-                            1,
-                            Number(
-                              e.target.value
-                            )
-                          )
-                        )
-                      }
+                      value={quantity === 0 ? "" : quantity}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        if (raw === "") {
+                          setQuantity(0);
+                          return;
+                        }
+                        const next = Number(raw);
+                        if (Number.isFinite(next)) setQuantity(next);
+                      }}
+                      onBlur={() => {
+                        if (!quantity || quantity < 1) setQuantity(1);
+                      }}
                       className="w-full rounded-lg border border-ink/15 bg-bg px-4 py-3 outline-none focus:border-goldDeep"
                     />
                   </div>
@@ -770,7 +798,7 @@ export default function CommanderPage() {
                     </p>
 
                     <p className="mt-1 font-serif text-3xl font-semibold">
-                      {formatFCFA(total || 0)}
+                      {formatFCFA(productTotal || 0)}
                     </p>
 
                     <p className="mt-1 text-xs text-paper/60">
@@ -863,9 +891,13 @@ export default function CommanderPage() {
                     <button
                       type="button"
                       key={m}
-                      onClick={() =>
-                        setMode(m)
-                      }
+                      onClick={() => {
+                        setMode(m);
+                        if (m === "Retrait à la ferme") {
+                          setDeliveryNeighborhood("");
+                          setLieu("");
+                        }
+                      }}
                       className={`flex-1 rounded-lg border px-3 py-3 text-center text-sm font-bold ${
                         mode === m
                           ? "border-water bg-water text-white"
@@ -881,16 +913,45 @@ export default function CommanderPage() {
               {mode === "Livraison" && (
                 <div className="field sm:col-span-2">
                   <label>
-                    Lieu de livraison
+                    Précisez votre quartier
                   </label>
 
-                  <input
-                    value={lieu}
-                    onChange={(e) =>
-                      setLieu(e.target.value)
-                    }
-                    placeholder="Quartier, ville"
-                  />
+                  <select
+                    value={deliveryNeighborhood}
+                    onChange={(e) => {
+                      setDeliveryNeighborhood(e.target.value);
+                      if (!isOtherNeighborhood(e.target.value)) setLieu("");
+                    }}
+                  >
+                    <option value="">Sélectionnez votre quartier</option>
+                    {DELIVERY_ZONES.flatMap((zone) =>
+                      zone.neighborhoods.map((neighborhood) => (
+                        <option key={neighborhood} value={neighborhood}>
+                          {neighborhood}
+                        </option>
+                      ))
+                    )}
+                    <option value="__OTHER__">Autre quartier</option>
+                  </select>
+
+                  {deliveryNeighborhood && !isOtherNeighborhood(deliveryNeighborhood) && (
+                    <p className="mt-2 text-sm font-semibold text-inkSoft">
+                      Frais de livraison : {formatFCFA(getDeliveryFee(deliveryNeighborhood) || 0)}
+                    </p>
+                  )}
+
+                  {isOtherNeighborhood(deliveryNeighborhood) && (
+                    <div className="mt-3">
+                      <input
+                        value={lieu}
+                        onChange={(e) => setLieu(e.target.value)}
+                        placeholder="Saisissez votre quartier"
+                      />
+                      <p className="mt-2 text-sm leading-5 text-inkSoft">
+                        Les frais de livraison pour ce quartier seront évalués par notre équipe et confirmés directement sur WhatsApp.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -991,28 +1052,40 @@ export default function CommanderPage() {
               </div>
 
               {mode === "Livraison" && (
+                <>
+                  <div className="flex justify-between gap-5 p-4">
+                    <span className="text-sm text-inkSoft">Quartier</span>
+                    <strong className="text-right">
+                      {isOtherNeighborhood(deliveryNeighborhood) ? lieu : deliveryNeighborhood}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between gap-5 p-4">
+                    <span className="text-sm text-inkSoft">Livraison</span>
+                    <strong className="text-right">
+                      {deliveryFee !== null ? formatFCFA(deliveryFee) : "À confirmer"}
+                    </strong>
+                  </div>
+                  {isOtherNeighborhood(deliveryNeighborhood) && (
+                    <div className="border-t border-ink/10 px-4 py-3 text-sm leading-5 text-inkSoft">
+                      Les frais de livraison pour ce quartier seront évalués par notre équipe et confirmés directement sur WhatsApp.
+                    </div>
+                  )}
+                </>
+              )}
+
+              {productTotal !== null && (
                 <div className="flex justify-between gap-5 p-4">
-                  <span className="text-sm text-inkSoft">
-                    Livraison
-                  </span>
-
-                  <strong className="text-right">
-                    {lieu}
-                  </strong>
+                  <span className="text-sm text-inkSoft">Produits</span>
+                  <strong>{formatFCFA(productTotal)}</strong>
                 </div>
               )}
 
-              {total !== null && (
-                <div className="flex justify-between gap-5 bg-water p-5 text-paper">
-                  <span className="font-semibold">
-                    Total estimatif
-                  </span>
-
-                  <strong className="font-serif text-2xl">
-                    {formatFCFA(total)}
-                  </strong>
-                </div>
-              )}
+              <div className="flex justify-between gap-5 bg-water p-5 text-paper">
+                <span className="font-semibold">Total estimatif</span>
+                <strong className="font-serif text-2xl">
+                  {estimatedTotal !== null ? formatFCFA(estimatedTotal) : "À confirmer"}
+                </strong>
+              </div>
             </div>
 
             <p className="mt-6 text-sm leading-6 text-inkSoft">
