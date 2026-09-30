@@ -485,10 +485,7 @@ export default function CommanderPage() {
       }
 
       if (data?.whatsapp_url) {
-        window.open(
-          data.whatsapp_url,
-          "_blank"
-        );
+        window.location.href = data.whatsapp_url;
       } else {
         throw new Error(
           "Le lien WhatsApp n'a pas été généré."
