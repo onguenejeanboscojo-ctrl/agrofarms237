@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { waLink, formatFCFA } from "@/lib/whatsapp";
 import { isAdminAuthed } from "@/lib/adminAuth";
+import { getDeliveryFee } from "@/lib/delivery";
 
 type OptionValue = {
   id?: string;
@@ -293,6 +294,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Le lieu de livraison est trop long." }, { status: 400 });
     }
 
+    const deliveryFee =
+      deliveryMode === "Livraison" && deliveryLocation
+        ? getDeliveryFee(deliveryLocation)
+        : deliveryMode === "Retrait à la ferme"
+          ? 0
+          : null;
+
+    // A custom neighborhood can legitimately return null here:
+    // its delivery fee will be confirmed manually with Agrofarms237.
+    const orderTotal =
+      totalPrice === null || deliveryFee === null
+        ? null
+        : totalPrice + deliveryFee;
+
     const optionEntries = Object.entries(selections);
     const optionText = optionEntries.map(([key, value]) => {
       const findLabel = (items: OrderOption[]): string | null => {
@@ -350,10 +365,24 @@ export async function POST(req: NextRequest) {
     lines.push("", `Quantité : ${quantity}`);
     if (quantityKg !== null) lines.push(`Quantité en kg : ${quantityKg} kg`);
     if (unitPrice !== null) lines.push(`Prix unitaire : ${formatFCFA(unitPrice)}`);
-    if (totalPrice !== null) lines.push(`Total estimatif : ${formatFCFA(totalPrice)}`);
-    else lines.push("Prix : à confirmer avec Agrofarms237");
+    if (totalPrice !== null) lines.push(`Produits : ${formatFCFA(totalPrice)}`);
+    else lines.push("Produits : prix à confirmer avec Agrofarms237");
+
+    if (deliveryMode === "Livraison") {
+      if (deliveryLocation) lines.push(`Lieu de livraison : ${deliveryLocation}`);
+      if (deliveryFee !== null) lines.push(`Livraison : ${formatFCFA(deliveryFee)}`);
+      else lines.push("Livraison : frais à confirmer avec Agrofarms237");
+    } else {
+      lines.push("Livraison : 0 FCFA (Retrait à la ferme)");
+    }
+
+    if (orderTotal !== null) {
+      lines.push(`Total estimatif : ${formatFCFA(orderTotal)}`);
+    } else {
+      lines.push("Total estimatif : à confirmer avec Agrofarms237");
+    }
+
     lines.push("", `Nom : ${clientName}`, `Type de client : ${clientType}`, `Mode : ${deliveryMode}`);
-    if (deliveryMode === "Livraison") lines.push(`Lieu de livraison : ${deliveryLocation}`);
     lines.push(`Numéro à appeler : ${phone}`);
 
     return NextResponse.json({ order: data, whatsapp_url: waLink(lines.join("\n")) });
