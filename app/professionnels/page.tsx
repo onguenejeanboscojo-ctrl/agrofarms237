@@ -1,235 +1,371 @@
-import Link from "next/link";
-import { getContent } from "@/lib/content";
-import ProfessionnelsForm from "@/components/ProfessionnelsForm";
+"use client";
 
-const TARGETS = [
-  {
-    title: "Grandes surfaces",
-    text: "Pour les structures recherchant un approvisionnement organisé en volume.",
-  },
-  {
-    title: "Poissonneries",
-    text: "Pour les professionnels qui souhaitent s'approvisionner directement auprès de la ferme.",
-  },
-  {
-    title: "Restaurants & hôtels",
-    text: "Pour les établissements ayant des besoins réguliers en produits agricoles.",
-  },
-  {
-    title: "Traiteurs",
-    text: "Pour les activités nécessitant des volumes adaptés à leurs prestations.",
-  },
-  {
-    title: "Revendeurs & distributeurs",
-    text: "Pour les professionnels qui souhaitent développer une relation d'approvisionnement avec AgroFarms237.",
-  },
-  {
-    title: "Autres professionnels",
-    text: "Vous avez un besoin spécifique ? Présentez-nous votre activité.",
-  },
+import { useState } from "react";
+
+const BUSINESS_TYPES = [
+  "Grande surface",
+  "Poissonnerie",
+  "Restaurant",
+  "Hôtel",
+  "Traiteur",
+  "Revendeur",
+  "Distributeur",
+  "Autre",
 ];
 
-const APPROACH = [
-  {
-    number: "01",
-    title: "Vous présentez votre besoin",
-    text: "Vous nous indiquez votre activité, les produits recherchés et vos besoins en volume.",
-  },
-  {
-    number: "02",
-    title: "Nous étudions votre demande",
-    text: "Notre équipe analyse votre besoin et les conditions d'approvisionnement envisageables.",
-  },
-  {
-    number: "03",
-    title: "Nous échangeons sur l'offre",
-    text: "Nous discutons ensemble des volumes, de la fréquence et des conditions adaptées.",
-  },
-  {
-    number: "04",
-    title: "Nous construisons la collaboration",
-    text: "Lorsque les conditions sont réunies, nous pouvons mettre en place une relation d'approvisionnement.",
-  },
+const PRODUCTS = [
+  "Silure",
+  "Porc",
+  "Poulet de chair",
+  "Œufs",
+  "Plusieurs produits",
 ];
 
-export const revalidate = 60;
+const FREQUENCIES = [
+  "Ponctuelle",
+  "Hebdomadaire",
+  "Plusieurs fois par mois",
+  "Régulière",
+];
 
-export default async function ProfessionnelsPage() {
-  const intro = await getContent("professionnels_intro");
+type FormState = {
+  company_name: string;
+  contact_name: string;
+  phone: string;
+  email: string;
+  city: string;
+  business_type: string;
+  products: string;
+  estimated_volume: string;
+  frequency: string;
+  message: string;
+};
+
+const INITIAL_FORM: FormState = {
+  company_name: "",
+  contact_name: "",
+  phone: "",
+  email: "",
+  city: "",
+  business_type: "Restaurant",
+  products: "Silure",
+  estimated_volume: "",
+  frequency: "Ponctuelle",
+  message: "",
+};
+
+export default function ProfessionnelsForm() {
+  const [form, setForm] = useState<FormState>(INITIAL_FORM);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  function update(key: keyof FormState, value: string) {
+    setForm((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/professionals", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          data.error || "Une erreur est survenue lors de l'envoi."
+        );
+      }
+
+      setSent(true);
+    } catch (err) {
+      console.error(
+        "Erreur demande professionnelle :",
+        err
+      );
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Une erreur est survenue. Veuillez réessayer."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (sent) {
+    return (
+      <div className="mt-11 max-w-[720px] rounded-l border border-paper/15 bg-waterDeep p-8 md:p-11">
+        <span className="text-[13px] font-bold uppercase tracking-[0.08em] text-gold">
+          Demande envoyée
+        </span>
+
+        <h3 className="mt-2 font-serif text-[26px] font-semibold text-paper">
+          Merci pour votre demande.
+        </h3>
+
+        <p className="mt-3 max-w-[58ch] text-paper/70">
+          Votre demande professionnelle a bien été enregistrée.
+          Notre équipe reviendra vers vous au{" "}
+          <strong className="font-semibold text-paper">
+            {form.phone}
+          </strong>{" "}
+          afin d&apos;échanger sur votre besoin.
+        </p>
+
+        <button
+          type="button"
+          onClick={() => {
+            setForm(INITIAL_FORM);
+            setSent(false);
+            setError("");
+          }}
+          className="btn btn-outline mt-6"
+        >
+          Envoyer une autre demande
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <main className="bg-bgAlt">
-      {/* Hero */}
-      <section className="px-5 py-[72px] md:py-[96px]">
-        <div className="mx-auto max-w-[1180px]">
-          <div className="max-w-[760px]">
-            <span className="mb-3 inline-block text-[13px] font-bold text-goldDeep">
-              Vous êtes professionnel ?
-            </span>
+    <form
+      onSubmit={handleSubmit}
+      className="mt-11 max-w-[720px] rounded-l border border-paper/15 bg-waterDeep p-8 md:p-11"
+    >
+      <div className="mb-8">
+        <span className="text-[12px] font-bold uppercase tracking-[0.08em] text-gold">
+          Demande professionnelle
+        </span>
 
-            <h1 className="font-serif text-[clamp(32px,5vw,52px)] font-semibold leading-[1.08] text-ink">
-              Construisons une offre adaptée à votre activité.
-            </h1>
+        <h2 className="mt-2 font-serif text-[26px] font-semibold text-paper">
+          Parlons de votre besoin
+        </h2>
 
-            <p className="mt-5 max-w-[64ch] text-[16px] leading-7 text-inkSoft">
-              {intro}
-            </p>
+        <p className="mt-2 text-[14px] leading-6 text-paper/65">
+          Présentez-nous votre activité et vos besoins
+          d&apos;approvisionnement. Nous étudierons votre demande
+          afin d&apos;échanger avec vous sur les conditions adaptées.
+        </p>
+      </div>
 
-            <p className="mt-3 max-w-[64ch] text-[15px] leading-7 text-inkSoft">
-              Restaurants, hôtels, poissonneries, grandes surfaces,
-              traiteurs, revendeurs ou distributeurs : présentez-nous
-              votre besoin et échangeons sur les possibilités
-              d&apos;approvisionnement avec AgroFarms237.
-            </p>
+      <div className="grid gap-4.5 sm:grid-cols-2">
+        <div className="field">
+          <label className="!text-paper/75">
+            Entreprise / établissement
+          </label>
 
-            <div className="mt-7 flex flex-wrap gap-3.5">
-              <a href="#demande-professionnelle" className="btn btn-ink">
-                Demander une offre professionnelle
-              </a>
-
-              <Link
-                href="/commander"
-                className="btn btn-outline"
-              >
-                Découvrir nos produits
-              </Link>
-            </div>
-          </div>
+          <input
+            required
+            value={form.company_name}
+            onChange={(e) =>
+              update("company_name", e.target.value)
+            }
+            placeholder="Nom de votre structure"
+            className="!border-paper/20 !bg-paper/5 !text-paper placeholder:!text-paper/35"
+          />
         </div>
-      </section>
 
-      {/* Pour qui ? */}
-      <section className="border-t border-ink/10 bg-paper px-5 py-[72px]">
-        <div className="mx-auto max-w-[1180px]">
-          <div className="max-w-[700px]">
-            <span className="text-[13px] font-bold text-goldDeep">
-              Pour qui ?
-            </span>
+        <div className="field">
+          <label className="!text-paper/75">
+            Nom du responsable / contact
+          </label>
 
-            <h2 className="mt-2 font-serif text-[clamp(27px,4vw,38px)] font-semibold text-ink">
-              Des solutions pour différents besoins professionnels.
-            </h2>
-
-            <p className="mt-3 text-inkSoft">
-              Notre approche commence par la compréhension de votre
-              activité et de vos besoins d&apos;approvisionnement.
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {TARGETS.map((target) => (
-              <article
-                key={target.title}
-                className="border border-ink/10 bg-bgAlt p-6"
-              >
-                <h3 className="font-serif text-[21px] font-semibold text-ink">
-                  {target.title}
-                </h3>
-
-                <p className="mt-2 text-[14px] leading-6 text-inkSoft">
-                  {target.text}
-                </p>
-              </article>
-            ))}
-          </div>
+          <input
+            required
+            value={form.contact_name}
+            onChange={(e) =>
+              update("contact_name", e.target.value)
+            }
+            placeholder="Nom et prénom"
+            className="!border-paper/20 !bg-paper/5 !text-paper placeholder:!text-paper/35"
+          />
         </div>
-      </section>
 
-      {/* Notre approche */}
-      <section className="bg-bgAlt px-5 py-[72px]">
-        <div className="mx-auto max-w-[1180px]">
-          <div className="max-w-[700px]">
-            <span className="text-[13px] font-bold text-goldDeep">
-              Notre approche
-            </span>
+        <div className="field">
+          <label className="!text-paper/75">
+            Téléphone / WhatsApp
+          </label>
 
-            <h2 className="mt-2 font-serif text-[clamp(27px,4vw,38px)] font-semibold text-ink">
-              Une relation construite autour de votre besoin.
-            </h2>
-
-            <p className="mt-3 text-inkSoft">
-              Nous privilégions un échange direct afin de comprendre
-              votre activité avant de définir les conditions d&apos;une
-              éventuelle collaboration.
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-6 md:grid-cols-2">
-            {APPROACH.map((step) => (
-              <article
-                key={step.number}
-                className="border-t border-ink/15 pt-5"
-              >
-                <span className="text-[12px] font-bold tracking-[0.08em] text-goldDeep">
-                  {step.number}
-                </span>
-
-                <h3 className="mt-2 font-serif text-[22px] font-semibold text-ink">
-                  {step.title}
-                </h3>
-
-                <p className="mt-2 max-w-[52ch] text-[14px] leading-6 text-inkSoft">
-                  {step.text}
-                </p>
-              </article>
-            ))}
-          </div>
+          <input
+            required
+            type="tel"
+            value={form.phone}
+            onChange={(e) =>
+              update("phone", e.target.value)
+            }
+            placeholder="+237 ..."
+            className="!border-paper/20 !bg-paper/5 !text-paper placeholder:!text-paper/35"
+          />
         </div>
-      </section>
 
-      {/* Filières */}
-      <section className="bg-waterDeep px-5 py-[64px] text-paper">
-        <div className="mx-auto flex max-w-[1180px] flex-col gap-7 md:flex-row md:items-center md:justify-between">
-          <div className="max-w-[680px]">
-            <span className="text-[13px] font-bold text-gold">
-              Nos filières
-            </span>
+        <div className="field">
+          <label className="!text-paper/75">
+            E-mail
+          </label>
 
-            <h2 className="mt-2 font-serif text-[clamp(27px,4vw,38px)] font-semibold">
-              Plusieurs activités agricoles au sein d&apos;AgroFarms237.
-            </h2>
+          <input
+            type="email"
+            value={form.email}
+            onChange={(e) =>
+              update("email", e.target.value)
+            }
+            placeholder="contact@entreprise.com"
+            className="!border-paper/20 !bg-paper/5 !text-paper placeholder:!text-paper/35"
+          />
+        </div>
 
-            <p className="mt-3 max-w-[62ch] text-paper/65">
-              Découvrez les produits actuellement proposés et
-              présentez-nous les filières qui correspondent à votre
-              activité.
-            </p>
-          </div>
+        <div className="field">
+          <label className="!text-paper/75">
+            Ville / zone
+          </label>
 
-          <Link
-            href="/produits"
-            className="btn btn-gold shrink-0"
+          <input
+            value={form.city}
+            onChange={(e) =>
+              update("city", e.target.value)
+            }
+            placeholder="Ex. Yaoundé"
+            className="!border-paper/20 !bg-paper/5 !text-paper placeholder:!text-paper/35"
+          />
+        </div>
+
+        <div className="field">
+          <label className="!text-paper/75">
+            Type d&apos;activité
+          </label>
+
+          <select
+            required
+            value={form.business_type}
+            onChange={(e) =>
+              update("business_type", e.target.value)
+            }
+            className="!border-paper/20 !bg-ink !text-paper"
           >
-            Voir le catalogue
-          </Link>
+            {BUSINESS_TYPES.map((type) => (
+              <option
+                key={type}
+                value={type}
+                className="bg-ink text-paper"
+              >
+                {type}
+              </option>
+            ))}
+          </select>
         </div>
-      </section>
 
-      {/* Formulaire */}
-      <section
-        id="demande-professionnelle"
-        className="bg-ink px-5 py-[80px] text-paper"
+        <div className="field">
+          <label className="!text-paper/75">
+            Produits recherchés
+          </label>
+
+          <select
+            required
+            value={form.products}
+            onChange={(e) =>
+              update("products", e.target.value)
+            }
+            className="!border-paper/20 !bg-ink !text-paper"
+          >
+            {PRODUCTS.map((product) => (
+              <option
+                key={product}
+                value={product}
+                className="bg-ink text-paper"
+              >
+                {product}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="field">
+          <label className="!text-paper/75">
+            Volume estimatif
+          </label>
+
+          <input
+            value={form.estimated_volume}
+            onChange={(e) =>
+              update("estimated_volume", e.target.value)
+            }
+            placeholder="Ex. 50 kg / semaine"
+            className="!border-paper/20 !bg-paper/5 !text-paper placeholder:!text-paper/35"
+          />
+        </div>
+
+        <div className="field sm:col-span-2">
+          <label className="!text-paper/75">
+            Fréquence d&apos;approvisionnement
+          </label>
+
+          <select
+            value={form.frequency}
+            onChange={(e) =>
+              update("frequency", e.target.value)
+            }
+            className="!border-paper/20 !bg-ink !text-paper"
+          >
+            {FREQUENCIES.map((frequency) => (
+              <option
+                key={frequency}
+                value={frequency}
+                className="bg-ink text-paper"
+              >
+                {frequency}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="field sm:col-span-2">
+          <label className="!text-paper/75">
+            Décrivez votre besoin
+          </label>
+
+          <textarea
+            rows={5}
+            value={form.message}
+            onChange={(e) =>
+              update("message", e.target.value)
+            }
+            placeholder="Présentez-nous votre activité, vos besoins ou les conditions que vous recherchez."
+            className="!border-paper/20 !bg-paper/5 !text-paper placeholder:!text-paper/35"
+          />
+        </div>
+      </div>
+
+      {error && (
+        <div
+          role="alert"
+          className="mt-4 rounded border border-alert/20 bg-alert/10 px-4 py-3 text-[14px] font-semibold text-alert"
+        >
+          {error}
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="btn btn-gold mt-6 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <div className="mx-auto max-w-[1180px]">
-          <div className="max-w-[720px]">
-            <span className="text-[13px] font-bold text-gold">
-              Travaillons ensemble
-            </span>
-
-            <h2 className="mt-2 font-serif text-[clamp(28px,4vw,40px)] font-semibold">
-              Présentez-nous votre projet.
-            </h2>
-
-            <p className="mt-3 max-w-[62ch] text-paper/65">
-              Remplissez le formulaire ci-dessous. Votre demande sera
-              enregistrée afin que nous puissions revenir vers vous
-              pour échanger sur vos besoins.
-            </p>
-          </div>
-
-          <ProfessionnelsForm />
-        </div>
-      </section>
-    </main>
+        {loading ? "Envoi en cours..." : "Envoyer ma demande"}
+      </button>
+    </form>
   );
 }
