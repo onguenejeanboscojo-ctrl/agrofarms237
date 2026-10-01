@@ -92,10 +92,7 @@ export default function ProfessionnelsForm() {
 
       setSent(true);
     } catch (err) {
-      console.error(
-        "Erreur demande professionnelle :",
-        err
-      );
+      console.error("Erreur demande professionnelle :", err);
 
       setError(
         err instanceof Error
@@ -255,10 +252,14 @@ export default function ProfessionnelsForm() {
             onChange={(e) =>
               update("business_type", e.target.value)
             }
-            className="!border-paper/20 !bg-paper/5 !text-paper"
+            className="!border-paper/20 !bg-ink !text-paper"
           >
             {BUSINESS_TYPES.map((type) => (
-              <option key={type} value={type}>
+              <option
+                key={type}
+                value={type}
+                className="bg-ink text-paper"
+              >
                 {type}
               </option>
             ))}
@@ -276,10 +277,14 @@ export default function ProfessionnelsForm() {
             onChange={(e) =>
               update("products", e.target.value)
             }
-            className="!border-paper/20 !bg-paper/5 !text-paper"
+            className="!border-paper/20 !bg-ink !text-paper"
           >
             {PRODUCTS.map((product) => (
-              <option key={product} value={product}>
+              <option
+                key={product}
+                value={product}
+                className="bg-ink text-paper"
+              >
                 {product}
               </option>
             ))}
@@ -311,10 +316,14 @@ export default function ProfessionnelsForm() {
             onChange={(e) =>
               update("frequency", e.target.value)
             }
-            className="!border-paper/20 !bg-paper/5 !text-paper"
+            className="!border-paper/20 !bg-ink !text-paper"
           >
             {FREQUENCIES.map((frequency) => (
-              <option key={frequency} value={frequency}>
+              <option
+                key={frequency}
+                value={frequency}
+                className="bg-ink text-paper"
+              >
                 {frequency}
               </option>
             ))}
