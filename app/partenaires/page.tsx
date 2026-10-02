@@ -118,7 +118,7 @@ export default async function PartenairesPage() {
               Partenaires · Investissement &amp; développement
             </span>
 
-            <h1 className="font-serif text-[clamp(36px,6vw,64px)] font-semibold leading-[1.04]">
+            <h1 className="font-serif text-[clamp(36px,6vw,64px)] font-semibold leading-[1.04] text-paper">
               Et si votre prochain investissement commençait à la ferme ?
             </h1>
 
@@ -239,7 +239,7 @@ export default async function PartenairesPage() {
               Pourquoi des partenaires ?
             </span>
 
-            <h2 className="mt-2 font-serif text-[clamp(30px,4vw,44px)] font-semibold leading-tight">
+            <h2 className="mt-2 font-serif text-[clamp(30px,4vw,44px)] font-semibold leading-tight text-paper">
               Certaines ambitions nécessitent plus qu&apos;une vision.
             </h2>
 
@@ -267,7 +267,7 @@ export default async function PartenairesPage() {
                 key={item}
                 className="border border-paper/10 bg-paper/5 p-5"
               >
-                <p className="font-serif text-[18px] font-semibold">
+                <p className="font-serif text-[18px] font-semibold text-paper">
                   {item}
                 </p>
               </div>
@@ -403,7 +403,7 @@ export default async function PartenairesPage() {
               Investissement &amp; développement
             </span>
 
-            <h2 className="mt-2 font-serif text-[clamp(30px,4vw,44px)] font-semibold leading-tight">
+            <h2 className="mt-2 font-serif text-[clamp(30px,4vw,44px)] font-semibold leading-tight text-paper">
               Vous souhaitez investir dans AgroFarms237 ?
             </h2>
 
@@ -432,7 +432,7 @@ export default async function PartenairesPage() {
             AgroFarms237
           </span>
 
-          <h2 className="mt-3 font-serif text-[clamp(30px,4vw,46px)] font-semibold leading-tight">
+          <h2 className="mt-3 font-serif text-[clamp(30px,4vw,46px)] font-semibold leading-tight text-paper">
             Les grandes entreprises commencent par une vision.
           </h2>
 
