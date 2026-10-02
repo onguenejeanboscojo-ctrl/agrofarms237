@@ -232,18 +232,24 @@ export default async function PartenairesPage() {
       </section>
 
       {/* WHY PARTNERS */}
-      <section className="bg-waterDeep px-5 py-[80px] text-paper">
+      <section className="bg-waterDeep px-5 py-[80px]">
         <div className="mx-auto max-w-[1180px]">
           <div className="max-w-[760px]">
             <span className="text-[13px] font-bold uppercase tracking-[0.08em] text-gold">
               Pourquoi des partenaires ?
             </span>
 
-            <h2 className="mt-2 font-serif text-[clamp(30px,4vw,44px)] font-semibold leading-tight text-paper">
+            <h2
+              className="mt-2 font-serif text-[clamp(30px,4vw,44px)] font-semibold leading-tight"
+              style={{ color: "#F8F4EA", opacity: 1 }}
+            >
               Certaines ambitions nécessitent plus qu&apos;une vision.
             </h2>
 
-            <p className="mt-4 max-w-[680px] text-[16px] leading-7 text-paper/65">
+            <p
+              className="mt-4 max-w-[680px] text-[16px] leading-7"
+              style={{ color: "#D8D4C9", opacity: 1 }}
+            >
               Le développement d&apos;une entreprise agricole peut nécessiter
               des ressources, des compétences et des connexions complémentaires.
               C&apos;est pourquoi nous souhaitons construire des relations avec
@@ -265,9 +271,16 @@ export default async function PartenairesPage() {
             ].map((item) => (
               <div
                 key={item}
-                className="border border-paper/10 bg-paper/5 p-5"
+                className="border p-5"
+                style={{
+                  borderColor: "rgba(248, 244, 234, 0.14)",
+                  backgroundColor: "rgba(248, 244, 234, 0.05)",
+                }}
               >
-                <p className="font-serif text-[18px] font-semibold text-paper">
+                <p
+                  className="font-serif text-[18px] font-semibold"
+                  style={{ color: "#F8F4EA", opacity: 1 }}
+                >
                   {item}
                 </p>
               </div>
@@ -314,18 +327,30 @@ export default async function PartenairesPage() {
       </section>
 
       {/* PARTNER TYPES */}
-      <section className="bg-bgAlt px-5 py-[80px]">
+      <section
+        className="px-5 py-[80px]"
+        style={{ backgroundColor: "#F3EFE5" }}
+      >
         <div className="mx-auto max-w-[1180px]">
           <div className="max-w-[760px]">
-            <span className="text-[13px] font-bold uppercase tracking-[0.08em] text-goldDeep">
+            <span
+              className="text-[13px] font-bold uppercase tracking-[0.08em]"
+              style={{ color: "#8A6A25", opacity: 1 }}
+            >
               Profils recherchés
             </span>
 
-            <h2 className="mt-2 font-serif text-[clamp(30px,4vw,44px)] font-semibold leading-tight text-ink">
+            <h2
+              className="mt-2 font-serif text-[clamp(30px,4vw,44px)] font-semibold leading-tight"
+              style={{ color: "#142018", opacity: 1 }}
+            >
               Quel type de partenaire ?
             </h2>
 
-            <p className="mt-4 text-[16px] leading-7 text-inkSoft">
+            <p
+              className="mt-4 text-[16px] leading-7"
+              style={{ color: "#3F4A43", opacity: 1 }}
+            >
               Nous sommes ouverts à différents profils lorsque leur
               contribution peut participer concrètement au développement
               d&apos;AgroFarms237.
@@ -336,13 +361,30 @@ export default async function PartenairesPage() {
             {PARTNER_TYPES.map((partner) => (
               <article
                 key={partner.title}
-                className="border border-ink/10 bg-paper p-7"
+                className="border p-7"
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  borderColor: "#D9D6CD",
+                  opacity: 1,
+                }}
               >
-                <h3 className="font-serif text-[23px] font-semibold text-ink">
+                <h3
+                  className="font-serif text-[23px] font-semibold"
+                  style={{
+                    color: "#142018",
+                    opacity: 1,
+                  }}
+                >
                   {partner.title}
                 </h3>
 
-                <p className="mt-3 text-[14px] leading-6 text-inkSoft">
+                <p
+                  className="mt-3 text-[14px] leading-6"
+                  style={{
+                    color: "#3F4A43",
+                    opacity: 1,
+                  }}
+                >
                   {partner.text}
                 </p>
               </article>
