@@ -152,7 +152,9 @@ export default function MediaManager() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Impossible d'enregistrer les modifications.");
+        setError(
+          data.error || "Impossible d'enregistrer les modifications."
+        );
         return;
       }
 
@@ -173,11 +175,7 @@ export default function MediaManager() {
             const positionA = a.position ?? 0;
             const positionB = b.position ?? 0;
 
-            if (positionA !== positionB) {
-              return positionA - positionB;
-            }
-
-            return 0;
+            return positionA - positionB;
           })
       );
 
@@ -209,8 +207,12 @@ export default function MediaManager() {
 
       if (!res.ok) {
         await load();
+
         const data = await res.json().catch(() => null);
-        setError(data?.error || "Impossible de modifier la publication.");
+
+        setError(
+          data?.error || "Impossible de modifier la publication."
+        );
       }
     } catch {
       await load();
@@ -225,7 +227,9 @@ export default function MediaManager() {
 
     const previous = items;
 
-    setItems((current) => current.filter((item) => item.id !== id));
+    setItems((current) =>
+      current.filter((item) => item.id !== id)
+    );
 
     try {
       const res = await fetch(`/api/media/${id}`, {
@@ -236,7 +240,10 @@ export default function MediaManager() {
         setItems(previous);
 
         const data = await res.json().catch(() => null);
-        setError(data?.error || "Impossible de supprimer ce média.");
+
+        setError(
+          data?.error || "Impossible de supprimer ce média."
+        );
       }
     } catch {
       setItems(previous);
@@ -244,42 +251,59 @@ export default function MediaManager() {
     }
   }
 
-  async function moveItem(index: number, direction: "up" | "down") {
-    const targetIndex = direction === "up" ? index - 1 : index + 1;
+  async function moveItem(
+    index: number,
+    direction: "up" | "down"
+  ) {
+    const targetIndex =
+      direction === "up" ? index - 1 : index + 1;
 
-    if (targetIndex < 0 || targetIndex >= items.length) return;
+    if (
+      targetIndex < 0 ||
+      targetIndex >= items.length
+    ) {
+      return;
+    }
 
     const current = items[index];
     const target = items[targetIndex];
 
-    const currentPosition = current.position ?? index;
-    const targetPosition = target.position ?? targetIndex;
+    const currentPosition =
+      current.position ?? index;
+
+    const targetPosition =
+      target.position ?? targetIndex;
 
     setError("");
 
     try {
-      const [firstResponse, secondResponse] = await Promise.all([
-        fetch(`/api/media/${current.id}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            position: targetPosition,
+      const [firstResponse, secondResponse] =
+        await Promise.all([
+          fetch(`/api/media/${current.id}`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              position: targetPosition,
+            }),
           }),
-        }),
-        fetch(`/api/media/${target.id}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            position: currentPosition,
-          }),
-        }),
-      ]);
 
-      if (!firstResponse.ok || !secondResponse.ok) {
+          fetch(`/api/media/${target.id}`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              position: currentPosition,
+            }),
+          }),
+        ]);
+
+      if (
+        !firstResponse.ok ||
+        !secondResponse.ok
+      ) {
         await load();
         setError("Impossible de modifier l'ordre.");
         return;
@@ -329,10 +353,17 @@ export default function MediaManager() {
 
             <select
               value={kind}
-              onChange={(e) => setKind(e.target.value)}
+              onChange={(e) =>
+                setKind(e.target.value)
+              }
             >
-              <option value="photo">Photo</option>
-              <option value="video">Vidéo</option>
+              <option value="photo">
+                Photo
+              </option>
+
+              <option value="video">
+                Vidéo
+              </option>
             </select>
           </div>
 
@@ -341,14 +372,24 @@ export default function MediaManager() {
 
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) =>
+                setCategory(e.target.value)
+              }
             >
-              <option value="">Choisir une catégorie</option>
+              <option value="">
+                Choisir une catégorie
+              </option>
 
               {CATEGORY_GROUPS.map((group) => (
-                <optgroup key={group.label} label={group.label}>
+                <optgroup
+                  key={group.label}
+                  label={group.label}
+                >
                   {group.options.map((option) => (
-                    <option key={option.value} value={option.value}>
+                    <option
+                      key={option.value}
+                      value={option.value}
+                    >
                       {option.label}
                     </option>
                   ))}
@@ -362,7 +403,9 @@ export default function MediaManager() {
 
             <input
               value={caption}
-              onChange={(e) => setCaption(e.target.value)}
+              onChange={(e) =>
+                setCaption(e.target.value)
+              }
               placeholder="Ex. Récolte de silures dans nos bassins"
             />
           </div>
@@ -393,7 +436,7 @@ export default function MediaManager() {
         )}
       </div>
 
-      {/* LISTE */}
+      {/* LISTE DES MÉDIAS */}
       <div className="mt-10">
         <div className="mb-5">
           <h2 className="font-serif text-xl font-semibold">
@@ -406,7 +449,9 @@ export default function MediaManager() {
         </div>
 
         {loading ? (
-          <p className="text-inkSoft">Chargement...</p>
+          <p className="text-inkSoft">
+            Chargement...
+          </p>
         ) : items.length === 0 ? (
           <div className="rounded-m border border-dashed border-ink/15 bg-paper p-10 text-center">
             <p className="text-inkSoft">
@@ -416,7 +461,8 @@ export default function MediaManager() {
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {items.map((item, index) => {
-              const isEditing = editingId === item.id;
+              const isEditing =
+                editingId === item.id;
 
               return (
                 <article
@@ -428,7 +474,10 @@ export default function MediaManager() {
                     {item.kind === "photo" ? (
                       <img
                         src={item.url}
-                        alt={item.caption || "Média Agrofarms237"}
+                        alt={
+                          item.caption ||
+                          "Média Agrofarms237"
+                        }
                         className="h-full w-full object-cover"
                       />
                     ) : (
@@ -441,62 +490,82 @@ export default function MediaManager() {
                     )}
 
                     <div className="absolute left-2.5 top-2.5 rounded-full bg-paper/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide">
-                      {item.kind === "photo" ? "Photo" : "Vidéo"}
+                      {item.kind === "photo"
+                        ? "Photo"
+                        : "Vidéo"}
                     </div>
                   </div>
 
-                  {/* INFORMATIONS */}
                   <div className="p-4">
                     {isEditing && edit ? (
+                      /* MODE MODIFICATION */
                       <div className="space-y-4">
                         <div className="field">
-                          <label>Catégorie</label>
+                          <label>
+                            Catégorie
+                          </label>
 
                           <select
                             value={edit.category}
                             onChange={(e) =>
                               setEdit({
                                 ...edit,
-                                category: e.target.value,
+                                category:
+                                  e.target.value,
                               })
                             }
                           >
-                            <option value="">Aucune catégorie</option>
+                            <option value="">
+                              Aucune catégorie
+                            </option>
 
-                            {CATEGORY_GROUPS.map((group) => (
-                              <optgroup
-                                key={group.label}
-                                label={group.label}
-                              >
-                                {group.options.map((option) => (
-                                  <option
-                                    key={option.value}
-                                    value={option.value}
-                                  >
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </optgroup>
-                            ))}
+                            {CATEGORY_GROUPS.map(
+                              (group) => (
+                                <optgroup
+                                  key={group.label}
+                                  label={group.label}
+                                >
+                                  {group.options.map(
+                                    (option) => (
+                                      <option
+                                        key={
+                                          option.value
+                                        }
+                                        value={
+                                          option.value
+                                        }
+                                      >
+                                        {option.label}
+                                      </option>
+                                    )
+                                  )}
+                                </optgroup>
+                              )
+                            )}
                           </select>
                         </div>
 
                         <div className="field">
-                          <label>Légende</label>
+                          <label>
+                            Légende
+                          </label>
 
                           <input
                             value={edit.caption}
                             onChange={(e) =>
                               setEdit({
                                 ...edit,
-                                caption: e.target.value,
+                                caption:
+                                  e.target.value,
                               })
                             }
                           />
                         </div>
 
                         <div className="field">
-                          <label>Position</label>
+                          <label>
+                            Position
+                          </label>
 
                           <input
                             type="number"
@@ -504,7 +573,8 @@ export default function MediaManager() {
                             onChange={(e) =>
                               setEdit({
                                 ...edit,
-                                position: e.target.value,
+                                position:
+                                  e.target.value,
                               })
                             }
                           />
@@ -513,11 +583,14 @@ export default function MediaManager() {
                         <label className="flex items-center gap-2 text-[13px]">
                           <input
                             type="checkbox"
-                            checked={edit.published}
+                            checked={
+                              edit.published
+                            }
                             onChange={(e) =>
                               setEdit({
                                 ...edit,
-                                published: e.target.checked,
+                                published:
+                                  e.target.checked,
                               })
                             }
                           />
@@ -528,11 +601,15 @@ export default function MediaManager() {
                         <div className="flex gap-2 pt-1">
                           <button
                             type="button"
-                            onClick={() => saveEdit(item.id)}
+                            onClick={() =>
+                              saveEdit(item.id)
+                            }
                             disabled={saving}
                             className="btn btn-ink flex-1"
                           >
-                            {saving ? "Enregistrement..." : "Enregistrer"}
+                            {saving
+                              ? "Enregistrement..."
+                              : "Enregistrer"}
                           </button>
 
                           <button
@@ -547,64 +624,118 @@ export default function MediaManager() {
                       </div>
                     ) : (
                       <>
+                        {/* INFORMATIONS */}
                         <div className="min-h-[76px]">
                           {item.category && (
                             <p className="text-[11.5px] font-bold uppercase tracking-wide text-goldDeep">
-                              {CATEGORY_LABELS[item.category] ||
+                              {CATEGORY_LABELS[
+                                item.category
+                              ] ||
                                 item.category}
                             </p>
                           )}
 
                           <h3 className="mt-1.5 line-clamp-2 text-[14px] font-semibold">
-                            {item.caption || "Sans légende"}
+                            {item.caption ||
+                              "Sans légende"}
                           </h3>
 
                           <p className="mt-1 text-[12px] text-inkSoft">
-                            Position : {item.position ?? index}
+                            Position :{" "}
+                            {item.position ??
+                              index}
                           </p>
                         </div>
 
-                        {/* PUBLICATION */}
-                        <label className="mt-3 flex items-center gap-2 border-t border-ink/10 pt-3 text-[12.5px]">
-                          <input
-                            type="checkbox"
-                            checked={item.published}
-                            onChange={(e) =>
-                              toggle(item.id, e.target.checked)
-                            }
-                          />
+                        {/* STATUT */}
+                        <div
+                          className={`mt-3 rounded-lg border px-3 py-3 ${
+                            item.published
+                              ? "border-green-700/20 bg-green-700/5"
+                              : "border-ink/10 bg-bgAlt"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-[11px] font-bold uppercase tracking-wide text-inkSoft">
+                                Statut
+                              </p>
 
-                          {item.published
-                            ? "Publié sur le site"
-                            : "Masqué du site"}
-                        </label>
+                              <p className="mt-0.5 text-[13px] font-semibold">
+                                {item.published
+                                  ? "Publié sur le site"
+                                  : "Masqué du site"}
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                toggle(
+                                  item.id,
+                                  !item.published
+                                )
+                              }
+                              className={`rounded-full px-3 py-1.5 text-[11.5px] font-bold transition ${
+                                item.published
+                                  ? "bg-green-700 text-white"
+                                  : "border border-ink/15 bg-paper text-ink"
+                              }`}
+                            >
+                              {item.published
+                                ? "Masquer"
+                                : "Publier"}
+                            </button>
+                          </div>
+                        </div>
 
                         {/* ORDRE */}
-                        <div className="mt-3 flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => moveItem(index, "up")}
-                            disabled={index === 0}
-                            className="btn flex-1 text-[12px]"
-                          >
-                            ↑ Monter
-                          </button>
+                        <div className="mt-3">
+                          <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-inkSoft">
+                            Ordre d'affichage
+                          </p>
 
-                          <button
-                            type="button"
-                            onClick={() => moveItem(index, "down")}
-                            disabled={index === items.length - 1}
-                            className="btn flex-1 text-[12px]"
-                          >
-                            ↓ Descendre
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                moveItem(
+                                  index,
+                                  "up"
+                                )
+                              }
+                              disabled={index === 0}
+                              className="btn flex-1 text-[12px]"
+                            >
+                              Monter
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                moveItem(
+                                  index,
+                                  "down"
+                                )
+                              }
+                              disabled={
+                                index ===
+                                items.length - 1
+                              }
+                              className="btn flex-1 text-[12px]"
+                            >
+                              Descendre
+                            </button>
+                          </div>
                         </div>
 
                         {/* ACTIONS */}
-                        <div className="mt-2 flex gap-2">
+                        <div className="mt-3 flex gap-2 border-t border-ink/10 pt-3">
                           <button
                             type="button"
-                            onClick={() => startEdit(item)}
+                            onClick={() =>
+                              startEdit(item)
+                            }
                             className="btn btn-ink flex-1 text-[12px]"
                           >
                             Modifier
@@ -612,7 +743,9 @@ export default function MediaManager() {
 
                           <button
                             type="button"
-                            onClick={() => remove(item.id)}
+                            onClick={() =>
+                              remove(item.id)
+                            }
                             className="btn flex-1 text-[12px] font-semibold text-alert"
                           >
                             Supprimer
