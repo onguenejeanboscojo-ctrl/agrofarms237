@@ -320,7 +320,7 @@ export default async function NotreElevagePage() {
     <main className="bg-white text-ink">
 
       {/* HERO */}
-      <section className="relative min-h-[520px] overflow-hidden bg-[#18352B] text-white">
+      <section className="relative min-h-[560px] overflow-hidden bg-[#18352B] text-white">
 
         {/* Diaporama de toutes les photos de Notre élevage */}
         {heroImages.length > 0 && (
@@ -328,20 +328,20 @@ export default async function NotreElevagePage() {
         )}
 
         {/* Voile sombre pour garantir la lisibilité du texte */}
-        <div className="absolute inset-0 z-[1] bg-gradient-to-r from-black/70 via-black/50 to-black/30" />
+        <div className="absolute inset-0 z-[1] bg-gradient-to-r from-black/75 via-black/55 to-black/25" />
 
-        <div className="relative z-10 mx-auto flex min-h-[520px] max-w-7xl items-center px-6 py-24 lg:px-8 lg:py-32">
+        <div className="relative z-10 mx-auto flex min-h-[560px] max-w-7xl items-center px-6 py-24 lg:px-8 lg:py-32">
           <div className="max-w-4xl">
 
-            <p className="mb-5 text-sm font-medium uppercase tracking-[0.25em] text-gold">
+            <p className="mb-5 text-xs font-semibold uppercase tracking-[0.28em] text-gold sm:text-sm">
               {content.hero_label}
             </p>
 
-            <h1 className="whitespace-nowrap font-serif text-4xl leading-tight sm:text-5xl lg:text-6xl">
+            <h1 className="max-w-4xl font-serif text-4xl leading-[1.08] sm:text-5xl lg:text-6xl xl:text-7xl">
               {content.hero_title}
             </h1>
 
-            <p className="mt-7 max-w-3xl text-base leading-8 text-white/80 sm:text-lg">
+            <p className="mt-7 max-w-2xl text-base leading-8 text-white/80 sm:text-lg">
               {content.hero_description}
             </p>
 
