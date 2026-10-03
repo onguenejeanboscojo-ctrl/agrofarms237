@@ -351,47 +351,79 @@ export default async function NotreElevagePage() {
 
       {/* ÉTAPES */}
       <section className="border-b border-black/10 bg-white">
-        <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-          <div className="grid gap-10 md:grid-cols-3">
+        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
 
-            <div>
+          <div className="grid gap-12 md:grid-cols-3 md:gap-0">
+
+            {/* ÉTAPE 01 */}
+            <div className="relative md:pr-10">
+              <div className="mb-6 flex items-center gap-4">
+                <span className="font-serif text-4xl text-black/10">
+                  01
+                </span>
+
+                <span className="h-px flex-1 bg-black/10 md:hidden" />
+              </div>
+
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
                 {content.step1_label}
               </p>
 
-              <h2 className="mt-3 font-serif text-2xl">
+              <h2 className="mt-3 font-serif text-3xl leading-tight text-ink">
                 {content.step1_title}
               </h2>
 
-              <p className="mt-3 text-sm leading-7 text-black/60">
+              <p className="mt-4 text-sm leading-7 text-black/60">
                 {content.step1_text}
               </p>
+
+              <div className="absolute right-0 top-0 hidden h-full w-px bg-black/10 md:block" />
             </div>
 
-            <div>
+            {/* ÉTAPE 02 */}
+            <div className="relative md:px-10">
+              <div className="mb-6 flex items-center gap-4">
+                <span className="font-serif text-4xl text-black/10">
+                  02
+                </span>
+
+                <span className="h-px flex-1 bg-black/10 md:hidden" />
+              </div>
+
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
                 {content.step2_label}
               </p>
 
-              <h2 className="mt-3 font-serif text-2xl">
+              <h2 className="mt-3 font-serif text-3xl leading-tight text-ink">
                 {content.step2_title}
               </h2>
 
-              <p className="mt-3 text-sm leading-7 text-black/60">
+              <p className="mt-4 text-sm leading-7 text-black/60">
                 {content.step2_text}
               </p>
+
+              <div className="absolute right-0 top-0 hidden h-full w-px bg-black/10 md:block" />
             </div>
 
-            <div>
+            {/* ÉTAPE 03 */}
+            <div className="relative md:pl-10">
+              <div className="mb-6 flex items-center gap-4">
+                <span className="font-serif text-4xl text-black/10">
+                  03
+                </span>
+
+                <span className="h-px flex-1 bg-black/10 md:hidden" />
+              </div>
+
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
                 {content.step3_label}
               </p>
 
-              <h2 className="mt-3 whitespace-nowrap font-serif text-2xl">
+              <h2 className="mt-3 font-serif text-3xl leading-tight text-ink">
                 {content.step3_title}
               </h2>
 
-              <p className="mt-3 text-sm leading-7 text-black/60">
+              <p className="mt-4 text-sm leading-7 text-black/60">
                 {content.step3_text}
               </p>
             </div>
