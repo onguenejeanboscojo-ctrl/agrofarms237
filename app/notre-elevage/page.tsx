@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import ProductCarousel from "@/components/ProductCarousel";
 import HeroSlideshow from "@/components/HeroSlideshow";
@@ -138,9 +139,6 @@ async function getPageContent(): Promise<PageContent> {
   }
 }
 
-/**
- * Récupère les élevages publiés.
- */
 async function getFarmItems(): Promise<FarmItem[]> {
   try {
     const supabase = supabaseAdmin();
@@ -174,9 +172,6 @@ async function getFarmItems(): Promise<FarmItem[]> {
   }
 }
 
-/**
- * Récupère toutes les photos propres à chaque élevage.
- */
 async function getFarmMedia(): Promise<FarmMedia[]> {
   try {
     const supabase = supabaseAdmin();
@@ -253,6 +248,65 @@ function MediaBlock({
   );
 }
 
+function FarmCard({
+  item,
+  media,
+  fallback,
+}: {
+  item: FarmItem;
+  media: FarmMedia[];
+  fallback: string;
+}) {
+  const finalMedia =
+    media.length > 0
+      ? media
+      : item.photo_url
+      ? [
+          {
+            id: `legacy-${item.id}`,
+            farm_breeding_id: item.id,
+            url: item.photo_url,
+            storage_path: "",
+            position: 0,
+            created_at: "",
+          },
+        ]
+      : [];
+
+  return (
+    <article className="group overflow-hidden border border-black/10 bg-white">
+      <div className="overflow-hidden">
+        <MediaBlock
+          media={finalMedia}
+          fallback={fallback}
+        />
+      </div>
+
+      <div className="p-7 sm:p-8">
+        <StatusBadge status={item.status} />
+
+        <h3 className="mt-4 font-serif text-3xl leading-tight text-ink sm:text-4xl">
+          {item.name}
+        </h3>
+
+        {item.description && (
+          <p className="mt-4 max-w-xl text-sm leading-7 text-black/60">
+            {item.description}
+          </p>
+        )}
+
+        <div className="mt-7 h-px w-12 bg-gold" />
+
+        <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-black/45">
+          {item.status === "disponible"
+            ? "Production actuelle"
+            : "Développement"}
+        </p>
+      </div>
+    </article>
+  );
+}
+
 export default async function NotreElevagePage() {
   const [content, farmItems, farmMedia] =
     await Promise.all([
@@ -261,12 +315,6 @@ export default async function NotreElevagePage() {
       getFarmMedia(),
     ]);
 
-  /*
-   * On associe les photos à leur élevage.
-   *
-   * Exemple :
-   * Silure → toutes les photos dont farm_breeding_id = ID du Silure
-   */
   const mediaByFarm: Record<string, FarmMedia[]> = {};
 
   for (const media of farmMedia) {
@@ -277,15 +325,6 @@ export default async function NotreElevagePage() {
     mediaByFarm[media.farm_breeding_id].push(media);
   }
 
-  /*
-   * HERO :
-   * Toutes les photos de tous les élevages publiés
-   * de la page Notre élevage sont regroupées dans
-   * un seul diaporama.
-   *
-   * L'ordre suit l'ordre des élevages défini dans
-   * l'administration.
-   */
   const heroImages = Array.from(
     new Set(
       farmItems.flatMap((item) => {
@@ -295,7 +334,6 @@ export default async function NotreElevagePage() {
           return ownMedia.map((media) => media.url);
         }
 
-        // Ancienne photo principale utilisée comme secours
         return item.photo_url ? [item.photo_url] : [];
       })
     )
@@ -319,15 +357,14 @@ export default async function NotreElevagePage() {
   return (
     <main className="bg-white text-ink">
 
-      {/* HERO */}
+      {/* =====================================================
+          HERO
+      ====================================================== */}
       <section className="relative min-h-[560px] overflow-hidden bg-[#18352B] text-white">
-
-        {/* Diaporama de toutes les photos de Notre élevage */}
         {heroImages.length > 0 && (
           <HeroSlideshow images={heroImages} />
         )}
 
-        {/* Voile sombre pour garantir la lisibilité du texte */}
         <div className="absolute inset-0 z-[1] bg-gradient-to-r from-black/75 via-black/55 to-black/25" />
 
         <div className="relative z-10 mx-auto flex min-h-[560px] max-w-7xl items-center px-6 py-24 lg:px-8 lg:py-32">
@@ -349,13 +386,15 @@ export default async function NotreElevagePage() {
         </div>
       </section>
 
-      {/* ÉTAPES */}
+      {/* =====================================================
+          TRAJECTOIRE
+      ====================================================== */}
       <section className="border-b border-black/10 bg-white">
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
 
           <div className="grid gap-12 md:grid-cols-3 md:gap-0">
 
-            {/* ÉTAPE 01 */}
+            {/* 01 */}
             <div className="relative md:pr-10">
               <div className="mb-6 flex items-center gap-4">
                 <span className="font-serif text-4xl text-black/10">
@@ -380,7 +419,7 @@ export default async function NotreElevagePage() {
               <div className="absolute right-0 top-0 hidden h-full w-px bg-black/10 md:block" />
             </div>
 
-            {/* ÉTAPE 02 */}
+            {/* 02 */}
             <div className="relative md:px-10">
               <div className="mb-6 flex items-center gap-4">
                 <span className="font-serif text-4xl text-black/10">
@@ -405,7 +444,7 @@ export default async function NotreElevagePage() {
               <div className="absolute right-0 top-0 hidden h-full w-px bg-black/10 md:block" />
             </div>
 
-            {/* ÉTAPE 03 */}
+            {/* 03 */}
             <div className="relative md:pl-10">
               <div className="mb-6 flex items-center gap-4">
                 <span className="font-serif text-4xl text-black/10">
@@ -432,277 +471,313 @@ export default async function NotreElevagePage() {
         </div>
       </section>
 
-      {/* POISSONS */}
-      <section className="bg-white">
-        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+      {/* =====================================================
+          NOS ACTIVITÉS
+      ====================================================== */}
+      <section className="bg-bgAlt">
+        <div className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
 
-          <div className="mb-12 max-w-3xl">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold">
+              Notre ferme
+            </p>
+
+            <h2 className="mt-4 font-serif text-4xl leading-tight text-ink sm:text-5xl">
+              Produire aujourd’hui,
+              construire demain.
+            </h2>
+
+            <p className="mt-6 text-base leading-8 text-black/60">
+              AgroFarms237 développe progressivement ses activités
+              autour de plusieurs productions agricoles, avec une
+              approche structurée de la production, de la valorisation
+              et du développement de la ferme.
+            </p>
+          </div>
+
+          <div className="mt-16 grid gap-6 lg:grid-cols-3">
+
+            {/* PISCICULTURE */}
+            <div className="border border-black/10 bg-white p-8 sm:p-9">
+              <div className="flex items-start justify-between gap-6">
+                <span className="font-serif text-5xl text-black/10">
+                  01
+                </span>
+
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">
+                  Aujourd’hui
+                </span>
+              </div>
+
+              <h3 className="mt-10 font-serif text-3xl">
+                Pisciculture
+              </h3>
+
+              <p className="mt-4 text-sm leading-7 text-black/60">
+                {content.fish_description}
+              </p>
+
+              <div className="mt-8 h-px w-12 bg-gold" />
+
+              <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-black/40">
+                Silure
+              </p>
+            </div>
+
+            {/* PORC */}
+            <div className="border border-black/10 bg-white p-8 sm:p-9">
+              <div className="flex items-start justify-between gap-6">
+                <span className="font-serif text-5xl text-black/10">
+                  02
+                </span>
+
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-black/40">
+                  Développement
+                </span>
+              </div>
+
+              <h3 className="mt-10 font-serif text-3xl">
+                Élevage porcin
+              </h3>
+
+              <p className="mt-4 text-sm leading-7 text-black/60">
+                {content.pigs_description}
+              </p>
+
+              <div className="mt-8 h-px w-12 bg-gold" />
+
+              <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-black/40">
+                Porcs
+              </p>
+            </div>
+
+            {/* AVICULTURE */}
+            <div className="border border-black/10 bg-white p-8 sm:p-9">
+              <div className="flex items-start justify-between gap-6">
+                <span className="font-serif text-5xl text-black/10">
+                  03
+                </span>
+
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-black/40">
+                  Développement
+                </span>
+              </div>
+
+              <h3 className="mt-10 font-serif text-3xl">
+                Aviculture
+              </h3>
+
+              <p className="mt-4 text-sm leading-7 text-black/60">
+                {content.poultry_description}
+              </p>
+
+              <div className="mt-8 h-px w-12 bg-gold" />
+
+              <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-black/40">
+                Poules et poulets
+              </p>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* =====================================================
+          POISSONS
+      ====================================================== */}
+      <section className="bg-white">
+        <div className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
+
+          <div className="mb-14 max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
               {content.fish_label}
             </p>
 
-            <h2 className="mt-3 font-serif text-4xl">
+            <h2 className="mt-4 font-serif text-4xl leading-tight sm:text-5xl">
               {content.fish_title}
             </h2>
 
-            <p className="mt-4 text-base leading-8 text-black/60">
+            <p className="mt-5 text-base leading-8 text-black/60">
               {content.fish_description}
             </p>
           </div>
 
           {poissons.length === 0 ? (
-            <div className="border border-black/10 bg-bgAlt p-8 text-center">
+            <div className="border border-black/10 bg-bgAlt p-10 text-center">
               <p className="text-sm text-black/50">
                 Aucun élevage de poisson n’est actuellement publié.
               </p>
             </div>
           ) : (
             <div className="grid gap-8 lg:grid-cols-2">
-
-              {poissons.map((item) => {
-                const itemMedia =
-                  mediaByFarm[item.id] || [];
-
-                const finalMedia =
-                  itemMedia.length > 0
-                    ? itemMedia
-                    : item.photo_url
-                    ? [
-                        {
-                          id: `legacy-${item.id}`,
-                          farm_breeding_id: item.id,
-                          url: item.photo_url,
-                          storage_path: "",
-                          position: 0,
-                          created_at: "",
-                        },
-                      ]
-                    : [];
-
-                return (
-                  <article
-                    key={item.id}
-                    className="overflow-hidden border border-black/10 bg-white"
-                  >
-
-                    <MediaBlock
-                      media={finalMedia}
-                      fallback={`Les visuels de ${item.name.toLowerCase()} seront bientôt disponibles.`}
-                    />
-
-                    <div className="p-7">
-
-                      <StatusBadge status={item.status} />
-
-                      <h3 className="mt-4 font-serif text-3xl">
-                        {item.name}
-                      </h3>
-
-                      {item.description && (
-                        <p className="mt-4 text-sm leading-7 text-black/60">
-                          {item.description}
-                        </p>
-                      )}
-
-                      {item.status === "disponible" && (
-                        <p className="mt-5 text-sm font-medium text-ink">
-                          Production actuelle
-                        </p>
-                      )}
-
-                    </div>
-                  </article>
-                );
-              })}
-
+              {poissons.map((item) => (
+                <FarmCard
+                  key={item.id}
+                  item={item}
+                  media={mediaByFarm[item.id] || []}
+                  fallback={`Les visuels de ${item.name.toLowerCase()} seront bientôt disponibles.`}
+                />
+              ))}
             </div>
           )}
 
         </div>
       </section>
 
-      {/* PORCS */}
+      {/* =====================================================
+          PORCS
+      ====================================================== */}
       <section className="bg-bgAlt">
-        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+        <div className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
 
-          <div className="mb-12 max-w-3xl">
+          <div className="mb-14 max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
               {content.pigs_label}
             </p>
 
-            <h2 className="mt-3 font-serif text-4xl">
+            <h2 className="mt-4 font-serif text-4xl leading-tight sm:text-5xl">
               {content.pigs_title}
             </h2>
 
-            <p className="mt-4 text-base leading-8 text-black/60">
+            <p className="mt-5 text-base leading-8 text-black/60">
               {content.pigs_description}
             </p>
           </div>
 
           {porcs.length === 0 ? (
-            <div className="border border-black/10 bg-white p-8 text-center">
+            <div className="border border-black/10 bg-white p-10 text-center">
               <p className="text-sm text-black/50">
                 Aucun élevage porcin n’est actuellement publié.
               </p>
             </div>
           ) : (
             <div className="grid gap-8 lg:grid-cols-2">
-
-              {porcs.map((item) => {
-                const itemMedia =
-                  mediaByFarm[item.id] || [];
-
-                const finalMedia =
-                  itemMedia.length > 0
-                    ? itemMedia
-                    : item.photo_url
-                    ? [
-                        {
-                          id: `legacy-${item.id}`,
-                          farm_breeding_id: item.id,
-                          url: item.photo_url,
-                          storage_path: "",
-                          position: 0,
-                          created_at: "",
-                        },
-                      ]
-                    : [];
-
-                return (
-                  <article
-                    key={item.id}
-                    className="overflow-hidden border border-black/10 bg-white"
-                  >
-
-                    <MediaBlock
-                      media={finalMedia}
-                      fallback="Les visuels de cette production seront bientôt disponibles."
-                    />
-
-                    <div className="p-7">
-
-                      <StatusBadge status={item.status} />
-
-                      <h3 className="mt-4 font-serif text-3xl">
-                        {item.name}
-                      </h3>
-
-                      {item.description && (
-                        <p className="mt-4 text-sm leading-7 text-black/60">
-                          {item.description}
-                        </p>
-                      )}
-
-                    </div>
-                  </article>
-                );
-              })}
-
+              {porcs.map((item) => (
+                <FarmCard
+                  key={item.id}
+                  item={item}
+                  media={mediaByFarm[item.id] || []}
+                  fallback="Les visuels de cette production seront bientôt disponibles."
+                />
+              ))}
             </div>
           )}
 
         </div>
       </section>
 
-      {/* POULETS */}
+      {/* =====================================================
+          AVICULTURE
+      ====================================================== */}
       <section className="bg-white">
-        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+        <div className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
 
-          <div className="mb-12 max-w-3xl">
+          <div className="mb-14 max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
               {content.poultry_label}
             </p>
 
-            <h2 className="mt-3 font-serif text-4xl">
+            <h2 className="mt-4 font-serif text-4xl leading-tight sm:text-5xl">
               {content.poultry_title}
             </h2>
 
-            <p className="mt-4 text-base leading-8 text-black/60">
+            <p className="mt-5 text-base leading-8 text-black/60">
               {content.poultry_description}
             </p>
           </div>
 
           {poulets.length === 0 ? (
-            <div className="border border-black/10 bg-bgAlt p-8 text-center">
+            <div className="border border-black/10 bg-bgAlt p-10 text-center">
               <p className="text-sm text-black/50">
                 Aucun élevage avicole n’est actuellement publié.
               </p>
             </div>
           ) : (
             <div className="grid gap-8 lg:grid-cols-2">
-
-              {poulets.map((item) => {
-                const itemMedia =
-                  mediaByFarm[item.id] || [];
-
-                const finalMedia =
-                  itemMedia.length > 0
-                    ? itemMedia
-                    : item.photo_url
-                    ? [
-                        {
-                          id: `legacy-${item.id}`,
-                          farm_breeding_id: item.id,
-                          url: item.photo_url,
-                          storage_path: "",
-                          position: 0,
-                          created_at: "",
-                        },
-                      ]
-                    : [];
-
-                return (
-                  <article
-                    key={item.id}
-                    className="overflow-hidden border border-black/10 bg-white"
-                  >
-
-                    <MediaBlock
-                      media={finalMedia}
-                      fallback="Les visuels de cette production seront bientôt disponibles."
-                    />
-
-                    <div className="p-7">
-
-                      <StatusBadge status={item.status} />
-
-                      <h3 className="mt-4 font-serif text-3xl">
-                        {item.name}
-                      </h3>
-
-                      {item.description && (
-                        <p className="mt-4 text-sm leading-7 text-black/60">
-                          {item.description}
-                        </p>
-                      )}
-
-                    </div>
-                  </article>
-                );
-              })}
-
+              {poulets.map((item) => (
+                <FarmCard
+                  key={item.id}
+                  item={item}
+                  media={mediaByFarm[item.id] || []}
+                  fallback="Les visuels de cette production seront bientôt disponibles."
+                />
+              ))}
             </div>
           )}
 
         </div>
       </section>
 
-      {/* VISION */}
+      {/* =====================================================
+          VISION
+      ====================================================== */}
       <section className="bg-[#18352B] text-white">
-        <div className="mx-auto max-w-5xl px-6 py-20 text-center lg:px-8 lg:py-28">
+        <div className="mx-auto max-w-5xl px-6 py-24 text-center lg:px-8 lg:py-32">
 
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold">
             {content.vision_label}
           </p>
 
-          <h2 className="mt-5 font-serif text-3xl leading-tight sm:text-4xl lg:text-5xl">
+          <h2 className="mt-6 font-serif text-4xl leading-tight sm:text-5xl lg:text-6xl">
             {content.vision_title}
           </h2>
 
-          <p className="mx-auto mt-7 max-w-3xl text-base leading-8 text-white/70">
+          <p className="mx-auto mt-8 max-w-3xl text-base leading-8 text-white/70 sm:text-lg">
             {content.vision_text}
           </p>
 
+        </div>
+      </section>
+
+      {/* =====================================================
+          CTA FINAL
+      ====================================================== */}
+      <section className="bg-[#F3EFE5]">
+        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+
+          <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-center">
+
+            <div className="max-w-3xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold">
+                AgroFarms237
+              </p>
+
+              <h2 className="mt-4 font-serif text-4xl leading-tight text-ink sm:text-5xl">
+                De la ferme à votre table,
+                étape après étape.
+              </h2>
+
+              <p className="mt-5 max-w-2xl text-base leading-8 text-black/60">
+                Découvrez nos produits disponibles ou échangez
+                avec AgroFarms237 pour construire un partenariat
+                adapté à votre activité.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+              <Link
+                href="/produits"
+                className="inline-flex min-h-12 items-center justify-center border border-[#18352B] bg-[#18352B] px-7 text-sm font-semibold text-white transition hover:opacity-90"
+              >
+                Découvrir nos produits
+              </Link>
+
+              <Link
+                href="/commander"
+                className="inline-flex min-h-12 items-center justify-center border border-[#18352B] px-7 text-sm font-semibold text-[#18352B] transition hover:bg-white"
+              >
+                Commander
+              </Link>
+
+              <Link
+                href="/partenaires"
+                className="inline-flex min-h-12 items-center justify-center border border-black/10 bg-white px-7 text-sm font-semibold text-ink transition hover:border-black/20"
+              >
+                Devenir partenaire
+              </Link>
+            </div>
+
+          </div>
         </div>
       </section>
 
