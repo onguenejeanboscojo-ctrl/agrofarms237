@@ -8,8 +8,10 @@ type FormState = {
   phone: string;
   email: string;
   profile_type: string;
+  profile_other: string;
   areas_of_interest: string[];
   contribution_type: string[];
+  contribution_other: string;
   investment_range: string;
   investment_horizon: string;
   city: string;
@@ -69,8 +71,10 @@ export default function PartenairesForm() {
     phone: "",
     email: "",
     profile_type: "",
+    profile_other: "",
     areas_of_interest: [],
     contribution_type: [],
+    contribution_other: "",
     investment_range: "",
     investment_horizon: "",
     city: "",
@@ -98,7 +102,6 @@ export default function PartenairesForm() {
   ) {
     setForm((current) => {
       const currentValues = current[field];
-
       const alreadySelected = currentValues.includes(value);
 
       return {
@@ -117,6 +120,23 @@ export default function PartenairesForm() {
     setLoading(true);
 
     try {
+      const profileValue =
+        form.profile_type === "Autre" && form.profile_other.trim()
+          ? `Autre : ${form.profile_other.trim()}`
+          : form.profile_type;
+
+      const contributionValues = [...form.contribution_type];
+
+      if (
+        form.contribution_type.includes("Autre") &&
+        form.contribution_other.trim()
+      ) {
+        const otherIndex = contributionValues.indexOf("Autre");
+
+        contributionValues[otherIndex] =
+          `Autre : ${form.contribution_other.trim()}`;
+      }
+
       const res = await fetch("/api/partners", {
         method: "POST",
         headers: {
@@ -128,9 +148,11 @@ export default function PartenairesForm() {
           phone: form.phone,
           email: form.email,
 
-          profile_type: form.profile_type,
-          areas_of_interest: form.areas_of_interest.join(", "),
-          contribution_type: form.contribution_type.join(", "),
+          profile_type: profileValue,
+          areas_of_interest:
+            form.areas_of_interest.join(", "),
+          contribution_type:
+            contributionValues.join(", "),
           investment_range: form.investment_range,
           investment_horizon: form.investment_horizon,
           city: form.city,
@@ -138,9 +160,9 @@ export default function PartenairesForm() {
 
           message: form.message,
 
-          // Compatibilité avec les champs existants
-          partnership_type: form.profile_type || "Autre",
-          amount_interest: form.investment_range || null,
+          partnership_type: profileValue || "Autre",
+          amount_interest:
+            form.investment_range || null,
         }),
       });
 
@@ -250,6 +272,23 @@ export default function PartenairesForm() {
             );
           })}
         </div>
+
+        {form.profile_type === "Autre" && (
+          <div className="mt-4">
+            <label className="mb-1.5 block text-[13.5px] font-bold text-paper/75">
+              Précisez votre profil
+            </label>
+
+            <input
+              value={form.profile_other}
+              onChange={(e) =>
+                updateField("profile_other", e.target.value)
+              }
+              placeholder="Décrivez votre profil..."
+              className="w-full rounded-s border border-paper/20 bg-paper/5 px-3.5 py-3 text-[15.5px] text-paper outline-none placeholder:text-paper/35 focus:border-gold focus:ring-2 focus:ring-gold/30"
+            />
+          </div>
+        )}
       </section>
 
       {/* 2 — INTÉRÊTS */}
@@ -338,6 +377,26 @@ export default function PartenairesForm() {
             );
           })}
         </div>
+
+        {form.contribution_type.includes("Autre") && (
+          <div className="mt-4">
+            <label className="mb-1.5 block text-[13.5px] font-bold text-paper/75">
+              Précisez votre mode de contribution
+            </label>
+
+            <input
+              value={form.contribution_other}
+              onChange={(e) =>
+                updateField(
+                  "contribution_other",
+                  e.target.value
+                )
+              }
+              placeholder="Décrivez votre contribution..."
+              className="w-full rounded-s border border-paper/20 bg-paper/5 px-3.5 py-3 text-[15.5px] text-paper outline-none placeholder:text-paper/35 focus:border-gold focus:ring-2 focus:ring-gold/30"
+            />
+          </div>
+        )}
       </section>
 
       {/* 4 — MONTANT */}
