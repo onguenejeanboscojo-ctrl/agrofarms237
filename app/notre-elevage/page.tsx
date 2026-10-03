@@ -61,42 +61,75 @@ type PageContent = {
 
 const DEFAULT_CONTENT: PageContent = {
   hero_label: "Notre élevage",
-  hero_title: "Une ferme qui grandit, élevage après élevage.",
+
+  hero_title:
+    "Une ferme qui grandit, élevage après élevage.",
+
   hero_description:
     "Le silure constitue aujourd’hui notre activité principale, produite à Yaoundé, Mimboman. Demain, notre ferme accueillera progressivement d’autres productions pour construire un modèle agricole plus complet, local et durable.",
 
+  // =========================
+  // TRAJECTOIRE
+  // =========================
+
   step1_label: "Aujourd’hui",
-  step1_title: "Silure frais",
+
+  step1_title:
+    "Une première activité structurée",
+
   step1_text:
-    "Production active à Yaoundé, Mimboman, vendue directement aux familles et professionnels.",
+    "AgroFarms237 construit son activité à partir de la pisciculture, avec le silure comme première production développée et commercialisée.",
 
   step2_label: "Prochaine étape",
-  step2_title: "Produits fumés",
+
+  step2_title:
+    "Valoriser nos productions",
+
   step2_text:
-    "Une gamme de silure fumé, pensée pour la conservation et pour étendre la livraison au-delà de Yaoundé.",
+    "Notre ambition est de développer progressivement de nouvelles formes de valorisation, de transformation et de conditionnement afin de proposer une offre agricole plus diversifiée et mieux adaptée aux besoins du marché.",
 
   step3_label: "Développement",
-  step3_title: "Porcs, poulets de chair, poules pondeuses",
-  step3_text: "Une diversification progressive.",
+
+  step3_title:
+    "Construire une ferme diversifiée",
+
+  step3_text:
+    "Pisciculture, élevage porcin et aviculture : nous développons progressivement plusieurs filières pour bâtir une exploitation agricole structurée, locale et durable.",
+
+  // =========================
+  // ACTIVITÉS
+  // =========================
 
   fish_label: "Notre production",
+
   fish_title: "Poissons",
+
   fish_description:
     "Une production piscicole qui commence avec le silure et s’élargira progressivement à d’autres espèces.",
 
   pigs_label: "Développement",
+
   pigs_title: "Élevage porcin",
+
   pigs_description:
     "Notre projet d’élevage porcin s’inscrit dans une logique de diversification progressive de la ferme.",
 
   poultry_label: "Aviculture",
+
   poultry_title: "Poulets",
+
   poultry_description:
     "Une future activité avicole qui regroupera progressivement poules pondeuses et poulets de chair.",
 
+  // =========================
+  // VISION
+  // =========================
+
   vision_label: "Notre vision",
+
   vision_title:
     "Construire une ferme capable de nourrir, de créer et de transmettre.",
+
   vision_text:
     "Agrofarms237 avance étape par étape, avec l’ambition de développer une agriculture locale structurée, productive et durable.",
 };
@@ -328,38 +361,43 @@ export default async function NotreElevagePage() {
   const heroImages = Array.from(
     new Set(
       farmItems.flatMap((item) => {
-        const ownMedia = mediaByFarm[item.id] || [];
+        const ownMedia =
+          mediaByFarm[item.id] || [];
 
         if (ownMedia.length > 0) {
-          return ownMedia.map((media) => media.url);
+          return ownMedia.map(
+            (media) => media.url
+          );
         }
 
-        return item.photo_url ? [item.photo_url] : [];
+        return item.photo_url
+          ? [item.photo_url]
+          : [];
       })
     )
   );
 
   const poissons = farmItems.filter(
     (item) =>
-      item.category.toLowerCase() === "poisson"
+      item.category.toLowerCase() ===
+      "poisson"
   );
 
   const porcs = farmItems.filter(
     (item) =>
-      item.category.toLowerCase() === "porcs"
+      item.category.toLowerCase() ===
+      "porcs"
   );
 
   const poulets = farmItems.filter(
     (item) =>
-      item.category.toLowerCase() === "poulets"
+      item.category.toLowerCase() ===
+      "poulets"
   );
 
   return (
     <main className="bg-white text-ink">
-
-      {/* =====================================================
-          HERO
-      ====================================================== */}
+      {/* HERO */}
       <section className="relative min-h-[560px] overflow-hidden bg-[#18352B] text-white">
         {heroImages.length > 0 && (
           <HeroSlideshow images={heroImages} />
@@ -369,7 +407,6 @@ export default async function NotreElevagePage() {
 
         <div className="relative z-10 mx-auto flex min-h-[560px] max-w-7xl items-center px-6 py-24 lg:px-8 lg:py-32">
           <div className="max-w-4xl">
-
             <p className="mb-5 text-xs font-semibold uppercase tracking-[0.28em] text-gold sm:text-sm">
               {content.hero_label}
             </p>
@@ -381,17 +418,13 @@ export default async function NotreElevagePage() {
             <p className="mt-7 max-w-2xl text-base leading-8 text-white/80 sm:text-lg">
               {content.hero_description}
             </p>
-
           </div>
         </div>
       </section>
 
-      {/* =====================================================
-          TRAJECTOIRE
-      ====================================================== */}
+      {/* TRAJECTOIRE */}
       <section className="border-b border-black/10 bg-white">
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-
           <div className="grid gap-12 md:grid-cols-3 md:gap-0">
 
             {/* 01 */}
@@ -466,17 +499,13 @@ export default async function NotreElevagePage() {
                 {content.step3_text}
               </p>
             </div>
-
           </div>
         </div>
       </section>
 
-      {/* =====================================================
-          NOS ACTIVITÉS
-      ====================================================== */}
+      {/* NOS ACTIVITÉS */}
       <section className="bg-bgAlt">
         <div className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
-
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold">
               Notre ferme
@@ -524,7 +553,7 @@ export default async function NotreElevagePage() {
               </p>
             </div>
 
-            {/* PORC */}
+            {/* PORCIN */}
             <div className="border border-black/10 bg-white p-8 sm:p-9">
               <div className="flex items-start justify-between gap-6">
                 <span className="font-serif text-5xl text-black/10">
@@ -577,17 +606,13 @@ export default async function NotreElevagePage() {
                 Poules et poulets
               </p>
             </div>
-
           </div>
         </div>
       </section>
 
-      {/* =====================================================
-          POISSONS
-      ====================================================== */}
+      {/* POISSONS */}
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
-
           <div className="mb-14 max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
               {content.fish_label}
@@ -620,16 +645,12 @@ export default async function NotreElevagePage() {
               ))}
             </div>
           )}
-
         </div>
       </section>
 
-      {/* =====================================================
-          PORCS
-      ====================================================== */}
+      {/* PORCS */}
       <section className="bg-bgAlt">
         <div className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
-
           <div className="mb-14 max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
               {content.pigs_label}
@@ -662,16 +683,12 @@ export default async function NotreElevagePage() {
               ))}
             </div>
           )}
-
         </div>
       </section>
 
-      {/* =====================================================
-          AVICULTURE
-      ====================================================== */}
+      {/* AVICULTURE */}
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
-
           <div className="mb-14 max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
               {content.poultry_label}
@@ -704,16 +721,12 @@ export default async function NotreElevagePage() {
               ))}
             </div>
           )}
-
         </div>
       </section>
 
-      {/* =====================================================
-          VISION
-      ====================================================== */}
+      {/* VISION */}
       <section className="bg-[#18352B] text-white">
         <div className="mx-auto max-w-5xl px-6 py-24 text-center lg:px-8 lg:py-32">
-
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold">
             {content.vision_label}
           </p>
@@ -725,16 +738,12 @@ export default async function NotreElevagePage() {
           <p className="mx-auto mt-8 max-w-3xl text-base leading-8 text-white/70 sm:text-lg">
             {content.vision_text}
           </p>
-
         </div>
       </section>
 
-      {/* =====================================================
-          CTA FINAL
-      ====================================================== */}
+      {/* CTA FINAL */}
       <section className="bg-[#F3EFE5]">
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-
           <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-center">
 
             <div className="max-w-3xl">
@@ -755,6 +764,7 @@ export default async function NotreElevagePage() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+
               <Link
                 href="/produits"
                 className="inline-flex min-h-12 items-center justify-center border border-[#18352B] bg-[#18352B] px-7 text-sm font-semibold text-white transition hover:opacity-90"
@@ -775,12 +785,11 @@ export default async function NotreElevagePage() {
               >
                 Devenir partenaire
               </Link>
-            </div>
 
+            </div>
           </div>
         </div>
       </section>
-
     </main>
   );
 }
