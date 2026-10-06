@@ -477,7 +477,9 @@ export default function MediaManager() {
           </div>
         </div>
 
-        {/* Galerie — préparation de la nouvelle logique */}
+        {/* =====================================================
+            GALERIE
+        ====================================================== */}
 
         <div className="mt-5 rounded-s border border-ink/10 bg-bgAlt p-4">
           <p className="text-[13px] font-bold">
@@ -625,7 +627,7 @@ export default function MediaManager() {
                       </p>
                     )}
 
-                    {/* CAPTION */}
+                    {/* CAPTION / MODIFICATION */}
 
                     {!isEditing ? (
                       item.caption ? (
@@ -705,7 +707,7 @@ export default function MediaManager() {
                           <button
                             type="button"
                             onClick={cancelEditing}
-                            className="btn btn-outline flex-1"
+                            className="flex-1 rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt"
                           >
                             Annuler
                           </button>
@@ -715,7 +717,9 @@ export default function MediaManager() {
 
                     {!isEditing && (
                       <>
-                        {/* ORDRE */}
+                        {/* =================================================
+                            MONTER / DESCENDRE
+                        ================================================== */}
 
                         <div className="mt-3 flex gap-2">
                           <button
@@ -727,7 +731,7 @@ export default function MediaManager() {
                               )
                             }
                             disabled={isFirst}
-                            className="btn btn-outline flex-1 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="flex-1 rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             Monter
                           </button>
@@ -741,13 +745,15 @@ export default function MediaManager() {
                               )
                             }
                             disabled={isLast}
-                            className="btn btn-outline flex-1 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="flex-1 rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             Descendre
                           </button>
                         </div>
 
-                        {/* ACTIONS */}
+                        {/* =================================================
+                            MODIFIER / PUBLIÉ
+                        ================================================== */}
 
                         <div className="mt-2 grid grid-cols-2 gap-2">
                           <button
@@ -755,7 +761,7 @@ export default function MediaManager() {
                             onClick={() =>
                               startEditing(item)
                             }
-                            className="btn btn-outline"
+                            className="rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt"
                           >
                             Modifier
                           </button>
@@ -778,7 +784,9 @@ export default function MediaManager() {
                           </label>
                         </div>
 
-                        {/* SUPPRESSION */}
+                        {/* =================================================
+                            SUPPRESSION
+                        ================================================== */}
 
                         <button
                           type="button"
