@@ -60,7 +60,9 @@ export default function MediaManager() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Impossible de charger les médias.");
+        throw new Error(
+          data.error || "Impossible de charger les médias."
+        );
       }
 
       setItems(data.items || []);
@@ -106,7 +108,9 @@ export default function MediaManager() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Échec de l'envoi.");
+        throw new Error(
+          data.error || "Échec de l'envoi."
+        );
       }
 
       setCaption("");
@@ -116,7 +120,9 @@ export default function MediaManager() {
 
       await load();
     } catch (err: any) {
-      setError(err.message || "Échec de l'envoi.");
+      setError(
+        err.message || "Échec de l'envoi."
+      );
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -151,7 +157,10 @@ export default function MediaManager() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Impossible de modifier le statut.");
+        throw new Error(
+          data.error ||
+            "Impossible de modifier le statut."
+        );
       }
 
       setSuccess(
@@ -161,6 +170,7 @@ export default function MediaManager() {
       );
     } catch (err: any) {
       setItems(previous);
+
       setError(
         err.message ||
           "Impossible de modifier le statut."
@@ -188,16 +198,19 @@ export default function MediaManager() {
     resetMessages();
 
     try {
-      const res = await fetch(`/api/media/${editingId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          caption: editingCaption || null,
-          category: editingCategory || null,
-        }),
-      });
+      const res = await fetch(
+        `/api/media/${editingId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            caption: editingCaption || null,
+            category: editingCategory || null,
+          }),
+        }
+      );
 
       const data = await res.json();
 
@@ -213,8 +226,10 @@ export default function MediaManager() {
           item.id === editingId
             ? {
                 ...item,
-                caption: editingCaption || null,
-                category: editingCategory || null,
+                caption:
+                  editingCaption || null,
+                category:
+                  editingCategory || null,
               }
             : item
         )
@@ -246,9 +261,12 @@ export default function MediaManager() {
     );
 
     try {
-      const res = await fetch(`/api/media/${id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/media/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       const data = await res.json();
 
@@ -259,7 +277,9 @@ export default function MediaManager() {
         );
       }
 
-      setSuccess("Média supprimé définitivement.");
+      setSuccess(
+        "Média supprimé définitivement."
+      );
     } catch (err: any) {
       setItems(previous);
 
@@ -480,14 +500,16 @@ export default function MediaManager() {
                 Galerie — à configurer
               </option>
 
-              {GALLERY_CATEGORIES.map((category) => (
-                <option
-                  key={category.value}
-                  value={category.value}
-                >
-                  {category.label}
-                </option>
-              ))}
+              {GALLERY_CATEGORIES.map(
+                (galleryCategory) => (
+                  <option
+                    key={galleryCategory.value}
+                    value={galleryCategory.value}
+                  >
+                    {galleryCategory.label}
+                  </option>
+                )
+              )}
             </select>
           </div>
         </div>
@@ -530,7 +552,7 @@ export default function MediaManager() {
       <div className="mt-9">
         <div className="mb-4">
           <h2 className="font-serif text-[24px] font-semibold">
-            Médias existants
+            MÉDIAS EXISTANTS — VERSION TEST
           </h2>
 
           <p className="mt-1 text-[13.5px] text-inkSoft">
