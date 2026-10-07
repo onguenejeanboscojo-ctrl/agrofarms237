@@ -102,106 +102,64 @@ export default function MediaManager() {
     const group = normalize(product.product_group);
     const variant = normalize(product.variant);
     const name = normalize(product.name);
+    const haystack = `${group} ${variant} ${name}`;
 
-    // Cette correspondance reprend volontairement la même logique
-    // que la page publique /produits.
-    if (group === "silure") {
-      if (
-        variant.includes("fum") ||
-        name.includes("fume")
-      ) {
-        return "produit_silure_fume";
-      }
-
-      return "produit_silure_frais";
+    // On s'appuie d'abord sur le nom réel du produit du catalogue,
+    // puis sur le groupe/variant. Cela évite qu'une différence de
+    // libellé dans Supabase empêche le produit d'apparaître ici.
+    if (haystack.includes("silure")) {
+      return haystack.includes("fum")
+        ? "produit_silure_fume"
+        : "produit_silure_frais";
     }
 
-    if (group === "carpe") {
-      return "produit_carpe_fraiche";
+    if (haystack.includes("carpe")) {
+      return haystack.includes("fum")
+        ? "produit_carpe_fumee"
+        : "produit_carpe_fraiche";
     }
 
-    if (group === "porc") {
-      if (
-        variant.includes("fum") ||
-        name.includes("fume")
-      ) {
+    if (haystack.includes("porc")) {
+      if (haystack.includes("fum")) {
         return "produit_porc_fume";
       }
 
-      if (
-        variant.includes("entier") ||
-        name.includes("entier")
-      ) {
+      if (haystack.includes("entier")) {
         return "produit_porc_entier";
-      }
-
-      if (
-        variant.includes("frais") ||
-        name.includes("frais")
-      ) {
-        return "produit_porc_frais";
       }
 
       return "produit_porc_frais";
     }
 
-    if (
-      group === "porcelet" ||
-      name.includes("porcelet")
-    ) {
+    if (haystack.includes("porcelet")) {
       return "produit_porcelet";
     }
 
-    if (
-      group === "poulet de chair" ||
-      group === "poulet"
-    ) {
-      if (
-        variant.includes("fum") ||
-        name.includes("fume")
-      ) {
+    if (haystack.includes("poulet")) {
+      if (haystack.includes("fum")) {
         return "produit_poulet_fume";
       }
 
-      if (
-        variant.includes("vivant") ||
-        name.includes("vivant")
-      ) {
+      if (haystack.includes("vivant")) {
         return "produit_poulet_vivant";
-      }
-
-      if (
-        variant.includes("frais") ||
-        variant.includes("nettoye") ||
-        name.includes("frais") ||
-        name.includes("nettoye")
-      ) {
-        return "produit_poulet_frais_nettoye";
       }
 
       return "produit_poulet_frais_nettoye";
     }
 
     if (
-      group === "oeufs" ||
-      group === "oeuf" ||
-      name.includes("alveole") ||
-      variant.includes("alveole")
+      haystack.includes("oeuf") ||
+      haystack.includes("œuf") ||
+      haystack.includes("alveole")
     ) {
       return "produit_alveoles_oeufs";
     }
 
-    if (
-      group === "poussins" ||
-      name.includes("poussin")
-    ) {
+    if (haystack.includes("poussin")) {
       return "produit_poussins";
     }
 
-    if (
-      group === "alevins" ||
-      name.includes("alevin")
-    ) {
+    if (haystack.includes("alevin")) {
       return "produit_alevins";
     }
 
@@ -209,13 +167,17 @@ export default function MediaManager() {
   }
 
   const productSiteOptions = useMemo(() => {
+    const seen = new Set<string>();
+
     return products
       .map((product) => {
         const value = getProductSiteLocation(product);
 
-        if (!value) {
+        if (!value || !product.name || seen.has(value)) {
           return null;
         }
+
+        seen.add(value);
 
         return {
           value,
@@ -258,19 +220,62 @@ export default function MediaManager() {
     try {
       setProductsLoading(true);
 
-      const res = await fetch("/api/catalog-products", {
-        cache: "no-store",
-      });
+      // Source principale : le catalogue products.
+      // Fallback conservé vers /api/products si l'ancien endpoint
+      // est encore celui exposé par le déploiement en cours.
+      const endpoints = [
+        "/api/catalog-products",
+        "/api/products",
+      ];
 
-      const data = await res.json();
+      let loadedProducts: CatalogProduct[] = [];
+      let lastError = "";
 
-      if (!res.ok) {
+      for (const endpoint of endpoints) {
+        try {
+          const res = await fetch(endpoint, {
+            cache: "no-store",
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            lastError =
+              data?.error ||
+              `Impossible de charger les produits (${res.status}).`;
+            continue;
+          }
+
+          const candidates =
+            Array.isArray(data)
+              ? data
+              : Array.isArray(data?.items)
+                ? data.items
+                : Array.isArray(data?.products)
+                  ? data.products
+                  : Array.isArray(data?.data)
+                    ? data.data
+                    : [];
+
+          if (candidates.length > 0) {
+            loadedProducts = candidates;
+            break;
+          }
+        } catch (err: any) {
+          lastError =
+            err?.message ||
+            "Impossible de charger les produits.";
+        }
+      }
+
+      if (loadedProducts.length === 0) {
         throw new Error(
-          data.error || "Impossible de charger les produits."
+          lastError ||
+            "Aucun produit n'a été récupéré du catalogue."
         );
       }
 
-      setProducts(data.items || []);
+      setProducts(loadedProducts);
     } catch (err: any) {
       setError(
         err.message || "Impossible de charger les produits."
