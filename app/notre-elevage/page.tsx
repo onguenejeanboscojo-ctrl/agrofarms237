@@ -86,8 +86,7 @@ const DEFAULT_CONTENT: PageContent = {
   step1_text:
     "Production active à Yaoundé, Mimboman, vendue directement aux familles et professionnels.",
 
-  step2_label:
-    "Prochaine étape",
+  step2_label: "Prochaine étape",
 
   step2_title:
     "Produits fumés",
@@ -95,8 +94,7 @@ const DEFAULT_CONTENT: PageContent = {
   step2_text:
     "Une gamme de silure fumé, pensée pour la conservation et pour étendre la livraison au-delà de Yaoundé.",
 
-  step3_label:
-    "Développement",
+  step3_label: "Développement",
 
   step3_title:
     "Porcs, poulets de chair, poules pondeuses",
@@ -395,32 +393,67 @@ function convertSiteMedia(
  * Détermine les emplacements média correspondant
  * à un élevage.
  *
- * Poisson :
- *   elevage_silure
+ * La catégorie provenant de l'Admin peut varier :
  *
- * Porcs :
- *   elevage_porcs
+ * Poisson / Poissons / Silure
+ * Porc / Porcs / Élevage porcin
+ * Poulet / Poulets / Pondeuses / Aviculture
  *
- * Poulets :
- *   elevage_pondeuses
- *   elevage_chair
+ * On normalise donc le texte avant de faire
+ * la correspondance.
  */
 function getSiteLocationsForFarm(
   item: FarmItem
 ): string[] {
-  const category = item.category
-    .toLowerCase()
-    .trim();
+  const normalize = (value: string) =>
+    (value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
 
-  if (category === "poisson") {
+  const category = normalize(item.category);
+  const name = normalize(item.name);
+
+  /**
+   * POISSONS / SILURES
+   */
+  if (
+    category.includes("poisson") ||
+    category.includes("silure") ||
+    name.includes("poisson") ||
+    name.includes("silure")
+  ) {
     return ["elevage_silure"];
   }
 
-  if (category === "porcs") {
+  /**
+   * PORCS
+   */
+  if (
+    category.includes("porc") ||
+    category.includes("elevage porcin") ||
+    name.includes("porc")
+  ) {
     return ["elevage_porcs"];
   }
 
-  if (category === "poulets") {
+  /**
+   * POULETS / AVICULTURE
+   *
+   * Une production avicole peut être liée
+   * aux deux emplacements :
+   *
+   * elevage_pondeuses
+   * elevage_chair
+   */
+  if (
+    category.includes("poulet") ||
+    category.includes("aviculture") ||
+    category.includes("pondeuse") ||
+    name.includes("poulet") ||
+    name.includes("pondeuse")
+  ) {
     return [
       "elevage_pondeuses",
       "elevage_chair",
