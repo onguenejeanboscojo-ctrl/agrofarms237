@@ -13,13 +13,13 @@
 //
 // Un média peut donc être :
 //
-//   Emplacement site = élevage_porcs
+//   Emplacement site = elevage_porcs
 //   Galerie = Oui
 //   Rubrique Galerie = Porcs
 //
 // ou :
 //
-//   Emplacement site = élevage_porcs
+//   Emplacement site = elevage_porcs
 //   Galerie = Non
 //
 // ============================================================
@@ -98,6 +98,11 @@ export const SITE_LOCATIONS = [
   {
     value: "produit_alevins",
     label: "Produit — Alevins",
+  },
+
+  {
+    value: "produit_alveoles_oeufs",
+    label: "Produit — Alvéoles d’œufs",
   },
 
   {
@@ -359,6 +364,11 @@ export const PRODUCT_CATEGORIES = [
   {
     value: "produit_alevins",
     label: "Produit — Alevins",
+  },
+
+  {
+    value: "produit_alveoles_oeufs",
+    label: "Produit — Alvéoles d’œufs",
   },
 ];
 
