@@ -21,6 +21,15 @@ type NewsPost = {
   published: boolean;
 };
 
+type SiteMedia = {
+  id: string;
+  url: string;
+  kind: "photo" | "video";
+  site_location: string | null;
+  position: number;
+  created_at: string;
+};
+
 async function getTeamMembers(): Promise<TeamMember[]> {
   try {
     const { data, error } = await supabaseAdmin()
@@ -77,11 +86,76 @@ async function getNewsPosts(): Promise<NewsPost[]> {
   }
 }
 
+
+async function getSiteMedia(): Promise<SiteMedia[]> {
+  try {
+    const { data, error } = await supabaseAdmin()
+      .from("media")
+      .select(
+        "id,url,kind,site_location,position,created_at"
+      )
+      .eq("published", true)
+      .in("site_location", ["vie_ferme", "actualites"])
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error(
+        "Erreur récupération médias À propos :",
+        error
+      );
+
+      return [];
+    }
+
+    return (data || []) as SiteMedia[];
+  } catch (error) {
+    console.error(
+      "Erreur inattendue récupération médias À propos :",
+      error
+    );
+
+    return [];
+  }
+}
+
+function SiteMediaCard({ media }: { media: SiteMedia }) {
+  return (
+    <article className="group overflow-hidden border border-black/10 bg-white">
+      <div className="aspect-[16/10] overflow-hidden bg-[#F3EFE5]">
+        {media.kind === "video" ? (
+          <video
+            src={media.url}
+            controls
+            playsInline
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <img
+            src={media.url}
+            alt="AgroFarms237"
+            className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
+          />
+        )}
+      </div>
+    </article>
+  );
+}
+
 export default async function LaVieDeLaFermePage() {
-  const [team, posts] = await Promise.all([
+  const [team, posts, siteMedia] = await Promise.all([
     getTeamMembers(),
     getNewsPosts(),
+    getSiteMedia(),
   ]);
+
+  const farmLifeMedia = siteMedia.filter(
+    (media) => media.site_location === "vie_ferme"
+  );
+
+  const newsMedia = siteMedia.filter(
+    (media) => media.site_location === "actualites"
+  );
 
   return (
     <main className="bg-white text-ink">
@@ -561,6 +635,49 @@ export default async function LaVieDeLaFermePage() {
       </section>
 
 
+
+      {/* ===================================================== */}
+      {/* LA VIE À LA FERME                                    */}
+      {/* ===================================================== */}
+
+      <section className="bg-white">
+        <div className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
+
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold">
+              La vie de la ferme
+            </p>
+
+            <h2 className="mt-4 font-serif text-4xl leading-tight sm:text-5xl">
+              Dans les coulisses d’AgroFarms237.
+            </h2>
+
+            <p className="mt-5 text-base leading-8 text-black/60">
+              Découvrez les moments, les activités et les réalités
+              qui accompagnent progressivement le développement de
+              notre ferme.
+            </p>
+          </div>
+
+          {farmLifeMedia.length === 0 ? (
+            <div className="mt-14 border border-dashed border-black/15 bg-[#F3EFE5] p-12 text-center">
+              <p className="text-sm leading-7 text-black/55">
+                Les premières images de la vie de la ferme seront
+                bientôt présentées ici.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {farmLifeMedia.map((media) => (
+                <SiteMediaCard key={media.id} media={media} />
+              ))}
+            </div>
+          )}
+
+        </div>
+      </section>
+
+
       {/* ===================================================== */}
       {/* NOTRE ÉQUIPE                                          */}
       {/* ===================================================== */}
@@ -680,8 +797,22 @@ export default async function LaVieDeLaFermePage() {
 
           </div>
 
+          {newsMedia.length > 0 && (
+            <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {newsMedia.map((media) => (
+                <SiteMediaCard key={media.id} media={media} />
+              ))}
+            </div>
+          )}
+
           {posts.length === 0 ? (
-            <div className="mt-14 border border-dashed border-black/15 bg-white p-12 text-center">
+            <div
+              className={
+                newsMedia.length > 0
+                  ? "mt-8 border border-dashed border-black/15 bg-white p-12 text-center"
+                  : "mt-14 border border-dashed border-black/15 bg-white p-12 text-center"
+              }
+            >
               <p className="mx-auto max-w-md text-sm leading-7 text-black/55">
                 Les premières actualités de la ferme
                 seront bientôt publiées sur cet espace.
