@@ -393,14 +393,15 @@ function convertSiteMedia(
  * Détermine les emplacements média correspondant
  * à un élevage.
  *
- * La catégorie provenant de l'Admin peut varier :
+ * IMPORTANT :
  *
- * Poisson / Poissons / Silure
- * Porc / Porcs / Élevage porcin
- * Poulet / Poulets / Pondeuses / Aviculture
+ * On ne considère plus "poisson" comme étant
+ * automatiquement du silure.
  *
- * On normalise donc le texte avant de faire
- * la correspondance.
+ * Cela évite que la Carpe récupère les photos
+ * affectées à :
+ *
+ * elevage_silure
  */
 function getSiteLocationsForFarm(
   item: FarmItem
@@ -416,12 +417,14 @@ function getSiteLocationsForFarm(
   const name = normalize(item.name);
 
   /**
-   * POISSONS / SILURES
+   * SILURE
+   *
+   * Correspondance uniquement si le nom
+   * ou la catégorie identifie explicitement
+   * le silure.
    */
   if (
-    category.includes("poisson") ||
     category.includes("silure") ||
-    name.includes("poisson") ||
     name.includes("silure")
   ) {
     return ["elevage_silure"];
@@ -440,12 +443,6 @@ function getSiteLocationsForFarm(
 
   /**
    * POULETS / AVICULTURE
-   *
-   * Une production avicole peut être liée
-   * aux deux emplacements :
-   *
-   * elevage_pondeuses
-   * elevage_chair
    */
   if (
     category.includes("poulet") ||
@@ -460,6 +457,19 @@ function getSiteLocationsForFarm(
     ];
   }
 
+  /**
+   * AUTRES POISSONS
+   *
+   * Exemple :
+   * Carpe
+   *
+   * Pour le moment, aucun emplacement
+   * spécifique "elevage_carpe" n'existe
+   * dans le système média.
+   *
+   * On retourne donc [] afin que la Carpe
+   * ne récupère surtout pas les photos du Silure.
+   */
   return [];
 }
 
@@ -859,16 +869,6 @@ export default async function NotreElevagePage() {
 
               {porcs.map((item) => {
 
-                /*
-                 * IMPORTANT :
-                 *
-                 * Si une photo a été ajoutée dans :
-                 *
-                 * Admin → Galerie
-                 * → Notre élevage — Porcs
-                 *
-                 * elle sera maintenant utilisée ici.
-                 */
                 const finalMedia =
                   getMediaForFarm(
                     item,
