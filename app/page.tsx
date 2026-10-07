@@ -1,5 +1,6 @@
 
 import HomeProductsSection from "@/components/HomeProductsSection";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 const commitments = [
   {
@@ -60,12 +61,34 @@ function LocationIcon() {
       role="img"
       aria-label="Localisation"
     >
-      📍
+      
     </span>
   );
 }
 
-export default function Home() {
+async function getHeroImage(): Promise<string | null> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from("media")
+      .select("url")
+      .eq("published", true)
+      .eq("kind", "photo")
+      .eq("site_location", "hero")
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return data?.url || null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function Home() {
+  const heroImage = await getHeroImage();
+  const heroBackgroundImage = heroImage || "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2200&q=90";
+
   return (
     <main className="min-h-screen bg-[#F7F5EF] text-[#173D2D]">
       {/* HERO */}
@@ -77,7 +100,7 @@ export default function Home() {
           className="relative mx-auto flex min-h-[580px] max-w-7xl items-end overflow-hidden rounded-[28px] bg-[#173D2D] bg-cover bg-center sm:min-h-[650px]"
           style={{
             backgroundImage:
-              "linear-gradient(90deg, rgba(12,38,27,0.88) 0%, rgba(12,38,27,0.63) 48%, rgba(12,38,27,0.12) 100%), url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2200&q=90')",
+              "linear-gradient(90deg, rgba(12,38,27,0.88) 0%, rgba(12,38,27,0.63) 48%, rgba(12,38,27,0.12) 100%), url('${heroBackgroundImage}')",
           }}
         >
           <div className="relative z-10 max-w-3xl px-7 py-14 sm:px-12 sm:py-20 lg:px-16">
@@ -393,7 +416,7 @@ export default function Home() {
             </p>
 
             <p className="font-semibold uppercase tracking-[0.2em] text-[#E8C98A]">
-              🌿 Produire aujourd’hui, nourrir demain
+               Produire aujourd’hui, nourrir demain
             </p>
           </div>
         </div>
