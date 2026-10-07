@@ -272,16 +272,13 @@ async function getStoryMedia(): Promise<StoryMedia[]> {
     const { data, error } = await supabaseAdmin()
       .from("home_story_media")
       .select("id,url,created_at")
-      .order("created_at", {
-        ascending: false,
-      });
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error(
         "Erreur récupération photo Notre histoire :",
         error
       );
-
       return [];
     }
 
@@ -291,12 +288,6 @@ async function getStoryMedia(): Promise<StoryMedia[]> {
   }
 }
 
-/**
- * Médias généraux du nouveau système.
- *
- * site_location permet maintenant de savoir
- * où chaque média doit être utilisé sur le site.
- */
 async function getGeneralMedia(): Promise<GeneralMedia[]> {
   try {
     const { data, error } = await supabaseAdmin()
@@ -315,10 +306,9 @@ async function getGeneralMedia(): Promise<GeneralMedia[]> {
 
     if (error) {
       console.error(
-        "Erreur récupération médias généraux :",
+        "Erreur récupération médias accueil :",
         error
       );
-
       return [];
     }
 
@@ -346,31 +336,14 @@ async function getReviews(): Promise<Review[]> {
 }
 
 /**
- * Retourne uniquement les médias affectés
- * à un emplacement précis du site.
- */
-function getMediaForLocation(
-  generalMedia: GeneralMedia[],
-  location: string
-) {
-  return generalMedia
-    .filter(
-      (item) =>
-        item.site_location === location &&
-        Boolean(item.url)
-    )
-    .map((item) => item.url);
-}
-
-/**
- * Construit le slideshow du Hero.
+ * Construit le slideshow global du Hero.
  *
- * Priorité :
- * 1. médias ayant explicitement l'emplacement "hero"
- * 2. ancien système général + élevage + produits
+ * Sources :
+ * - Galerie générale
+ * - Photos de Notre élevage
+ * - Photos des produits de l'accueil
  *
- * Cela permet de migrer progressivement sans casser
- * les anciennes images déjà présentes.
+ * Les doublons sont supprimés.
  */
 function buildHeroImages(
   generalMedia: GeneralMedia[],
@@ -379,17 +352,6 @@ function buildHeroImages(
   productMedia: ProductMedia[],
   products: HomeProduct[]
 ) {
-  const heroMedia = getMediaForLocation(
-    generalMedia,
-    "hero"
-  );
-
-  if (heroMedia.length > 0) {
-    return Array.from(
-      new Set(heroMedia.filter(Boolean))
-    );
-  }
-
   const publishedFarmIds = new Set(
     farmItems.map((item) => item.id)
   );
@@ -398,14 +360,21 @@ function buildHeroImages(
     products.map((product) => product.id)
   );
 
+  // Les médias affectés explicitement à l'emplacement
+  // « Accueil — Diaporama principal » sont prioritaires.
+  // On conserve ensuite l'ancien comportement comme fallback
+  // afin de ne pas casser les médias déjà présents.
+  const heroMedia = generalMedia.filter(
+    (item) => item.site_location === "hero"
+  );
+
+  const generalHeroUrls =
+    heroMedia.length > 0
+      ? heroMedia.map((item) => item.url)
+      : generalMedia.map((item) => item.url);
+
   const urls = [
-    ...generalMedia
-      .filter(
-        (item) =>
-          !item.site_location ||
-          item.site_location === "hero"
-      )
-      .map((item) => item.url),
+    ...generalHeroUrls,
 
     ...farmMedia
       .filter((item) =>
@@ -446,6 +415,45 @@ function formatFCFA(
   )} FCFA`;
 }
 
+function statusLabel(
+  status: HomeProduct["status"]
+) {
+  if (status === "disponible") {
+    return "Disponible";
+  }
+
+  if (status === "rupture") {
+    return "Rupture de stock";
+  }
+
+  return "Bientôt disponible";
+}
+
+function statusStyle(
+  status: HomeProduct["status"]
+) {
+  if (status === "disponible") {
+    return "border-white/20 bg-white/10 text-white";
+  }
+
+  if (status === "rupture") {
+    return "border-red-300/20 bg-red-500/10 text-red-100";
+  }
+
+  return "border-gold/30 bg-gold/10 text-gold";
+}
+
+function splitParagraphs(
+  text: string
+) {
+  return text
+    .split(/\n\s*\n/)
+    .map((paragraph) =>
+      paragraph.trim()
+    )
+    .filter(Boolean);
+}
+
 export default async function HomePage() {
   const [
     content,
@@ -453,8 +461,8 @@ export default async function HomePage() {
     productMedia,
     farmItems,
     farmMedia,
-    storyMedia,
     generalMedia,
+    storyMedia,
     reviews,
   ] = await Promise.all([
     getHomeContent(),
@@ -462,8 +470,8 @@ export default async function HomePage() {
     getProductMedia(),
     getFarmItems(),
     getFarmMedia(),
-    getStoryMedia(),
     getGeneralMedia(),
+    getStoryMedia(),
     getReviews(),
   ]);
 
@@ -475,362 +483,538 @@ export default async function HomePage() {
     products
   );
 
-  const productionImages = getMediaForLocation(
-    generalMedia,
-    "production"
-  );
+  const mediaByProduct: Record<
+    string,
+    string[]
+  > = {};
 
-  const heroImage =
-    heroImages[0] ||
-    "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2200&q=90";
+  for (const photo of productMedia) {
+    if (!mediaByProduct[photo.home_product_id]) {
+      mediaByProduct[
+        photo.home_product_id
+      ] = [];
+    }
 
-  const storyImage =
-    storyMedia[0]?.url ||
-    productionImages[0] ||
-    generalMedia[0]?.url ||
-    "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1600&q=85";
+    mediaByProduct[
+      photo.home_product_id
+    ].push(photo.url);
+  }
+
+  const storyParagraphs =
+    splitParagraphs(
+      content.story_text
+    );
 
   return (
-    <main className="bg-[#FBFAF6] text-[#173D2D]">
+    <>
+      {/* ================================================================ */}
+      {/* HERO — VERSION PREMIUM À IMAGE FIXE                             */}
+      {/* ================================================================ */}
 
-      {/* HERO */}
-      <section className="relative min-h-[82vh] overflow-hidden">
-        <div className="absolute inset-0">
+      <section className="relative isolate flex min-h-[650px] items-center overflow-hidden bg-[#0E2622] px-5 py-24 text-paper md:min-h-[720px] md:py-32">
+        {/* IMAGE FIXE : première image issue des médias publiés de V1 */}
+        {heroImages.length > 0 ? (
           <img
-            src={heroImage}
-            alt="AgroFarms237"
-            className="h-full w-full object-cover"
+            src={heroImages[0]}
+            alt="Agrofarms237 — notre ferme"
+            className="absolute inset-0 -z-20 h-full w-full object-cover"
           />
+        ) : (
+          <div className="absolute inset-0 -z-20 bg-[radial-gradient(120%_140%_at_15%_0%,#1D4B44_0%,#0E2622_60%,#081815_100%)]" />
+        )}
 
-          <div className="absolute inset-0 bg-[#102D21]/55" />
+        {/* VOILE SOMBRE POUR GARANTIR LA LISIBILITÉ */}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#081815]/95 via-[#0E2622]/75 to-[#0E2622]/25" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[#081815]/65 via-transparent to-black/10" />
 
-          <div className="absolute inset-0 bg-gradient-to-r from-[#102D21]/80 via-[#102D21]/45 to-transparent" />
-        </div>
+        {/* CONTENU DU HERO — toujours administrable via Supabase */}
+        <div className="mx-auto w-full max-w-[1280px]">
+          <div className="max-w-[850px]">
+            {content.hero_label && (
+              <span className="mb-6 inline-flex items-center gap-3 text-[12px] font-bold uppercase tracking-[0.22em] text-gold md:text-[13px]">
+                <span className="h-px w-8 bg-gold" />
+                {content.hero_label}
+              </span>
+            )}
 
-        <div className="relative mx-auto flex min-h-[82vh] max-w-7xl items-center px-5 py-24 sm:px-8 lg:px-10">
-          <div className="max-w-3xl text-white">
-            <p className="mb-5 text-xs font-bold uppercase tracking-[0.28em] text-[#D6B36A]">
-              {content.hero_label}
-            </p>
-
-            <h1 className="font-serif text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
+            <h1 className="max-w-[820px] font-serif text-[clamp(42px,7vw,82px)] font-semibold leading-[1.04] tracking-[-0.035em] text-paper">
               {content.hero_title}
             </h1>
 
-            <p className="mt-7 max-w-2xl text-base leading-8 text-white/85 sm:text-lg">
+            <p className="mt-6 max-w-[650px] text-[16px] leading-7 text-paper/80 md:mt-8 md:text-[19px] md:leading-8">
               {content.hero_description}
             </p>
 
-            <div className="mt-9 flex flex-wrap gap-4">
-              <Link
-                href={content.hero_button_primary_url}
-                className="rounded-full bg-[#D6B36A] px-7 py-3.5 text-sm font-bold text-[#173D2D] transition hover:bg-[#E3C98E]"
-              >
-                {content.hero_button_primary_label}
-              </Link>
+            <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap">
+              {content.hero_button_primary_label && (
+                <Link
+                  href={content.hero_button_primary_url || "/commander"}
+                  className="btn btn-gold w-full justify-center sm:w-auto"
+                >
+                  {content.hero_button_primary_label}
+                  <span aria-hidden="true">→</span>
+                </Link>
+              )}
 
-              <Link
-                href={content.hero_button_secondary_url}
-                className="rounded-full border border-white/30 bg-white/10 px-7 py-3.5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15"
-              >
-                {content.hero_button_secondary_label}
-              </Link>
+              {content.hero_button_secondary_label && (
+                <Link
+                  href={content.hero_button_secondary_url || "#histoire"}
+                  className="btn btn-outline w-full justify-center border-white/40 bg-white/5 backdrop-blur-sm hover:bg-white/10 sm:w-auto"
+                >
+                  {content.hero_button_secondary_label}
+                </Link>
+              )}
+            </div>
+
+            <div className="mt-10 flex items-center gap-3 text-[12px] font-medium tracking-wide text-paper/70 md:mt-14">
+              <span className="h-px w-10 bg-gold/70" />
+              Pisciculture · Élevage porcin · Aviculture
             </div>
           </div>
         </div>
       </section>
 
-      {/* ENGAGEMENTS */}
-      <section className="bg-[#FBFAF6] px-5 py-16 sm:px-8 lg:px-10 lg:py-24">
-        <div className="mx-auto max-w-7xl">
+      {/* ================================================================ */}
+      {/* POURQUOI                                                         */}
+      {/* ================================================================ */}
 
-          <div className="max-w-3xl">
-            <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-[#B7863D]">
-              Notre engagement
-            </p>
+      <section className="px-5 py-[82px]">
+        <div className="mx-auto max-w-[1280px]">
+          <span className="mb-3 inline-block text-[13px] font-bold uppercase tracking-[0.16em] text-goldDeep">
+            Pourquoi Agrofarms237
+          </span>
 
-            <h2 className="font-serif text-3xl font-semibold tracking-tight sm:text-5xl">
-              {content.commitments_title}
-            </h2>
-          </div>
+          <h2 className="max-w-[900px] font-serif text-[clamp(30px,4.5vw,46px)] font-semibold leading-tight">
+            {content.commitments_title}
+          </h2>
 
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-
+          <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              {
-                title: content.commitment1_title,
-                text: content.commitment1_text,
-              },
-              {
-                title: content.commitment2_title,
-                text: content.commitment2_text,
-              },
-              {
-                title: content.commitment3_title,
-                text: content.commitment3_text,
-              },
-              {
-                title: content.commitment4_title,
-                text: content.commitment4_text,
-              },
-            ].map((item) => (
-              <article
-                key={item.title}
-                className="rounded-[22px] border border-[#173D2D]/10 bg-white p-7"
+              [
+                content.commitment1_title,
+                content.commitment1_text,
+              ],
+              [
+                content.commitment2_title,
+                content.commitment2_text,
+              ],
+              [
+                content.commitment3_title,
+                content.commitment3_text,
+              ],
+              [
+                content.commitment4_title,
+                content.commitment4_text,
+              ],
+            ].map(([title, text], index) => (
+              <div
+                key={`${title}-${index}`}
+                className="border-t border-ink/15 pt-5"
               >
-                <div className="mb-5 h-10 w-10 rounded-full bg-[#E7EBDD]" />
+                <span className="text-xs font-bold tracking-[0.15em] text-goldDeep">
+                  0{index + 1}
+                </span>
 
-                <h3 className="text-lg font-semibold">
-                  {item.title}
+                <h3 className="mt-4 text-[20px] font-semibold">
+                  {title}
                 </h3>
 
-                <p className="mt-3 text-sm leading-7 text-[#627166]">
-                  {item.text}
+                <p className="mt-3 text-[15px] leading-7 text-inkSoft">
+                  {text}
                 </p>
-              </article>
+              </div>
             ))}
-
           </div>
         </div>
       </section>
 
-      {/* PRODUITS */}
-      <section
-        id="produits"
-        className="bg-[#EDE9DE] px-5 py-16 sm:px-8 lg:px-10 lg:py-24"
-      >
-        <div className="mx-auto max-w-7xl">
+      {/* ================================================================ */}
+      {/* PRODUITS                                                         */}
+      {/* ================================================================ */}
 
-          <div className="mb-10 flex flex-wrap items-end justify-between gap-5">
-            <div>
-              <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-[#B7863D]">
-                {content.products_label}
-              </p>
+      <section className="bg-ink px-5 py-[82px] text-paper">
+        <div className="mx-auto max-w-[1280px]">
+          <span className="mb-3 inline-block text-[13px] font-bold uppercase tracking-[0.16em] text-gold">
+            {content.products_label}
+          </span>
 
-              <h2 className="font-serif text-3xl font-semibold tracking-tight sm:text-5xl">
-                {content.products_title}
-              </h2>
+          <h2 className="font-serif text-[clamp(30px,4.5vw,46px)] font-semibold leading-tight">
+            {content.products_title}
+          </h2>
 
-              <p className="mt-4 max-w-xl leading-7 text-[#627166]">
-                {content.products_description}
+          <p className="mt-5 max-w-[720px] text-[16px] leading-7 text-paper/65">
+            {content.products_description}
+          </p>
+
+          {products.length === 0 ? (
+            <div className="mt-12 rounded-2xl border border-paper/10 bg-white/5 p-10 text-center">
+              <p className="text-paper/60">
+                Nos produits seront bientôt
+                disponibles ici.
               </p>
             </div>
-
-            <Link
-              href="/produits"
-              className="rounded-full border border-[#173D2D]/15 px-5 py-2.5 text-sm font-semibold text-[#173D2D] transition hover:bg-white"
-            >
-              Voir tous les produits
-            </Link>
-          </div>
-
-          {products.length > 0 ? (
-            <ProductCarousel
-              products={products}
-              media={productMedia}
-            />
           ) : (
-            <div className="rounded-[22px] bg-[#FBFAF6] p-8">
-              <p className="text-sm text-[#627166]">
-                Nos produits seront bientôt présentés ici.
-              </p>
+            <div className="mt-12 space-y-8">
+              {products.map((product) => {
+                const images =
+                  mediaByProduct[
+                    product.id
+                  ] || [];
+
+                const canOrder =
+                  product.status ===
+                    "disponible" &&
+                  product.order_enabled;
+
+                return (
+                  <article
+                    key={product.id}
+                    className="overflow-hidden rounded-2xl border border-paper/10 bg-waterDeep"
+                  >
+                    <div className="grid md:grid-cols-2">
+                      {/* IMAGE */}
+                      <div className="min-h-[330px] bg-[#102B26]">
+                        {images.length >
+                        0 ? (
+                          <ProductCarousel
+                            images={images}
+                          />
+                        ) : (
+                          <div className="flex h-full min-h-[330px] items-center justify-center bg-[radial-gradient(circle_at_30%_20%,#2A5E56_0%,#0E2622_60%,#081815_100%)]">
+                            <div className="text-center">
+                              <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-gold">
+                                Agrofarms237
+                              </span>
+
+                              <p className="mt-2 font-serif text-xl text-paper/80">
+                                Photos à venir
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* INFOS */}
+                      <div className="flex flex-col justify-center p-8 md:p-11">
+                        <div>
+                          <span
+                            className={`inline-flex rounded-full border px-3.5 py-1.5 text-[12px] font-bold ${statusStyle(
+                              product.status
+                            )}`}
+                          >
+                            {
+                              statusLabel(
+                                product.status
+                              )
+                            }
+                          </span>
+                        </div>
+
+                        <h3 className="mt-5 font-serif text-[30px] font-semibold">
+                          {product.name}
+                        </h3>
+
+                        {product.description && (
+                          <p className="mt-4 max-w-[580px] text-[15px] leading-7 text-paper/65">
+                            {
+                              product.description
+                            }
+                          </p>
+                        )}
+
+                        {/* TARIFS */}
+                        <div className="mt-7 border-t border-paper/10">
+                          {product.price_1 !==
+                            null && (
+                            <div className="flex items-center justify-between gap-6 border-b border-paper/10 py-4">
+                              <span className="text-[14px] text-paper/70">
+                                {product.price_1_label ||
+                                  "Prix 1"}
+                              </span>
+
+                              <strong className="font-serif text-[20px] text-gold">
+                                {formatFCFA(
+                                  product.price_1
+                                )}
+                              </strong>
+                            </div>
+                          )}
+
+                          {product.price_2 !==
+                            null && (
+                            <div className="flex items-center justify-between gap-6 border-b border-paper/10 py-4">
+                              <span className="text-[14px] text-paper/70">
+                                {product.price_2_label ||
+                                  "Prix 2"}
+                              </span>
+
+                              <strong className="font-serif text-[20px] text-gold">
+                                {formatFCFA(
+                                  product.price_2
+                                )}
+                              </strong>
+                            </div>
+                          )}
+
+                          {product.price !==
+                            null && (
+                            <div className="flex items-center justify-between gap-6 border-b border-paper/10 py-4">
+                              <span className="text-[14px] text-paper/70">
+                                Prix
+                              </span>
+
+                              <strong className="font-serif text-[20px] text-gold">
+                                {formatFCFA(
+                                  product.price
+                                )}{" "}
+                                /{" "}
+                                {product.price_unit ||
+                                  "unité"}
+                              </strong>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* COMMANDE */}
+                        {canOrder && (
+                          <div className="mt-7">
+                            <Link
+                              href="/commander"
+                              className="btn btn-gold"
+                            >
+                              Commander
+                            </Link>
+                          </div>
+                        )}
+
+                        {product.status ===
+                          "bientot" && (
+                          <p className="mt-6 text-sm text-gold/80">
+                            Ce produit sera
+                            prochainement
+                            disponible.
+                          </p>
+                        )}
+
+                        {product.status ===
+                          "rupture" && (
+                          <p className="mt-6 text-sm text-red-200/70">
+                            Ce produit est
+                            actuellement en
+                            rupture de stock.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
-
         </div>
-      </section>
+      </section>      {/* ================================================================ */}
+      {/* HISTOIRE                                                         */}
+      {/* ================================================================ */}
 
-      {/* NOTRE PRODUCTION */}
-      {productionImages.length > 0 && (
-        <section className="bg-[#FBFAF6] px-5 py-16 sm:px-8 lg:px-10 lg:py-24">
-          <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-
-            <div>
-              <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-[#B7863D]">
-                Notre production
-              </p>
-
-              <h2 className="font-serif text-3xl font-semibold tracking-tight sm:text-5xl">
-                Une production qui prend forme à la ferme.
-              </h2>
-
-              <p className="mt-5 max-w-xl leading-8 text-[#627166]">
-                Découvrez les images de notre production directement
-                sélectionnées depuis l’administration AgroFarms237.
-              </p>
-
-              <Link
-                href="/notre-elevage"
-                className="mt-7 inline-flex rounded-full bg-[#173D2D] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#28563F]"
-              >
-                Découvrir notre élevage
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {productionImages.slice(0, 4).map((url, index) => (
-                <div
-                  key={`${url}-${index}`}
-                  className={`overflow-hidden rounded-[22px] ${
-                    index === 0
-                      ? "col-span-2 h-[320px]"
-                      : "h-48"
-                  }`}
-                >
-                  <img
-                    src={url}
-                    alt="Production AgroFarms237"
-                    className="h-full w-full object-cover transition duration-700 hover:scale-105"
-                  />
-                </div>
-              ))}
-            </div>
-
-          </div>
-        </section>
-      )}
-
-      {/* HISTOIRE */}
       <section
         id="histoire"
-        className="bg-[#173D2D] px-5 py-16 text-white sm:px-8 lg:px-10 lg:py-24"
+        className="px-5 py-[88px]"
       >
-        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-2 lg:items-center">
-
-          <div className="overflow-hidden rounded-[28px]">
-            <img
-              src={storyImage}
-              alt="AgroFarms237"
-              className="h-[460px] w-full object-cover"
-            />
+        <div className="mx-auto grid max-w-[1280px] gap-12 md:grid-cols-2 md:items-center">
+          <div className="overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_30%_20%,#2A5E56_0%,#0E2622_60%,#081815_100%)]">
+            {storyMedia.length > 0 ? (
+              <img
+                src={storyMedia[0].url}
+                alt="Notre histoire — Agrofarms237"
+                className="aspect-[5/4] h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex aspect-[5/4] items-center justify-center px-6 text-center">
+                <div>
+                  <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-gold">
+                    Agrofarms237
+                  </span>
+                  <p className="mt-2 font-serif text-lg text-paper/80">
+                    Photo à venir
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
-            <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-[#D6B36A]">
+            <span className="mb-3 inline-block text-[13px] font-bold uppercase tracking-[0.16em] text-goldDeep">
               {content.story_label}
-            </p>
+            </span>
 
-            <h2 className="font-serif text-3xl font-semibold leading-tight sm:text-5xl">
+            <h2 className="font-serif text-[clamp(30px,4vw,42px)] font-semibold leading-tight">
               {content.story_title}
             </h2>
 
-            <p className="mt-6 max-w-xl leading-8 text-white/70">
-              {content.story_text}
-            </p>
+            <div className="mt-6 space-y-4">
+              {storyParagraphs.map(
+                (paragraph, index) => (
+                  <p
+                    key={index}
+                    className="max-w-[650px] text-[16px] leading-8 text-inkSoft"
+                  >
+                    {paragraph}
+                  </p>
+                )
+              )}
+            </div>
 
-            <Link
-              href={content.story_button_url}
-              className="mt-8 inline-flex rounded-full bg-[#D6B36A] px-6 py-3 text-sm font-bold text-[#173D2D] transition hover:bg-[#E3C98E]"
-            >
-              {content.story_button_label}
-            </Link>
+            {content.story_button_label && (
+              <Link
+                href={
+                  content.story_button_url ||
+                  "/la-vie-de-la-ferme"
+                }
+                className="btn btn-outline mt-7 border-ink/20 text-ink"
+              >
+                {
+                  content.story_button_label
+                }
+              </Link>
+            )}
           </div>
-
         </div>
       </section>
 
-      {/* VISION */}
-      <section className="bg-[#EDE9DE] px-5 py-16 sm:px-8 lg:px-10 lg:py-24">
-        <div className="mx-auto max-w-4xl text-center">
+      {/* ================================================================ */}
+      {/* VISION                                                           */}
+      {/* ================================================================ */}
 
-          <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-[#B7863D]">
-            {content.future_label}
-          </p>
+      <section className="bg-bgAlt px-5 py-[82px]">
+        <div className="mx-auto max-w-[1280px]">
+          <div className="max-w-[900px]">
+            <span className="mb-3 inline-block text-[13px] font-bold uppercase tracking-[0.16em] text-goldDeep">
+              {content.future_label}
+            </span>
 
-          <h2 className="font-serif text-3xl font-semibold leading-tight sm:text-5xl">
-            {content.future_title}
+            <h2 className="font-serif text-[clamp(30px,4.5vw,48px)] font-semibold leading-tight">
+              {content.future_title}
+            </h2>
+
+            <p className="mt-6 max-w-[760px] text-[16px] leading-8 text-inkSoft">
+              {content.future_text}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================ */}
+      {/* AVIS                                                             */}
+      {/* ================================================================ */}
+
+      <section className="px-5 py-[82px]">
+        <div className="mx-auto max-w-[1280px]">
+          <span className="mb-3 inline-block text-[13px] font-bold uppercase tracking-[0.16em] text-goldDeep">
+            Ils nous font confiance
+          </span>
+
+          <h2 className="font-serif text-[clamp(30px,4.5vw,44px)] font-semibold">
+            Avis clients.
           </h2>
 
-          <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#627166]">
-            {content.future_text}
-          </p>
-
-        </div>
-      </section>
-
-      {/* AVIS */}
-      {reviews.length > 0 && (
-        <section className="bg-[#FBFAF6] px-5 py-16 sm:px-8 lg:px-10 lg:py-24">
-          <div className="mx-auto max-w-7xl">
-
-            <div className="mb-10">
-              <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-[#B7863D]">
-                Ils nous font confiance
+          {reviews.length ===
+          0 ? (
+            <div className="mt-10 rounded-2xl border border-dashed border-ink/15 bg-bgAlt p-10 text-center">
+              <p className="text-inkSoft">
+                Les avis de nos clients
+                seront publiés ici au
+                fur et à mesure des
+                livraisons.
               </p>
-
-              <h2 className="font-serif text-3xl font-semibold sm:text-5xl">
-                Quelques mots de nos clients.
-              </h2>
             </div>
-
-            <div className="grid gap-5 md:grid-cols-3">
-              {reviews.map((review) => (
-                <article
-                  key={review.id}
-                  className="rounded-[22px] border border-[#173D2D]/10 bg-white p-7"
-                >
-                  <div className="text-3xl text-[#B7863D]">
-                    “
-                  </div>
-
-                  <p className="mt-3 text-sm leading-7 text-[#627166]">
-                    {review.content}
-                  </p>
-
-                  <div className="mt-6">
-                    <p className="font-semibold">
-                      {review.author_name}
+          ) : (
+            <div className="mt-10 grid gap-5 md:grid-cols-3">
+              {reviews.map(
+                (review) => (
+                  <article
+                    key={
+                      review.id
+                    }
+                    className="rounded-2xl border border-ink/10 bg-bgAlt p-7"
+                  >
+                    <p className="text-[15px] leading-7 text-inkSoft">
+                      «{" "}
+                      {
+                        review.content
+                      }{" "}
+                      »
                     </p>
 
-                    {review.client_type && (
-                      <p className="mt-1 text-xs text-[#7B867E]">
-                        {review.client_type}
-                      </p>
-                    )}
-                  </div>
-                </article>
-              ))}
+                    <p className="mt-5 text-[14px] font-semibold text-ink">
+                      {
+                        review.author_name
+                      }
+
+                      {review.client_type && (
+                        <span className="font-normal text-inkSoft">
+                          {" "}
+                          —{" "}
+                          {
+                            review.client_type
+                          }
+                        </span>
+                      )}
+                    </p>
+                  </article>
+                )
+              )}
             </div>
+          )}
+        </div>
+      </section>      {/* ================================================================ */}
+      {/* CTA FINAL                                                        */}
+      {/* ================================================================ */}
 
-          </div>
-        </section>
-      )}
-
-      {/* CTA FINAL */}
-      <section className="bg-[#173D2D] px-5 py-20 text-white sm:px-8 lg:px-10 lg:py-28">
-        <div className="mx-auto max-w-5xl text-center">
-
-          <p className="mb-4 text-xs font-bold uppercase tracking-[0.28em] text-[#D6B36A]">
+      <section className="bg-ink px-5 py-[90px] text-paper">
+        <div className="mx-auto max-w-[1100px] text-center">
+          <span className="mb-3 inline-block text-[13px] font-bold uppercase tracking-[0.18em] text-gold">
             {content.cta_label}
-          </p>
+          </span>
 
-          <h2 className="font-serif text-4xl font-semibold leading-tight sm:text-6xl">
+          <h2 className="font-serif text-[clamp(32px,5vw,54px)] font-semibold leading-tight">
             {content.cta_title}
           </h2>
 
-          <p className="mx-auto mt-6 max-w-2xl leading-8 text-white/70">
+          <p className="mx-auto mt-5 max-w-[680px] text-[16px] leading-7 text-paper/65">
             {content.cta_text}
           </p>
 
-          <div className="mt-9 flex flex-wrap justify-center gap-4">
-            <Link
-              href={content.cta_button_primary_url}
-              className="rounded-full bg-[#D6B36A] px-7 py-3.5 text-sm font-bold text-[#173D2D] transition hover:bg-[#E3C98E]"
-            >
-              {content.cta_button_primary_label}
-            </Link>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            {content.cta_button_primary_label && (
+              <Link
+                href={
+                  content.cta_button_primary_url ||
+                  "/produits"
+                }
+                className="btn btn-gold"
+              >
+                {
+                  content.cta_button_primary_label
+                }
+              </Link>
+            )}
 
-            <Link
-              href={content.cta_button_secondary_url}
-              className="rounded-full border border-white/20 px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10"
-            >
-              {content.cta_button_secondary_label}
-            </Link>
+            {content.cta_button_secondary_label && (
+              <Link
+                href={
+                  content.cta_button_secondary_url ||
+                  "/contact"
+                }
+                className="btn btn-outline"
+              >
+                {
+                  content.cta_button_secondary_label
+                }
+              </Link>
+            )}
           </div>
-
         </div>
       </section>
-
-    </main>
+    </>
   );
 }
