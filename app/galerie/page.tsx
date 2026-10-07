@@ -1,224 +1,285 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   GALLERY_CATEGORIES,
-  GALLERY_CATEGORY_LABELS,
 } from "@/lib/mediaCategories";
 
 export const revalidate = 30;
 
-async function getGalleryMedia() {
+type MediaItem = {
+  id: string;
+  url: string;
+  kind: "photo" | "video";
+  caption?: string | null;
+  gallery_category?: string | null;
+  gallery_enabled?: boolean;
+  published: boolean;
+  position?: number | null;
+  created_at?: string;
+};
+
+async function getGalleryMedia(): Promise<MediaItem[]> {
   try {
     const { data, error } = await supabaseAdmin()
       .from("media")
-      .select("*")
+      .select(
+        "id,url,kind,caption,gallery_category,gallery_enabled,published,position,created_at"
+      )
       .eq("published", true)
       .eq("gallery_enabled", true)
       .not("gallery_category", "is", null)
-      .order("position", { ascending: true })
-      .order("created_at", { ascending: false });
+      .order("position", {
+        ascending: true,
+      })
+      .order("created_at", {
+        ascending: false,
+      });
 
     if (error) {
-      console.error("Erreur galerie :", error);
+      console.error(
+        "Erreur récupération Galerie :",
+        error
+      );
+
       return [];
     }
 
-    return data || [];
+    return (data || []) as MediaItem[];
   } catch (error) {
-    console.error("Erreur galerie :", error);
+    console.error(
+      "Erreur inattendue Galerie :",
+      error
+    );
+
     return [];
   }
 }
 
-async function getCategoryDescriptions() {
-  try {
-    const { data, error } = await supabaseAdmin()
-      .from("gallery_categories")
-      .select("*");
+const GALLERY_DESCRIPTIONS: Record<
+  string,
+  string
+> = {
+  silures:
+    "Notre production de silures, des bassins à la commercialisation.",
 
-    if (error) {
-      return {};
-    }
+  porcs:
+    "Le développement de notre activité d’élevage porcin.",
 
-    const map: Record<string, string> = {};
+  poules_pondeuses:
+    "L’univers des poules pondeuses et de notre future production d’œufs.",
 
-    (data || []).forEach((row: any) => {
-      if (row.category) {
-        map[row.category] = row.description || "";
-      }
-    });
+  poulets:
+    "Notre activité avicole et les poulets élevés à la ferme.",
 
-    return map;
-  } catch {
-    return {};
-  }
+  bassins:
+    "Les bassins, installations et espaces dédiés à la pisciculture.",
+
+  recoltes:
+    "Les récoltes et les différentes productions de la ferme.",
+
+  alimentation:
+    "L’alimentation, les soins et les pratiques quotidiennes de la ferme.",
+
+  livraison:
+    "Les commandes, préparations et livraisons AgroFarms237.",
+
+  ferme:
+    "La vie quotidienne et les différents espaces de notre ferme.",
+
+  equipe:
+    "Les personnes qui font vivre et grandir AgroFarms237.",
+
+  produits:
+    "Nos produits et les différentes formes de valorisation.",
+
+  autre:
+    "D’autres moments et contenus de la vie d’AgroFarms237.",
+};
+
+function categoryLabel(value: string) {
+  const category =
+    GALLERY_CATEGORIES.find(
+      (item) => item.value === value
+    );
+
+  return (
+    category?.label || value
+  );
 }
 
-function MediaCard({ item }: { item: any }) {
+function MediaCard({
+  item,
+}: {
+  item: MediaItem;
+}) {
   return (
-    <figure className="overflow-hidden rounded-m border border-ink/10 bg-bgAlt">
-      <div className="relative">
+    <article className="group overflow-hidden rounded-m border border-ink/10 bg-paper">
+      <div className="relative aspect-[4/3] overflow-hidden bg-bgAlt">
         {item.kind === "photo" ? (
           <img
             src={item.url}
-            alt={item.caption || "AgroFarms237"}
-            className="aspect-square w-full object-cover"
+            alt={
+              item.caption ||
+              "Photo AgroFarms237"
+            }
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
           />
         ) : (
           <video
             src={item.url}
+            className="h-full w-full object-cover"
             controls
-            preload="metadata"
-            className="aspect-square w-full object-cover"
+            playsInline
           />
-        )}
-
-        {item.kind === "video" && (
-          <span className="absolute left-3 top-3 rounded-full bg-ink px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-paper">
-            Vidéo
-          </span>
         )}
       </div>
 
       {item.caption && (
-        <figcaption className="border-t border-ink/10 px-3 py-2.5 text-[12.5px] leading-5 text-inkSoft">
-          {item.caption}
-        </figcaption>
+        <div className="px-4 py-3">
+          <p className="text-[13px] leading-5 text-inkSoft">
+            {item.caption}
+          </p>
+        </div>
       )}
-    </figure>
-  );
-}
-
-function EmptyCategory() {
-  return (
-    <div className="flex aspect-square items-center justify-center rounded-m border border-dashed border-ink/15 bg-bgAlt p-5 text-center">
-      <div>
-        <p className="font-serif text-[18px] font-semibold text-ink">
-          Photos à venir
-        </p>
-
-        <p className="mt-1 text-[12px] leading-5 text-inkSoft">
-          Cette rubrique sera alimentée progressivement par l'équipe
-          AgroFarms237.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function CategoryWindow({
-  label,
-  description,
-  items,
-  reverse,
-}: {
-  label: string;
-  description: string;
-  items: any[];
-  reverse?: boolean;
-}) {
-  return (
-    <section
-      className={`flex flex-col gap-7 rounded-m border border-ink/10 bg-paper p-6 sm:p-8 lg:flex-row lg:items-center ${
-        reverse ? "lg:flex-row-reverse" : ""
-      }`}
-    >
-      <div className="lg:w-[32%] lg:shrink-0">
-        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-goldDeep">
-          Galerie AgroFarms237
-        </span>
-
-        <h2 className="mt-2 font-serif text-[25px] font-semibold">
-          {label}
-        </h2>
-
-        {description.trim() ? (
-          <p className="mt-3 text-[14px] leading-6 text-inkSoft">
-            {description}
-          </p>
-        ) : (
-          <p className="mt-3 text-[14px] leading-6 text-inkSoft">
-            Découvrez progressivement les images de cette partie de notre
-            activité.
-          </p>
-        )}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        {items.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3">
-            {items.map((item: any) => (
-              <MediaCard key={item.id} item={item} />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3">
-            <EmptyCategory />
-          </div>
-        )}
-      </div>
-    </section>
+    </article>
   );
 }
 
 export default async function GaleriePage() {
-  const [items, descriptions] = await Promise.all([
-    getGalleryMedia(),
-    getCategoryDescriptions(),
-  ]);
+  const media =
+    await getGalleryMedia();
 
   return (
-    <section className="px-5 py-[72px]">
-      <div className="mx-auto max-w-[1180px]">
-        {/* HERO */}
+    <main className="min-h-screen bg-paper">
 
-        <div className="max-w-[760px]">
-          <span className="mb-2.5 inline-block text-[13px] font-bold text-goldDeep">
-            Galerie
-          </span>
+      {/* HERO */}
 
-          <h1 className="font-serif text-[clamp(30px,4.5vw,44px)] font-semibold leading-tight">
-            La ferme en photos et vidéos.
+      <section className="border-b border-ink/10 bg-ink px-5 py-20 text-paper md:py-28">
+        <div className="mx-auto max-w-[1180px]">
+
+          <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-gold">
+            AgroFarms237
+          </p>
+
+          <h1 className="mt-4 max-w-[850px] font-serif text-[clamp(42px,7vw,76px)] font-semibold leading-[0.98]">
+            La vie de la ferme
+            en images.
           </h1>
 
-          <p className="mt-3 max-w-[65ch] text-[15px] leading-7 text-inkSoft">
-            Découvrez AgroFarms237 à travers nos élevages, nos productions,
-            notre ferme et les différentes étapes de notre activité agricole.
+          <p className="mt-6 max-w-[680px] text-[16px] leading-7 text-paper/70">
+            Découvrez nos productions,
+            nos élevages, nos installations
+            et les différents moments qui
+            font vivre AgroFarms237.
           </p>
+
         </div>
+      </section>
 
-        {/* GALERIE */}
+      {/* GALERIE */}
 
-        <div className="mt-11 flex flex-col gap-8">
-          {GALLERY_CATEGORIES.map((category, index) => {
-            const categoryItems = items.filter(
-              (item: any) =>
-                item.gallery_category === category.value
-            );
+      <section className="px-5 py-16 md:py-20">
+        <div className="mx-auto max-w-[1180px]">
 
-            return (
-              <CategoryWindow
-                key={category.value}
-                label={category.label}
-                description={
-                  descriptions[category.value] ||
-                  ""
-                }
-                items={categoryItems}
-                reverse={index % 2 === 1}
-              />
-            );
-          })}
+          {GALLERY_CATEGORIES.map(
+            (category) => {
+
+              const categoryMedia =
+                media.filter(
+                  (item) =>
+                    item.gallery_category ===
+                    category.value
+                );
+
+              return (
+                <section
+                  key={category.value}
+                  className="mb-20 last:mb-0"
+                >
+
+                  <div className="mb-8 max-w-[760px]">
+
+                    <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-goldDeep">
+                      Galerie
+                    </p>
+
+                    <h2 className="mt-2 font-serif text-[clamp(30px,5vw,46px)] font-semibold">
+                      {category.label}
+                    </h2>
+
+                    <p className="mt-3 text-[15px] leading-7 text-inkSoft">
+                      {GALLERY_DESCRIPTIONS[
+                        category.value
+                      ] ||
+                        "Découvrez les images associées à cette rubrique."}
+                    </p>
+
+                  </div>
+
+                  {categoryMedia.length ===
+                  0 ? (
+                    <div className="border border-dashed border-ink/15 bg-bgAlt px-6 py-10 text-center">
+
+                      <p className="font-serif text-[22px] font-semibold">
+                        Photos à venir
+                      </p>
+
+                      <p className="mt-2 text-[13.5px] text-inkSoft">
+                        Cette rubrique sera
+                        alimentée progressivement
+                        avec les contenus de
+                        la ferme.
+                      </p>
+
+                    </div>
+                  ) : (
+                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+
+                      {categoryMedia.map(
+                        (item) => (
+                          <MediaCard
+                            key={item.id}
+                            item={item}
+                          />
+                        )
+                      )}
+
+                    </div>
+                  )}
+
+                </section>
+              );
+            }
+          )}
+
         </div>
+      </section>
 
-        {/* PETITE NOTE DE FIN */}
+      {/* CTA */}
 
-        <div className="mt-10 border-t border-ink/10 pt-7">
-          <p className="max-w-[70ch] text-[13px] leading-6 text-inkSoft">
-            Cette galerie évolue au fil de la vie de la ferme. Les contenus
-            sont ajoutés progressivement par l'équipe AgroFarms237.
+      <section className="bg-ink px-5 py-20 text-paper">
+        <div className="mx-auto max-w-[850px] text-center">
+
+          <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-gold">
+            AgroFarms237
           </p>
+
+          <h2 className="mt-3 font-serif text-[clamp(30px,5vw,46px)] font-semibold">
+            La qualité commence
+            à la ferme.
+          </h2>
+
+          <p className="mx-auto mt-5 max-w-[650px] text-[15px] leading-7 text-paper/70">
+            Une ferme qui se construit
+            progressivement, avec une
+            attention particulière portée
+            à la production, à la qualité
+            et à la valorisation de nos
+            produits.
+          </p>
+
         </div>
-      </div>
-    </section>
+      </section>
+
+    </main>
   );
 }
