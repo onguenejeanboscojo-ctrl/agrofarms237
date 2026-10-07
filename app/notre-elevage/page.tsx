@@ -86,7 +86,8 @@ const DEFAULT_CONTENT: PageContent = {
   step1_text:
     "Production active à Yaoundé, Mimboman, vendue directement aux familles et professionnels.",
 
-  step2_label: "Prochaine étape",
+  step2_label:
+    "Prochaine étape",
 
   step2_title:
     "Produits fumés",
@@ -94,7 +95,8 @@ const DEFAULT_CONTENT: PageContent = {
   step2_text:
     "Une gamme de silure fumé, pensée pour la conservation et pour étendre la livraison au-delà de Yaoundé.",
 
-  step3_label: "Développement",
+  step3_label:
+    "Développement",
 
   step3_title:
     "Porcs, poulets de chair, poules pondeuses",
@@ -393,15 +395,15 @@ function convertSiteMedia(
  * Détermine les emplacements média correspondant
  * à un élevage.
  *
- * IMPORTANT :
+ * Poisson :
+ *   elevage_silure
  *
- * On ne considère plus "poisson" comme étant
- * automatiquement du silure.
+ * Porcs :
+ *   elevage_porcs
  *
- * Cela évite que la Carpe récupère les photos
- * affectées à :
- *
- * elevage_silure
+ * Poulets :
+ *   elevage_pondeuses
+ *   elevage_chair
  */
 function getSiteLocationsForFarm(
   item: FarmItem
@@ -416,13 +418,7 @@ function getSiteLocationsForFarm(
   const category = normalize(item.category);
   const name = normalize(item.name);
 
-  /**
-   * SILURE
-   *
-   * Correspondance uniquement si le nom
-   * ou la catégorie identifie explicitement
-   * le silure.
-   */
+  // SILURE
   if (
     category.includes("silure") ||
     name.includes("silure")
@@ -430,9 +426,15 @@ function getSiteLocationsForFarm(
     return ["elevage_silure"];
   }
 
-  /**
-   * PORCS
-   */
+  // CARPE
+  if (
+    category.includes("carpe") ||
+    name.includes("carpe")
+  ) {
+    return ["elevage_carpe"];
+  }
+
+  // PORCS
   if (
     category.includes("porc") ||
     category.includes("elevage porcin") ||
@@ -441,35 +443,23 @@ function getSiteLocationsForFarm(
     return ["elevage_porcs"];
   }
 
-  /**
-   * POULETS / AVICULTURE
-   */
+  // POULES PONDEUSES
+  if (
+    category.includes("pondeuse") ||
+    name.includes("pondeuse")
+  ) {
+    return ["elevage_pondeuses"];
+  }
+
+  // POULETS DE CHAIR
   if (
     category.includes("poulet") ||
     category.includes("aviculture") ||
-    category.includes("pondeuse") ||
-    name.includes("poulet") ||
-    name.includes("pondeuse")
+    name.includes("poulet")
   ) {
-    return [
-      "elevage_pondeuses",
-      "elevage_chair",
-    ];
+    return ["elevage_chair"];
   }
 
-  /**
-   * AUTRES POISSONS
-   *
-   * Exemple :
-   * Carpe
-   *
-   * Pour le moment, aucun emplacement
-   * spécifique "elevage_carpe" n'existe
-   * dans le système média.
-   *
-   * On retourne donc [] afin que la Carpe
-   * ne récupère surtout pas les photos du Silure.
-   */
   return [];
 }
 
@@ -869,6 +859,16 @@ export default async function NotreElevagePage() {
 
               {porcs.map((item) => {
 
+                /*
+                 * IMPORTANT :
+                 *
+                 * Si une photo a été ajoutée dans :
+                 *
+                 * Admin → Galerie
+                 * → Notre élevage — Porcs
+                 *
+                 * elle sera maintenant utilisée ici.
+                 */
                 const finalMedia =
                   getMediaForFarm(
                     item,
