@@ -136,6 +136,13 @@ function mediaLocations(product: Product): string[] {
   // ==========================================================
 
   if (group === "carpe") {
+    if (
+      variant.includes("fum") ||
+      name.includes("fume")
+    ) {
+      return ["produit_carpe_fumee"];
+    }
+
     return ["produit_carpe_fraiche"];
   }
 
@@ -268,9 +275,18 @@ function legacyMediaCategories(product: Product): string[] {
   const variant = normalize(product.variant);
   const name = normalize(product.name);
 
-  // Silure
+  // Silure : fallback strict selon la forme du produit.
+  // On ne doit jamais utiliser la catégorie générique "silure"
+  // pour les deux produits, sinon le frais apparaît aussi dans le fumé.
   if (group === "silure") {
-    return ["elevage_silure", "silure"];
+    if (
+      variant.includes("fum") ||
+      name.includes("fume")
+    ) {
+      return ["produit_silure_fume"];
+    }
+
+    return ["produit_silure_frais", "elevage_silure"];
   }
 
   // Carpe
