@@ -7,6 +7,15 @@ import {
   GALLERY_CATEGORIES,
 } from "@/lib/mediaCategories";
 
+type CatalogProduct = {
+  id: string;
+  name: string;
+  category?: string | null;
+  product_group?: string | null;
+  variant?: string | null;
+  unit?: string | null;
+};
+
 type MediaItem = {
   id: string;
   url: string;
@@ -29,7 +38,9 @@ type MediaItem = {
 
 export default function MediaManager() {
   const [items, setItems] = useState<MediaItem[]>([]);
+  const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [productsLoading, setProductsLoading] = useState(true);
 
   const [uploading, setUploading] = useState(false);
   const [kind, setKind] = useState<"photo" | "video">("photo");
@@ -76,6 +87,200 @@ export default function MediaManager() {
   }, [items]);
 
   // ==========================================================
+  // PRODUITS — SOURCE DE VÉRITÉ POUR LES EMPLACEMENTS PRODUITS
+  // ==========================================================
+
+  function normalize(value?: string | null) {
+    return (value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+  }
+
+  function getProductSiteLocation(product: CatalogProduct) {
+    const group = normalize(product.product_group);
+    const variant = normalize(product.variant);
+    const name = normalize(product.name);
+
+    // Cette correspondance reprend volontairement la même logique
+    // que la page publique /produits.
+    if (group === "silure") {
+      if (
+        variant.includes("fum") ||
+        name.includes("fume")
+      ) {
+        return "produit_silure_fume";
+      }
+
+      return "produit_silure_frais";
+    }
+
+    if (group === "carpe") {
+      return "produit_carpe_fraiche";
+    }
+
+    if (group === "porc") {
+      if (
+        variant.includes("fum") ||
+        name.includes("fume")
+      ) {
+        return "produit_porc_fume";
+      }
+
+      if (
+        variant.includes("entier") ||
+        name.includes("entier")
+      ) {
+        return "produit_porc_entier";
+      }
+
+      if (
+        variant.includes("frais") ||
+        name.includes("frais")
+      ) {
+        return "produit_porc_frais";
+      }
+
+      return "produit_porc_frais";
+    }
+
+    if (
+      group === "porcelet" ||
+      name.includes("porcelet")
+    ) {
+      return "produit_porcelet";
+    }
+
+    if (
+      group === "poulet de chair" ||
+      group === "poulet"
+    ) {
+      if (
+        variant.includes("fum") ||
+        name.includes("fume")
+      ) {
+        return "produit_poulet_fume";
+      }
+
+      if (
+        variant.includes("vivant") ||
+        name.includes("vivant")
+      ) {
+        return "produit_poulet_vivant";
+      }
+
+      if (
+        variant.includes("frais") ||
+        variant.includes("nettoye") ||
+        name.includes("frais") ||
+        name.includes("nettoye")
+      ) {
+        return "produit_poulet_frais_nettoye";
+      }
+
+      return "produit_poulet_frais_nettoye";
+    }
+
+    if (
+      group === "oeufs" ||
+      group === "oeuf" ||
+      name.includes("alveole") ||
+      variant.includes("alveole")
+    ) {
+      return "produit_alveoles_oeufs";
+    }
+
+    if (
+      group === "poussins" ||
+      name.includes("poussin")
+    ) {
+      return "produit_poussins";
+    }
+
+    if (
+      group === "alevins" ||
+      name.includes("alevin")
+    ) {
+      return "produit_alevins";
+    }
+
+    return null;
+  }
+
+  const productSiteOptions = useMemo(() => {
+    return products
+      .map((product) => {
+        const value = getProductSiteLocation(product);
+
+        if (!value) {
+          return null;
+        }
+
+        return {
+          value,
+          label: product.name,
+        };
+      })
+      .filter(
+        (
+          item
+        ): item is {
+          value: string;
+          label: string;
+        } => Boolean(item)
+      );
+  }, [products]);
+
+  const productSiteLocationLabels = useMemo(() => {
+    return Object.fromEntries(
+      productSiteOptions.map((item) => [
+        item.value,
+        item.label,
+      ])
+    );
+  }, [productSiteOptions]);
+
+  const siteLocationGroups = useMemo(() => {
+    return SITE_LOCATION_GROUPS.map((group) => {
+      if (group.label !== "Nos produits") {
+        return group;
+      }
+
+      return {
+        ...group,
+        options: productSiteOptions,
+      };
+    });
+  }, [productSiteOptions]);
+
+  async function loadProducts() {
+    try {
+      setProductsLoading(true);
+
+      const res = await fetch("/api/catalog-products", {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          data.error || "Impossible de charger les produits."
+        );
+      }
+
+      setProducts(data.items || []);
+    } catch (err: any) {
+      setError(
+        err.message || "Impossible de charger les produits."
+      );
+    } finally {
+      setProductsLoading(false);
+    }
+  }
+
+  // ==========================================================
   // CHARGEMENT
   // ==========================================================
 
@@ -106,6 +311,7 @@ export default function MediaManager() {
 
   useEffect(() => {
     load();
+    loadProducts();
   }, []);
 
   // ==========================================================
@@ -646,7 +852,13 @@ export default function MediaManager() {
                 Choisir un emplacement
               </option>
 
-              {SITE_LOCATION_GROUPS.map(
+              {productsLoading && (
+                <option value="" disabled>
+                  Chargement des produits...
+                </option>
+              )}
+
+              {siteLocationGroups.map(
                 (group) => (
                   <optgroup
                     key={group.label}
@@ -666,6 +878,11 @@ export default function MediaManager() {
                 )
               )}
             </select>
+
+            <p className="mt-1.5 text-[11.5px] leading-5 text-inkSoft">
+              La rubrique « Nos produits » reprend automatiquement les produits
+              disponibles dans le catalogue public.
+            </p>
           </div>
 
           {/* LÉGENDE */}
@@ -892,9 +1109,12 @@ export default function MediaManager() {
 
                       {displayedSiteLocation && (
                         <p className="text-[11.5px] font-bold leading-5 text-goldDeep">
-                          {SITE_LOCATION_LABELS[
+                          {productSiteLocationLabels[
                             displayedSiteLocation
                           ] ||
+                            SITE_LOCATION_LABELS[
+                              displayedSiteLocation
+                            ] ||
                             displayedSiteLocation}
                         </p>
                       )}
@@ -1055,7 +1275,13 @@ export default function MediaManager() {
                                 Aucun emplacement
                               </option>
 
-                              {SITE_LOCATION_GROUPS.map(
+                              {productsLoading && (
+                                <option value="" disabled>
+                                  Chargement des produits...
+                                </option>
+                              )}
+
+                              {siteLocationGroups.map(
                                 (group) => (
                                   <optgroup
                                     key={
@@ -1087,6 +1313,11 @@ export default function MediaManager() {
                                 )
                               )}
                             </select>
+
+                            <p className="mt-1.5 text-[11.5px] leading-5 text-inkSoft">
+                              Les produits proposés ici sont synchronisés avec le
+                              catalogue public.
+                            </p>
                           </div>
 
                           {/* LÉGENDE */}
