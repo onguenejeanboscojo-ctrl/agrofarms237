@@ -20,52 +20,6 @@ const commitments = [
   },
 ];
 
-function PhoneIcon({ className = "h-5 w-5" }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.56 3.58.56a1 1 0 011 1V20a1 1 0 01-1 1C10.61 21 3 13.39 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.19 2.46.56 3.58a1 1 0 01-.25 1.01l-2.19 2.2z" />
-    </svg>
-  );
-}
-
-function WhatsAppIcon({ className = "h-6 w-6" }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 32 32"
-      className={className}
-      aria-hidden="true"
-    >
-      <path
-        fill="#25D366"
-        d="M16 2.5A13.4 13.4 0 004.5 22.8L2.7 29.5l6.9-1.8A13.5 13.5 0 1016 2.5z"
-      />
-      <path
-        fill="white"
-        d="M16 5a10.8 10.8 0 00-9.2 16.5l.3.5-1.1 4 4.1-1.1.5.3A10.8 10.8 0 1016 5zm6.1 15.5c-.3.8-1.7 1.5-2.4 1.6-.6.1-1.4.2-2.3-.1-.5-.2-1.2-.4-2-.8-3.5-1.5-5.8-5.1-6-5.3-.2-.2-1.4-1.9-1.4-3.6s.9-2.5 1.2-2.8c.3-.3.6-.4.8-.4h.6c.2 0 .5-.1.7.5.3.7 1 2.4 1.1 2.6.1.2.1.4 0 .6-.1.2-.2.4-.4.6-.2.2-.4.5-.6.7-.2.4-.2.8.2.8.2.4.9 1.5 1.9 2.4 1.3 1.1 2.4 1.5 2.8 1.7.4.1.6.1.8-.1.3-.4.9-1 1.1-1.4.2-.4.5-.3.8-.2.3.1 2 .9 2.3 1.1.3.2.5.3.6.4.1.1.1.8-.2 1.5z"
-      />
-    </svg>
-  );
-}
-
-function LocationIcon() {
-  return (
-    <span
-      className="text-2xl leading-none"
-      role="img"
-      aria-label="Localisation"
-    >
-      
-    </span>
-  );
-}
-
 async function getHeroImage(): Promise<string | null> {
   try {
     const { data } = await supabaseAdmin()
@@ -100,7 +54,7 @@ export default async function Home() {
           className="relative mx-auto flex min-h-[580px] max-w-7xl items-end overflow-hidden rounded-[28px] bg-[#173D2D] bg-cover bg-center sm:min-h-[650px]"
           style={{
             backgroundImage:
-              "linear-gradient(90deg, rgba(12,38,27,0.88) 0%, rgba(12,38,27,0.63) 48%, rgba(12,38,27,0.12) 100%), url('${heroBackgroundImage}')",
+              `linear-gradient(90deg, rgba(12,38,27,0.88) 0%, rgba(12,38,27,0.63) 48%, rgba(12,38,27,0.12) 100%), url("${heroBackgroundImage}")`,
           }}
         >
           <div className="relative z-10 max-w-3xl px-7 py-14 sm:px-12 sm:py-20 lg:px-16">
@@ -127,23 +81,32 @@ export default async function Home() {
             <div className="mt-9 flex flex-wrap gap-3">
               <a
                 href="#produits"
-                className="rounded-full bg-[#E8C98A] px-7 py-4 text-sm font-bold text-[#173D2D] transition hover:bg-white"
+                className="rounded-full bg-[#E8C98A] px-7 py-4 text-sm font-bold text-[#173D2D] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#E8C98A] focus:ring-offset-2 focus:ring-offset-[#173D2D]"
               >
-                Découvrir nos produits ↗
+                Découvrir nos produits
               </a>
 
               <a
                 href="#ferme"
-                className="rounded-full border border-white/40 px-7 py-4 text-sm font-semibold text-white transition hover:bg-white/10"
+                className="rounded-full border border-white/40 px-7 py-4 text-sm font-semibold text-white transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/60"
               >
                 Notre vision
               </a>
             </div>
 
             <div className="mt-12 flex flex-wrap gap-x-8 gap-y-4 border-t border-white/20 pt-6 text-sm text-white/75">
-              <span>● Pisciculture</span>
-              <span>● Élevage</span>
-              <span>● Agriculture durable</span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-px w-5 bg-[#D5B16D]" aria-hidden="true" />
+                Pisciculture
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-px w-5 bg-[#D5B16D]" aria-hidden="true" />
+                Élevage
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-px w-5 bg-[#D5B16D]" aria-hidden="true" />
+                Agriculture durable
+              </span>
             </div>
           </div>
         </div>
@@ -197,7 +160,7 @@ export default async function Home() {
               href="#contact"
               className="mt-7 inline-flex rounded-full border border-[#173D2D]/20 px-6 py-3.5 text-sm font-semibold transition hover:bg-[#173D2D] hover:text-white"
             >
-              En savoir plus ↗
+              En savoir plus
             </a>
           </div>
 
@@ -252,9 +215,8 @@ export default async function Home() {
             <div className="mt-8 flex flex-wrap gap-3">
               <a
                 href="tel:+237659505823"
-                className="inline-flex items-center justify-center gap-3 rounded-full border border-white/40 px-7 py-4 text-sm font-semibold text-white transition hover:bg-white/10"
+                className="inline-flex items-center justify-center rounded-full border border-white/40 px-7 py-4 text-sm font-semibold text-white transition hover:bg-white/10"
               >
-                <PhoneIcon className="h-5 w-5" />
                 Appeler Agrofarms237
               </a>
 
@@ -262,9 +224,8 @@ export default async function Home() {
                 href="https://wa.me/237697983119"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center justify-center gap-3 rounded-full bg-[#E8C98A] px-7 py-4 text-sm font-bold text-[#173D2D] transition hover:bg-white"
+                className="inline-flex items-center justify-center rounded-full bg-[#E8C98A] px-7 py-4 text-sm font-bold text-[#173D2D] transition hover:bg-white"
               >
-                <WhatsAppIcon className="h-6 w-6" />
                 Écrire sur WhatsApp
               </a>
             </div>
@@ -348,60 +309,39 @@ export default async function Home() {
               <h3 className="text-lg font-semibold">Nos coordonnées</h3>
               <div className="mt-4 h-1 w-14 rounded-full bg-[#E8C98A]" />
 
-              <div className="mt-6 space-y-5">
-                {/* LOCATION */}
-                <div className="flex items-start gap-4">
-                  <LocationIcon />
-
-                  <div>
-                    <p className="text-sm font-medium text-white">
-                      Yaoundé, Mimboman OPEP
-                    </p>
-                    <p className="mt-1 text-xs text-white/55">
-                      Cameroun
-                    </p>
-                  </div>
+              <div className="mt-6 max-w-sm space-y-6">
+                <div className="border-b border-white/10 pb-5">
+                  <p className="text-sm font-medium leading-6 text-white">
+                    Yaoundé, Mimboman OPEP
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-white/55">
+                    Cameroun
+                  </p>
                 </div>
 
-                {/* PHONE */}
                 <a
                   href="tel:+237659505823"
-                  className="group flex items-start gap-4"
+                  className="group block border-b border-white/10 pb-5"
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366]/15 text-[#25D366] transition group-hover:bg-[#25D366]/25">
-                    <PhoneIcon className="h-5 w-5" />
+                  <span className="block text-sm font-medium leading-6 text-white transition group-hover:text-[#E8C98A]">
+                    +237 6 59 50 58 23
                   </span>
-
-                  <span>
-                    <span className="block text-sm font-medium text-white transition group-hover:text-[#E8C98A]">
-                      Appel : +237 6 59 50 58 23
-                    </span>
-
-                    <span className="mt-1 block text-xs text-white/55">
-                      Appuyez pour nous appeler
-                    </span>
+                  <span className="mt-1 block text-xs leading-5 text-white/55">
+                    Appeler Agrofarms237
                   </span>
                 </a>
 
-                {/* WHATSAPP */}
                 <a
                   href="https://wa.me/237697983119"
                   target="_blank"
                   rel="noreferrer"
-                  className="group flex items-start gap-4"
+                  className="group block"
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366]/15 transition group-hover:bg-[#25D366]/25">
-                    <WhatsAppIcon className="h-8 w-8" />
+                  <span className="block text-sm font-medium leading-6 text-white transition group-hover:text-[#E8C98A]">
+                    +237 6 97 98 31 19
                   </span>
-
-                  <span>
-                    <span className="block text-sm font-medium text-white transition group-hover:text-[#E8C98A]">
-                      WhatsApp : +237 6 97 98 31 19
-                    </span>
-
-                    <span className="mt-1 block text-xs text-white/55">
-                      Commandes et informations
-                    </span>
+                  <span className="mt-1 block text-xs leading-5 text-white/55">
+                    WhatsApp — commandes et informations
                   </span>
                 </a>
               </div>
@@ -422,15 +362,14 @@ export default async function Home() {
         </div>
       </footer>
 
-      {/* BOUTON WHATSAPP FLOTTANT */}
       <a
         href="https://wa.me/237697983119?text=Bonjour%20Agrofarms237%2C%20je%20souhaite%20avoir%20des%20informations."
         target="_blank"
         rel="noreferrer"
         aria-label="Contacter Agrofarms237 sur WhatsApp"
-        className="fixed bottom-6 right-6 z-50 flex h-16 w-16 items-center justify-center rounded-full bg-[#25D366] shadow-xl transition duration-300 hover:scale-110 hover:bg-[#1EBE5D]"
+        className="fixed bottom-6 right-6 z-50 rounded-full border border-[#D5B16D]/40 bg-[#173D2D] px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#E8C98A] shadow-xl transition duration-300 hover:-translate-y-0.5 hover:bg-[#123426]"
       >
-        <WhatsAppIcon className="h-10 w-10" />
+        WhatsApp
       </a>
     </main>
   );
