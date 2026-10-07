@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   SITE_LOCATION_GROUPS,
-  CATEGORY_LABELS,
+  SITE_LOCATION_LABELS,
   GALLERY_CATEGORIES,
 } from "@/lib/mediaCategories";
 
@@ -13,7 +13,7 @@ type MediaItem = {
   storage_path?: string | null;
   kind: "photo" | "video";
 
-  // Compatibilité ancien système
+  // Ancien système — conservé pour compatibilité
   category?: string | null;
 
   // Nouveau système
@@ -28,58 +28,33 @@ type MediaItem = {
 };
 
 export default function MediaManager() {
-  const fileInputRef =
-    useRef<HTMLInputElement | null>(null);
-
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [uploading, setUploading] = useState(false);
 
-  const [kind, setKind] =
-    useState<"photo" | "video">("photo");
+  const [kind, setKind] = useState<"photo" | "video">("photo");
+  const [siteLocation, setSiteLocation] = useState("");
+  const [galleryEnabled, setGalleryEnabled] = useState(false);
+  const [galleryCategory, setGalleryCategory] = useState("");
+  const [caption, setCaption] = useState("");
 
-  const [selectedFile, setSelectedFile] =
-    useState<File | null>(null);
-
-  const [siteLocation, setSiteLocation] =
-    useState("");
-
-  const [galleryEnabled, setGalleryEnabled] =
-    useState(false);
-
-  const [galleryCategory, setGalleryCategory] =
-    useState("");
-
-  const [caption, setCaption] =
-    useState("");
-
-  const [editingId, setEditingId] =
-    useState<string | null>(null);
-
-  const [editingCaption, setEditingCaption] =
-    useState("");
-
-  const [editingSiteLocation, setEditingSiteLocation] =
-    useState("");
-
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingSiteLocation, setEditingSiteLocation] = useState("");
   const [editingGalleryEnabled, setEditingGalleryEnabled] =
     useState(false);
-
   const [editingGalleryCategory, setEditingGalleryCategory] =
     useState("");
+  const [editingCaption, setEditingCaption] = useState("");
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => {
-      const positionA = a.position ?? 0;
-      const positionB = b.position ?? 0;
+      const pa = a.position ?? 0;
+      const pb = b.position ?? 0;
 
-      if (positionA !== positionB) {
-        return positionA - positionB;
-      }
+      if (pa !== pb) return pa - pb;
 
       return (
         new Date(a.created_at || 0).getTime() -
@@ -91,7 +66,6 @@ export default function MediaManager() {
   async function load() {
     try {
       setLoading(true);
-      setError("");
 
       const res = await fetch("/api/media", {
         cache: "no-store",
@@ -101,17 +75,13 @@ export default function MediaManager() {
 
       if (!res.ok) {
         throw new Error(
-          data.error ||
-            "Impossible de charger les médias."
+          data.error || "Impossible de charger les médias."
         );
       }
 
       setItems(data.items || []);
     } catch (err: any) {
-      setError(
-        err?.message ||
-          "Erreur de chargement."
-      );
+      setError(err.message || "Erreur de chargement.");
     } finally {
       setLoading(false);
     }
@@ -126,80 +96,35 @@ export default function MediaManager() {
     setSuccess("");
   }
 
-  /* =========================================================
-     CHOIX DU FICHIER
-  ========================================================= */
+  function resetUploadForm() {
+    setSiteLocation("");
+    setGalleryEnabled(false);
+    setGalleryCategory("");
+    setCaption("");
+  }
 
-  function handleFileChange(
-    event: React.ChangeEvent<HTMLInputElement>
+  async function handleUpload(
+    e: React.ChangeEvent<HTMLInputElement>
   ) {
-    const file = event.target.files?.[0];
+    const file = e.target.files?.[0];
 
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     resetMessages();
-
-    if (file.size > 25 * 1024 * 1024) {
-      setSelectedFile(null);
-
-      setError(
-        "Fichier trop volumineux. La taille maximale est de 25 Mo."
-      );
-
-      event.target.value = "";
-      return;
-    }
-
-    setSelectedFile(file);
-  }
-
-  function openFilePicker() {
-    resetMessages();
-
-    fileInputRef.current?.click();
-  }
-
-  function removeSelectedFile() {
-    setSelectedFile(null);
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  }
-
-  /* =========================================================
-     ENVOI DU MÉDIA
-  ========================================================= */
-
-  async function handleUpload() {
-    resetMessages();
-
-    if (!selectedFile) {
-      setError(
-        "Choisis d'abord une photo ou une vidéo."
-      );
-
-      return;
-    }
 
     if (!siteLocation) {
       setError(
-        "Choisis l'emplacement du média sur le site."
+        "Choisis d'abord l'emplacement du média sur le site."
       );
-
+      e.target.value = "";
       return;
     }
 
-    if (
-      galleryEnabled &&
-      !galleryCategory
-    ) {
+    if (galleryEnabled && !galleryCategory) {
       setError(
-        "Choisis une rubrique pour la Galerie."
+        "Choisis une rubrique Galerie ou désactive l'ajout à la Galerie."
       );
-
+      e.target.value = "";
       return;
     }
 
@@ -208,54 +133,125 @@ export default function MediaManager() {
     try {
       const form = new FormData();
 
-      form.append(
-        "file",
-        selectedFile
-      );
+      form.append("file", file);
+      form.append("kind", kind);
 
-      form.append(
-        "kind",
-        kind
-      );
+      // Nouveau système
+      form.append("site_location", siteLocation);
 
-      form.append(
-        "site_location",
-        siteLocation
-      );
+      // Ancien champ conservé pour compatibilité
+      form.append("category", siteLocation);
 
       form.append(
         "gallery_enabled",
-        galleryEnabled
-          ? "true"
-          : "false"
+        galleryEnabled ? "true" : "false"
       );
 
-      if (
-        galleryEnabled &&
-        galleryCategory
-      ) {
-        form.append(
-          "gallery_category",
-          galleryCategory
+      if (galleryEnabled && galleryCategory) {
+        form.append("gallery_category", galleryCategory);
+      }
+
+      form.append("caption", caption);
+
+      const res = await fetch("/api/media", {
+        method: "POST",
+        body: form,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          data.error || "Échec de l'envoi."
         );
       }
 
-      form.append(
-        "caption",
-        caption
-      );
+      resetUploadForm();
 
-      // Compatibilité avec l'ancien système
-      form.append(
-        "category",
-        siteLocation
-      );
+      setSuccess("Le média a été ajouté.");
 
+      await load();
+    } catch (err: any) {
+      setError(
+        err.message || "Échec de l'envoi."
+      );
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  function startEditing(item: MediaItem) {
+    resetMessages();
+
+    setEditingId(item.id);
+
+    setEditingSiteLocation(
+      item.site_location || item.category || ""
+    );
+
+    setEditingGalleryEnabled(
+      Boolean(item.gallery_enabled && item.gallery_category)
+    );
+
+    setEditingGalleryCategory(
+      item.gallery_category || ""
+    );
+
+    setEditingCaption(item.caption || "");
+  }
+
+  function cancelEditing() {
+    setEditingId(null);
+    setEditingSiteLocation("");
+    setEditingGalleryEnabled(false);
+    setEditingGalleryCategory("");
+    setEditingCaption("");
+  }
+
+  async function saveEditing() {
+    if (!editingId) return;
+
+    resetMessages();
+
+    if (!editingSiteLocation) {
+      setError(
+        "Choisis un emplacement pour ce média."
+      );
+      return;
+    }
+
+    if (
+      editingGalleryEnabled &&
+      !editingGalleryCategory
+    ) {
+      setError(
+        "Choisis une rubrique Galerie."
+      );
+      return;
+    }
+
+    try {
       const res = await fetch(
-        "/api/media",
+        `/api/media/${editingId}`,
         {
-          method: "POST",
-          body: form,
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            site_location: editingSiteLocation,
+
+            // Compatibilité avec l'ancien système
+            category: editingSiteLocation,
+
+            gallery_enabled: editingGalleryEnabled,
+            gallery_category: editingGalleryEnabled
+              ? editingGalleryCategory
+              : null,
+
+            caption: editingCaption || null,
+          }),
         }
       );
 
@@ -264,38 +260,42 @@ export default function MediaManager() {
       if (!res.ok) {
         throw new Error(
           data.error ||
-            "Échec de l'envoi."
+            "Impossible de modifier le média."
         );
       }
 
-      setSelectedFile(null);
-      setSiteLocation("");
-      setGalleryEnabled(false);
-      setGalleryCategory("");
-      setCaption("");
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-
-      setSuccess(
-        "Le média a été ajouté avec succès."
+      setItems((current) =>
+        current.map((item) =>
+          item.id === editingId
+            ? {
+                ...item,
+                site_location:
+                  editingSiteLocation,
+                category:
+                  editingSiteLocation,
+                gallery_enabled:
+                  editingGalleryEnabled,
+                gallery_category:
+                  editingGalleryEnabled
+                    ? editingGalleryCategory
+                    : null,
+                caption:
+                  editingCaption || null,
+              }
+            : item
+        )
       );
 
-      await load();
+      setSuccess("Média modifié.");
+
+      cancelEditing();
     } catch (err: any) {
       setError(
-        err?.message ||
-          "Échec de l'envoi du média."
+        err.message ||
+          "Impossible de modifier le média."
       );
-    } finally {
-      setUploading(false);
     }
   }
-
-  /* =========================================================
-     PUBLICATION / MASQUAGE
-  ========================================================= */
 
   async function togglePublished(
     id: string,
@@ -308,10 +308,7 @@ export default function MediaManager() {
     setItems((current) =>
       current.map((item) =>
         item.id === id
-          ? {
-              ...item,
-              published,
-            }
+          ? { ...item, published }
           : item
       )
     );
@@ -322,8 +319,7 @@ export default function MediaManager() {
         {
           method: "PATCH",
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             published,
@@ -349,179 +345,25 @@ export default function MediaManager() {
       setItems(previous);
 
       setError(
-        err?.message ||
+        err.message ||
           "Impossible de modifier le statut."
       );
     }
   }
 
-  /* =========================================================
-     MODIFICATION
-  ========================================================= */
-
-  function startEditing(
-    item: MediaItem
-  ) {
-    resetMessages();
-
-    setEditingId(item.id);
-
-    setEditingCaption(
-      item.caption || ""
-    );
-
-    setEditingSiteLocation(
-      item.site_location ||
-        item.category ||
-        ""
-    );
-
-    setEditingGalleryEnabled(
-      Boolean(item.gallery_enabled)
-    );
-
-    setEditingGalleryCategory(
-      item.gallery_category || ""
-    );
-  }
-
-  function cancelEditing() {
-    setEditingId(null);
-    setEditingCaption("");
-    setEditingSiteLocation("");
-    setEditingGalleryEnabled(false);
-    setEditingGalleryCategory("");
-  }
-
-  async function saveEditing() {
-    if (!editingId) {
-      return;
-    }
-
-    resetMessages();
-
-    if (
-      editingGalleryEnabled &&
-      !editingGalleryCategory
-    ) {
-      setError(
-        "Choisis une rubrique pour la Galerie."
-      );
-
-      return;
-    }
-
-    const finalGalleryCategory =
-      editingGalleryEnabled
-        ? editingGalleryCategory ||
-          null
-        : null;
-
-    try {
-      const res = await fetch(
-        `/api/media/${editingId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            site_location:
-              editingSiteLocation ||
-              null,
-
-            gallery_enabled:
-              editingGalleryEnabled,
-
-            gallery_category:
-              finalGalleryCategory,
-
-            // Compatibilité ancien système
-            category:
-              editingSiteLocation ||
-              null,
-
-            caption:
-              editingCaption ||
-              null,
-          }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(
-          data.error ||
-            "Impossible de modifier le média."
-        );
-      }
-
-      setItems((current) =>
-        current.map((item) =>
-          item.id === editingId
-            ? {
-                ...item,
-
-                site_location:
-                  editingSiteLocation ||
-                  null,
-
-                category:
-                  editingSiteLocation ||
-                  null,
-
-                gallery_enabled:
-                  editingGalleryEnabled,
-
-                gallery_category:
-                  finalGalleryCategory,
-
-                caption:
-                  editingCaption ||
-                  null,
-              }
-            : item
-        )
-      );
-
-      setSuccess(
-        "Média modifié avec succès."
-      );
-
-      cancelEditing();
-    } catch (err: any) {
-      setError(
-        err?.message ||
-          "Impossible de modifier le média."
-      );
-    }
-  }
-
-  /* =========================================================
-     SUPPRESSION
-  ========================================================= */
-
   async function remove(id: string) {
     resetMessages();
 
-    const confirmed =
-      window.confirm(
-        "Supprimer définitivement ce média ?\n\n" +
-          "Cette action supprimera également le fichier du stockage."
-      );
+    const confirmed = window.confirm(
+      "Supprimer définitivement ce média ?\n\nCette action supprimera également le fichier du stockage."
+    );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     const previous = items;
 
     setItems((current) =>
-      current.filter(
-        (item) => item.id !== id
-      )
+      current.filter((item) => item.id !== id)
     );
 
     try {
@@ -548,15 +390,11 @@ export default function MediaManager() {
       setItems(previous);
 
       setError(
-        err?.message ||
+        err.message ||
           "Impossible de supprimer le média."
       );
     }
   }
-
-  /* =========================================================
-     RÉORGANISATION
-  ========================================================= */
 
   async function moveItem(
     id: string,
@@ -564,15 +402,11 @@ export default function MediaManager() {
   ) {
     resetMessages();
 
-    const index =
-      sortedItems.findIndex(
-        (item) =>
-          item.id === id
-      );
+    const index = sortedItems.findIndex(
+      (item) => item.id === id
+    );
 
-    if (index === -1) {
-      return;
-    }
+    if (index === -1) return;
 
     const targetIndex =
       direction === "up"
@@ -581,46 +415,35 @@ export default function MediaManager() {
 
     if (
       targetIndex < 0 ||
-      targetIndex >=
-        sortedItems.length
+      targetIndex >= sortedItems.length
     ) {
       return;
     }
 
-    const current =
-      sortedItems[index];
-
-    const target =
-      sortedItems[targetIndex];
+    const current = sortedItems[index];
+    const target = sortedItems[targetIndex];
 
     const currentPosition =
       current.position ?? index;
 
     const targetPosition =
-      target.position ??
-      targetIndex;
+      target.position ?? targetIndex;
 
     const previous = items;
 
     setItems((currentItems) =>
       currentItems.map((item) => {
-        if (
-          item.id === current.id
-        ) {
+        if (item.id === current.id) {
           return {
             ...item,
-            position:
-              targetPosition,
+            position: targetPosition,
           };
         }
 
-        if (
-          item.id === target.id
-        ) {
+        if (item.id === target.id) {
           return {
             ...item,
-            position:
-              currentPosition,
+            position: currentPosition,
           };
         }
 
@@ -640,8 +463,7 @@ export default function MediaManager() {
                   "application/json",
               },
               body: JSON.stringify({
-                position:
-                  targetPosition,
+                position: targetPosition,
               }),
             }
           ),
@@ -655,17 +477,13 @@ export default function MediaManager() {
                   "application/json",
               },
               body: JSON.stringify({
-                position:
-                  currentPosition,
+                position: currentPosition,
               }),
             }
           ),
         ]);
 
-      if (
-        !res1.ok ||
-        !res2.ok
-      ) {
+      if (!res1.ok || !res2.ok) {
         throw new Error(
           "Impossible de modifier l'ordre des médias."
         );
@@ -676,73 +494,37 @@ export default function MediaManager() {
           ? "Média remonté."
           : "Média descendu."
       );
-
-      await load();
     } catch (err: any) {
       setItems(previous);
 
       setError(
-        err?.message ||
+        err.message ||
           "Impossible de modifier l'ordre."
       );
     }
   }
 
-  /* =========================================================
-     LIBELLÉS
-  ========================================================= */
-
-  function getLocationLabel(
-    item: MediaItem
-  ) {
+  function getSiteLocation(item: MediaItem) {
     const value =
-      item.site_location ||
-      item.category;
+      item.site_location || item.category;
 
     if (!value) {
       return "Aucun emplacement";
     }
 
     return (
-      CATEGORY_LABELS[value] ||
+      SITE_LOCATION_LABELS[value] ||
       value
     );
   }
 
-  function getGalleryLabel(
-    item: MediaItem
-  ) {
-    if (!item.gallery_enabled) {
-      return "Non";
-    }
-
-    if (!item.gallery_category) {
-      return "Oui — rubrique non définie";
-    }
-
-    return (
-      GALLERY_CATEGORIES.find(
-        (category) =>
-          category.value ===
-          item.gallery_category
-      )?.label ||
-      item.gallery_category
-    );
-  }
-
-  /* =========================================================
-     INTERFACE
-  ========================================================= */
-
   return (
     <div>
-
       {/* =====================================================
-          AJOUT
+          AJOUTER UN MÉDIA
       ====================================================== */}
 
       <div className="max-w-[700px] rounded-m border border-ink/10 bg-paper p-7">
-
         <div>
           <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-goldDeep">
             Bibliothèque média
@@ -753,44 +535,30 @@ export default function MediaManager() {
           </h2>
 
           <p className="mt-2 text-[14px] leading-6 text-inkSoft">
-            Choisis d'abord ton fichier,
-            puis indique où il doit être
-            utilisé sur le site.
+            Choisis l'emplacement principal du média
+            sur le site. Tu peux ensuite décider s'il
+            doit également apparaître dans la Galerie
+            publique.
           </p>
         </div>
 
-        {/* ===================================================
-            TYPE + EMPLACEMENT
-        ==================================================== */}
-
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-
           <div className="field">
-            <label>
-              Type
-            </label>
+            <label>Type</label>
 
             <select
               value={kind}
-              onChange={(e) => {
+              onChange={(e) =>
                 setKind(
                   e.target.value as
                     | "photo"
                     | "video"
-                );
-
-                setSelectedFile(null);
-
-                if (fileInputRef.current) {
-                  fileInputRef.current.value =
-                    "";
-                }
-              }}
+                )
+              }
             >
               <option value="photo">
                 Photo
               </option>
-
               <option value="video">
                 Vidéo
               </option>
@@ -823,12 +591,8 @@ export default function MediaManager() {
                     {group.options.map(
                       (option) => (
                         <option
-                          key={
-                            option.value
-                          }
-                          value={
-                            option.value
-                          }
+                          key={option.value}
+                          value={option.value}
                         >
                           {option.label}
                         </option>
@@ -842,7 +606,7 @@ export default function MediaManager() {
 
           <div className="field sm:col-span-2">
             <label>
-              Légende{" "}
+              Légende
               <span className="ml-1 font-normal text-inkSoft">
                 (optionnel)
               </span>
@@ -858,63 +622,52 @@ export default function MediaManager() {
               placeholder="Ex. Bassins de production"
             />
           </div>
-
         </div>
 
-        {/* ===================================================
+        {/* =====================================================
             GALERIE
-        ==================================================== */}
+        ====================================================== */}
 
         <div className="mt-5 rounded-s border border-ink/10 bg-bgAlt p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[13px] font-bold">
+                Ajouter également à la Galerie
+              </p>
 
-          <p className="text-[13px] font-bold">
-            Galerie publique
-          </p>
+              <p className="mt-1 text-[12.5px] leading-5 text-inkSoft">
+                Le média restera lié à son emplacement
+                principal et pourra aussi être affiché
+                dans une rubrique de la Galerie publique.
+              </p>
+            </div>
 
-          <p className="mt-1 text-[12.5px] leading-5 text-inkSoft">
-            Voulez-vous que cette photo
-            ou vidéo apparaisse également
-            dans la Galerie publique ?
-          </p>
+            <label className="relative inline-flex shrink-0 cursor-pointer items-center">
+              <input
+                type="checkbox"
+                className="peer sr-only"
+                checked={galleryEnabled}
+                onChange={(e) => {
+                  setGalleryEnabled(
+                    e.target.checked
+                  );
 
-          <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                  if (!e.target.checked) {
+                    setGalleryCategory("");
+                  }
+                }}
+              />
 
-            <button
-              type="button"
-              onClick={() => {
-                setGalleryEnabled(true);
-              }}
-              className={`rounded-s border px-4 py-2 text-[12.5px] font-semibold transition ${
-                galleryEnabled
-                  ? "border-ink bg-ink text-paper"
-                  : "border-ink/15 bg-paper text-ink hover:bg-bgAlt"
-              }`}
-            >
-              Oui, ajouter à la Galerie
-            </button>
+              <span className="h-6 w-11 rounded-full bg-ink/15 transition peer-checked:bg-ink" />
 
-            <button
-              type="button"
-              onClick={() => {
-                setGalleryEnabled(false);
-                setGalleryCategory("");
-              }}
-              className={`rounded-s border px-4 py-2 text-[12.5px] font-semibold transition ${
-                !galleryEnabled
-                  ? "border-ink bg-ink text-paper"
-                  : "border-ink/15 bg-paper text-ink hover:bg-bgAlt"
-              }`}
-            >
-              Non, uniquement sur le site
-            </button>
-
+              <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-paper transition peer-checked:translate-x-5" />
+            </label>
           </div>
 
           {galleryEnabled && (
             <div className="mt-4 field">
-
               <label>
-                Rubrique de la Galerie
+                Rubrique Galerie
               </label>
 
               <select
@@ -932,120 +685,35 @@ export default function MediaManager() {
                 {GALLERY_CATEGORIES.map(
                   (category) => (
                     <option
-                      key={
-                        category.value
-                      }
-                      value={
-                        category.value
-                      }
+                      key={category.value}
+                      value={category.value}
                     >
                       {category.label}
                     </option>
                   )
                 )}
               </select>
-
             </div>
           )}
-
         </div>
 
-        {/* ===================================================
-            FICHIER
-        ==================================================== */}
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={
-            kind === "photo"
-              ? "image/*"
-              : "video/*"
-          }
-          className="hidden"
-          onChange={
-            handleFileChange
-          }
-        />
-
-        <button
-          type="button"
-          onClick={
-            openFilePicker
-          }
-          disabled={uploading}
-          className="btn btn-ink mt-5 w-full"
-        >
-          Choisir une{" "}
-          {kind === "photo"
-            ? "photo"
-            : "vidéo"}
-        </button>
-
-        {/* FICHIER SÉLECTIONNÉ */}
-
-        {selectedFile && (
-          <div className="mt-3 rounded-s border border-ink/10 bg-bgAlt p-3">
-
-            <div className="flex items-center justify-between gap-3">
-
-              <div className="min-w-0">
-                <p className="text-[12px] font-semibold">
-                  Fichier sélectionné
-                </p>
-
-                <p className="mt-0.5 truncate text-[13px] text-inkSoft">
-                  {selectedFile.name}
-                </p>
-
-                <p className="mt-0.5 text-[11px] text-inkSoft">
-                  {(
-                    selectedFile.size /
-                    1024 /
-                    1024
-                  ).toFixed(2)}{" "}
-                  Mo
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={
-                  removeSelectedFile
-                }
-                className="shrink-0 text-[12px] font-semibold text-alert underline"
-              >
-                Retirer
-              </button>
-
-            </div>
-
-          </div>
-        )}
-
-        <p className="mt-2 text-[13px] text-inkSoft">
-          Taille maximale : 25 Mo.
-        </p>
-
-        {/* ===================================================
-            ENVOYER
-        ==================================================== */}
-
-        <button
-          type="button"
-          onClick={
-            handleUpload
-          }
-          disabled={
-            uploading ||
-            !selectedFile
-          }
-          className="btn btn-ink mt-4 w-full disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        <label className="btn btn-ink mt-5 cursor-pointer">
           {uploading
             ? "Envoi en cours..."
-            : "Envoyer le média"}
-        </button>
+            : "Choisir un fichier à envoyer"}
+
+          <input
+            type="file"
+            accept="image/*,video/*"
+            className="hidden"
+            onChange={handleUpload}
+            disabled={uploading}
+          />
+        </label>
+
+        <p className="mt-2 text-[13px] text-inkSoft">
+          25 Mo maximum par fichier.
+        </p>
 
         {error && (
           <p className="mt-4 text-[14px] font-semibold text-alert">
@@ -1058,24 +726,21 @@ export default function MediaManager() {
             {success}
           </p>
         )}
-
       </div>
 
       {/* =====================================================
-          MÉDIAS EXISTANTS
+          LISTE DES MÉDIAS
       ====================================================== */}
 
       <div className="mt-9">
-
         <div className="mb-4">
           <h2 className="font-serif text-[24px] font-semibold">
-            MÉDIAS EXISTANTS
+            Médias existants
           </h2>
 
           <p className="mt-1 text-[13.5px] text-inkSoft">
-            Modifie, masque, réorganise ou
-            supprime tes médias depuis
-            cette bibliothèque.
+            Modifie, masque, réorganise ou supprime
+            tes médias depuis cette bibliothèque.
           </p>
         </div>
 
@@ -1085,24 +750,19 @@ export default function MediaManager() {
           </p>
         ) : sortedItems.length === 0 ? (
           <div className="rounded-m border border-ink/10 bg-bgAlt p-8 text-center">
-
             <p className="font-semibold">
-              Aucun média envoyé pour
-              le moment.
+              Aucun média envoyé pour le moment.
             </p>
 
             <p className="mt-1 text-[13px] text-inkSoft">
               Les photos et vidéos ajoutées
               apparaîtront ici.
             </p>
-
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-
             {sortedItems.map(
               (item, index) => {
-
                 const isEditing =
                   editingId === item.id;
 
@@ -1113,28 +773,21 @@ export default function MediaManager() {
                   index ===
                   sortedItems.length - 1;
 
-                const displayedSiteLocation =
-                  item.site_location ||
-                  item.category ||
-                  "";
-
                 return (
                   <div
                     key={item.id}
                     className="overflow-hidden rounded-m border border-ink/10 bg-paper"
                   >
-
-                    {/* APERÇU */}
+                    {/* MEDIA */}
 
                     <div className="relative">
-
                       {item.kind ===
                       "photo" ? (
                         <img
                           src={item.url}
                           alt={
                             item.caption ||
-                            "Média AgroFarms237"
+                            ""
                           }
                           className="aspect-square w-full object-cover"
                         />
@@ -1153,66 +806,57 @@ export default function MediaManager() {
                           ? "Photo"
                           : "Vidéo"}
                       </div>
-
                     </div>
 
                     <div className="p-3.5">
-
-                      {/* EMPLACEMENT */}
-
-                      {displayedSiteLocation && (
-                        <p className="text-[11.5px] font-bold text-goldDeep">
-                          {CATEGORY_LABELS[
-                            displayedSiteLocation
-                          ] ||
-                            displayedSiteLocation}
-                        </p>
-                      )}
-
                       {!isEditing ? (
                         <>
+                          {/* EMPLACEMENT */}
 
-                          {/* LÉGENDE */}
+                          <p className="text-[11.5px] font-bold text-goldDeep">
+                            {getSiteLocation(
+                              item
+                            )}
+                          </p>
+
+                          {/* GALERIE */}
+
+                          {item.gallery_enabled &&
+                            item.gallery_category && (
+                              <p className="mt-1 text-[11px] font-semibold text-inkSoft">
+                                Galerie ·{" "}
+                                {
+                                  GALLERY_CATEGORIES.find(
+                                    (category) =>
+                                      category.value ===
+                                      item.gallery_category
+                                  )?.label ||
+                                  item.gallery_category
+                                }
+                              </p>
+                            )}
+
+                          {!item.gallery_enabled && (
+                            <p className="mt-1 text-[11px] text-inkSoft">
+                              Non présent dans la Galerie
+                            </p>
+                          )}
+
+                          {/* CAPTION */}
 
                           {item.caption ? (
-                            <p className="mt-1 text-[13px] text-inkSoft">
+                            <p className="mt-2 text-[13px] text-inkSoft">
                               {item.caption}
                             </p>
                           ) : (
-                            <p className="mt-1 text-[12px] italic text-inkSoft">
+                            <p className="mt-2 text-[12px] italic text-inkSoft">
                               Aucune légende
                             </p>
                           )}
 
-                          {/* GALERIE */}
-
-                          <div className="mt-3 rounded-s border border-ink/10 bg-bgAlt p-2.5">
-
-                            {item.gallery_enabled ? (
-                              <>
-                                <p className="text-[11px] font-bold uppercase tracking-wide text-green-700">
-                                  Galerie publique
-                                </p>
-
-                                <p className="mt-0.5 text-[12px] text-inkSoft">
-                                  {getGalleryLabel(
-                                    item
-                                  )}
-                                </p>
-                              </>
-                            ) : (
-                              <p className="text-[11.5px] text-inkSoft">
-                                Uniquement sur son
-                                emplacement du site
-                              </p>
-                            )}
-
-                          </div>
-
-                          {/* MONTER / DESCENDRE */}
+                          {/* ORDRE */}
 
                           <div className="mt-3 flex gap-2">
-
                             <button
                               type="button"
                               onClick={() =>
@@ -1221,10 +865,8 @@ export default function MediaManager() {
                                   "up"
                                 )
                               }
-                              disabled={
-                                isFirst
-                              }
-                              className="flex-1 rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt disabled:cursor-not-allowed disabled:opacity-40"
+                              disabled={isFirst}
+                              className="btn btn-outline flex-1 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               Monter
                             </button>
@@ -1237,20 +879,16 @@ export default function MediaManager() {
                                   "down"
                                 )
                               }
-                              disabled={
-                                isLast
-                              }
-                              className="flex-1 rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt disabled:cursor-not-allowed disabled:opacity-40"
+                              disabled={isLast}
+                              className="btn btn-outline flex-1 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               Descendre
                             </button>
-
                           </div>
 
-                          {/* MODIFIER / PUBLICATION */}
+                          {/* ACTIONS */}
 
                           <div className="mt-2 grid grid-cols-2 gap-2">
-
                             <button
                               type="button"
                               onClick={() =>
@@ -1258,19 +896,20 @@ export default function MediaManager() {
                                   item
                                 )
                               }
-                              className="rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt"
+                              className="btn btn-outline"
                             >
                               Modifier
                             </button>
 
                             <label className="flex cursor-pointer items-center justify-center gap-2 rounded-s border border-ink/10 px-3 py-2 text-[12.5px] font-semibold">
-
                               <input
                                 type="checkbox"
                                 checked={
                                   item.published
                                 }
-                                onChange={(e) =>
+                                onChange={(
+                                  e
+                                ) =>
                                   togglePublished(
                                     item.id,
                                     e.target
@@ -1282,12 +921,10 @@ export default function MediaManager() {
                               {item.published
                                 ? "Publié"
                                 : "Masqué"}
-
                             </label>
-
                           </div>
 
-                          {/* SUPPRIMER */}
+                          {/* SUPPRESSION */}
 
                           <button
                             type="button"
@@ -1300,18 +937,14 @@ export default function MediaManager() {
                           >
                             Supprimer définitivement
                           </button>
-
                         </>
                       ) : (
-
                         /* =================================================
                            MODE MODIFICATION
                         ================================================== */
 
-                        <div className="mt-3 space-y-3">
-
+                        <div className="space-y-4">
                           <div className="field">
-
                             <label>
                               Emplacement du site
                             </label>
@@ -1326,7 +959,6 @@ export default function MediaManager() {
                                 )
                               }
                             >
-
                               <option value="">
                                 Aucun emplacement
                               </option>
@@ -1362,13 +994,103 @@ export default function MediaManager() {
                                   </optgroup>
                                 )
                               )}
-
                             </select>
+                          </div>
 
+                          <div className="rounded-s border border-ink/10 bg-bgAlt p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-[12.5px] font-bold">
+                                  Ajouter à la Galerie
+                                </p>
+
+                                <p className="mt-1 text-[11.5px] leading-5 text-inkSoft">
+                                  Afficher également
+                                  ce média dans
+                                  une rubrique
+                                  publique.
+                                </p>
+                              </div>
+
+                              <label className="relative inline-flex shrink-0 cursor-pointer items-center">
+                                <input
+                                  type="checkbox"
+                                  className="peer sr-only"
+                                  checked={
+                                    editingGalleryEnabled
+                                  }
+                                  onChange={(
+                                    e
+                                  ) => {
+                                    setEditingGalleryEnabled(
+                                      e.target
+                                        .checked
+                                    );
+
+                                    if (
+                                      !e.target
+                                        .checked
+                                    ) {
+                                      setEditingGalleryCategory(
+                                        ""
+                                      );
+                                    }
+                                  }}
+                                />
+
+                                <span className="h-6 w-11 rounded-full bg-ink/15 transition peer-checked:bg-ink" />
+
+                                <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-paper transition peer-checked:translate-x-5" />
+                              </label>
+                            </div>
+
+                            {editingGalleryEnabled && (
+                              <div className="mt-3 field">
+                                <label>
+                                  Rubrique Galerie
+                                </label>
+
+                                <select
+                                  value={
+                                    editingGalleryCategory
+                                  }
+                                  onChange={(
+                                    e
+                                  ) =>
+                                    setEditingGalleryCategory(
+                                      e.target
+                                        .value
+                                    )
+                                  }
+                                >
+                                  <option value="">
+                                    Choisir une rubrique
+                                  </option>
+
+                                  {GALLERY_CATEGORIES.map(
+                                    (
+                                      category
+                                    ) => (
+                                      <option
+                                        key={
+                                          category.value
+                                        }
+                                        value={
+                                          category.value
+                                        }
+                                      >
+                                        {
+                                          category.label
+                                        }
+                                      </option>
+                                    )
+                                  )}
+                                </select>
+                              </div>
+                            )}
                           </div>
 
                           <div className="field">
-
                             <label>
                               Légende
                             </label>
@@ -1383,109 +1105,9 @@ export default function MediaManager() {
                                 )
                               }
                             />
-
                           </div>
-
-                          {/* GALERIE */}
-
-                          <div className="rounded-s border border-ink/10 bg-bgAlt p-3">
-
-                            <p className="text-[12.5px] font-bold">
-                              Galerie publique
-                            </p>
-
-                            <div className="mt-2 flex gap-2">
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setEditingGalleryEnabled(
-                                    true
-                                  )
-                                }
-                                className={`flex-1 rounded-s border px-3 py-2 text-[11.5px] font-semibold ${
-                                  editingGalleryEnabled
-                                    ? "border-ink bg-ink text-paper"
-                                    : "border-ink/15 bg-paper text-ink"
-                                }`}
-                              >
-                                Oui
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingGalleryEnabled(
-                                    false
-                                  );
-
-                                  setEditingGalleryCategory(
-                                    ""
-                                  );
-                                }}
-                                className={`flex-1 rounded-s border px-3 py-2 text-[11.5px] font-semibold ${
-                                  !editingGalleryEnabled
-                                    ? "border-ink bg-ink text-paper"
-                                    : "border-ink/15 bg-paper text-ink"
-                                }`}
-                              >
-                                Non
-                              </button>
-
-                            </div>
-
-                            {editingGalleryEnabled && (
-                              <div className="mt-3 field">
-
-                                <label>
-                                  Rubrique de la Galerie
-                                </label>
-
-                                <select
-                                  value={
-                                    editingGalleryCategory
-                                  }
-                                  onChange={(e) =>
-                                    setEditingGalleryCategory(
-                                      e.target.value
-                                    )
-                                  }
-                                >
-
-                                  <option value="">
-                                    Choisir une rubrique
-                                  </option>
-
-                                  {GALLERY_CATEGORIES.map(
-                                    (
-                                      galleryCategory
-                                    ) => (
-                                      <option
-                                        key={
-                                          galleryCategory.value
-                                        }
-                                        value={
-                                          galleryCategory.value
-                                        }
-                                      >
-                                        {
-                                          galleryCategory.label
-                                        }
-                                      </option>
-                                    )
-                                  )}
-
-                                </select>
-
-                              </div>
-                            )}
-
-                          </div>
-
-                          {/* ACTIONS */}
 
                           <div className="flex gap-2">
-
                             <button
                               type="button"
                               onClick={
@@ -1501,25 +1123,20 @@ export default function MediaManager() {
                               onClick={
                                 cancelEditing
                               }
-                              className="flex-1 rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt"
+                              className="btn btn-outline flex-1"
                             >
                               Annuler
                             </button>
-
                           </div>
-
                         </div>
                       )}
-
                     </div>
                   </div>
                 );
               }
             )}
-
           </div>
         )}
-
       </div>
     </div>
   );
