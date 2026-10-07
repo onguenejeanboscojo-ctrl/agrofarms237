@@ -17,10 +17,9 @@ export async function PATCH(
 
   const { id } = await params;
   const contentType = req.headers.get("content-type") || "";
-
   const sb = supabaseAdmin();
 
-  // Récupérer l'élevage existant
+  // Vérifier que l'élevage existe
   const { data: existingItem, error: fetchError } = await sb
     .from("farm_breeding")
     .select("*")
@@ -37,9 +36,9 @@ export async function PATCH(
   const updates: Record<string, unknown> = {};
 
   /*
-   * ---------------------------------------------------------
-   * MODIFICATION AVEC PHOTO
-   * ---------------------------------------------------------
+   * ============================
+   * FORM-DATA
+   * ============================
    */
   if (contentType.includes("multipart/form-data")) {
     const formData = await req.formData();
@@ -49,9 +48,7 @@ export async function PATCH(
     }
 
     if (formData.get("category") !== null) {
-      updates.category = String(
-        formData.get("category") || ""
-      ).trim();
+      updates.category = String(formData.get("category") || "").trim();
     }
 
     if (formData.get("description") !== null) {
@@ -60,6 +57,7 @@ export async function PATCH(
       ).trim();
     }
 
+    // Statut
     if (formData.get("status") !== null) {
       const status = String(formData.get("status") || "");
 
@@ -73,12 +71,14 @@ export async function PATCH(
       updates.status = status;
     }
 
+    // Position
     if (formData.get("position") !== null) {
       updates.position = Number(
         formData.get("position") || 0
       );
     }
 
+    // Publication
     if (formData.get("published") !== null) {
       const publishedValue = String(
         formData.get("published")
@@ -88,13 +88,14 @@ export async function PATCH(
     }
 
     /*
-     * -------------------------------------------------------
+     * ============================
      * NOUVELLE PHOTO
-     * -------------------------------------------------------
+     * ============================
      */
     const file = formData.get("file");
 
     if (file instanceof File && file.size > 0) {
+      // Vérification du type
       if (!file.type.startsWith("image/")) {
         return NextResponse.json(
           { error: "Le fichier doit être une image." },
@@ -102,30 +103,27 @@ export async function PATCH(
         );
       }
 
-      const maxSize = 25 * 1024 * 1024;
-
-      if (file.size > maxSize) {
+      // Limite 25 Mo
+      if (file.size > 25 * 1024 * 1024) {
         return NextResponse.json(
           {
             error:
-              "La photo ne doit pas dépasser 25 Mo.",
+              "Image trop volumineuse (25 Mo maximum).",
           },
           { status: 400 }
         );
       }
 
-      const extension =
+      const ext =
         file.name.split(".").pop()?.toLowerCase() || "jpg";
 
-      const filePath = `farm-breeding/${id}-${Date.now()}.${extension}`;
-
-      const buffer = Buffer.from(
-        await file.arrayBuffer()
-      );
+      const path = `farm-breeding/${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}.${ext}`;
 
       const { error: uploadError } = await sb.storage
         .from("media")
-        .upload(filePath, buffer, {
+        .upload(path, file, {
           contentType: file.type,
           upsert: false,
         });
@@ -137,33 +135,29 @@ export async function PATCH(
         );
       }
 
-      const {
-        data: publicUrlData,
-      } = sb.storage
+      const { data: publicUrl } = sb.storage
         .from("media")
-        .getPublicUrl(filePath);
+        .getPublicUrl(path);
 
-      updates.photo_url = publicUrlData.publicUrl;
-      updates.photo_storage_path = filePath;
+      updates.photo_url = publicUrl.publicUrl;
+      updates.photo_storage_path = path;
 
       /*
-       * Supprimer l'ancienne photo après
-       * avoir enregistré la nouvelle.
+       * Supprimer l'ancienne photo après avoir
+       * correctement préparé la nouvelle.
        */
       if (existingItem.photo_storage_path) {
         await sb.storage
           .from("media")
-          .remove([
-            existingItem.photo_storage_path,
-          ]);
+          .remove([existingItem.photo_storage_path]);
       }
     }
   }
 
   /*
-   * ---------------------------------------------------------
-   * MODIFICATION CLASSIQUE JSON
-   * ---------------------------------------------------------
+   * ============================
+   * JSON
+   * ============================
    */
   else {
     const body = await req.json();
@@ -177,17 +171,12 @@ export async function PATCH(
     }
 
     if (body.description !== undefined) {
-      updates.description = String(
-        body.description
-      ).trim();
+      updates.description = String(body.description).trim();
     }
 
+    // Statut
     if (body.status !== undefined) {
-      if (
-        !["disponible", "bientot"].includes(
-          body.status
-        )
-      ) {
+      if (!["disponible", "bientot"].includes(body.status)) {
         return NextResponse.json(
           { error: "Statut invalide." },
           { status: 400 }
@@ -197,18 +186,35 @@ export async function PATCH(
       updates.status = body.status;
     }
 
+    // Position
     if (body.position !== undefined) {
       updates.position = Number(body.position);
     }
 
+    // Publication
     if (body.published !== undefined) {
-      updates.published = Boolean(
-        body.published
-      );
+      updates.published = Boolean(body.published);
     }
   }
 
-  updates.updated_at = new Date().toISOString();
+  /*
+   * ============================
+   * PROTECTION
+   * ============================
+   */
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json(
+      { error: "Aucune modification à enregistrer." },
+      { status: 400 }
+    );
+  }
+
+  /*
+   * ============================
+   * MISE À JOUR SUPABASE
+   * ============================
+   */
 
   const { data, error } = await sb
     .from("farm_breeding")
@@ -230,13 +236,13 @@ export async function PATCH(
 }
 
 /*
- * =========================================================
- * SUPPRESSION D'UN ÉLEVAGE
- * =========================================================
+ * ============================
+ * DELETE
+ * ============================
  */
 
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   if (!isAdminAuthed()) {
@@ -247,12 +253,12 @@ export async function DELETE(
   }
 
   const { id } = await params;
-
   const sb = supabaseAdmin();
 
+  // Récupérer l'élément avant suppression
   const { data: item, error: fetchError } = await sb
     .from("farm_breeding")
-    .select("id, photo_storage_path")
+    .select("photo_storage_path")
     .eq("id", id)
     .single();
 
@@ -263,20 +269,14 @@ export async function DELETE(
     );
   }
 
-  /*
-   * Supprimer la photo du stockage
-   */
+  // Supprimer la photo du Storage
   if (item.photo_storage_path) {
     await sb.storage
       .from("media")
-      .remove([
-        item.photo_storage_path,
-      ]);
+      .remove([item.photo_storage_path]);
   }
 
-  /*
-   * Supprimer l'élevage
-   */
+  // Supprimer l'entrée
   const { error } = await sb
     .from("farm_breeding")
     .delete()
@@ -290,6 +290,6 @@ export async function DELETE(
   }
 
   return NextResponse.json({
-    success: true,
+    ok: true,
   });
 }
