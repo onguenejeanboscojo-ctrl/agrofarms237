@@ -112,7 +112,7 @@ function MediaCard({
   item: MediaItem;
 }) {
   return (
-    <article className="group overflow-hidden rounded-m border border-ink/10 bg-paper">
+    <article className="group overflow-hidden rounded-md border border-ink/10 bg-paper">
       <div className="relative aspect-[4/3] overflow-hidden bg-bgAlt">
         {item.kind === "photo" ? (
           <img
