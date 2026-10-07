@@ -45,6 +45,10 @@ export const SITE_LOCATIONS = [
     label: "Accueil — Notre production",
   },
 
+  // ==========================================================
+  // NOTRE ÉLEVAGE
+  // ==========================================================
+
   {
     value: "elevage_silure",
     label: "Notre élevage — Silure",
@@ -65,9 +69,37 @@ export const SITE_LOCATIONS = [
     label: "Notre élevage — Poulets de chair",
   },
 
+  // ==========================================================
+  // NOS PRODUITS — PISCICULTURE
+  // ==========================================================
+
   {
-    value: "produit_poisson_fume",
-    label: "Produit — Poisson fumé",
+    value: "produit_silure_frais",
+    label: "Produit — Silure frais",
+  },
+
+  {
+    value: "produit_silure_fume",
+    label: "Produit — Silure fumé",
+  },
+
+  {
+    value: "produit_carpe_fraiche",
+    label: "Produit — Carpe fraîche",
+  },
+
+  // ==========================================================
+  // NOS PRODUITS — ÉLEVAGE PORCIN
+  // ==========================================================
+
+  {
+    value: "produit_porc_entier",
+    label: "Produit — Porc entier",
+  },
+
+  {
+    value: "produit_porc_frais",
+    label: "Produit — Porc frais",
   },
 
   {
@@ -76,18 +108,32 @@ export const SITE_LOCATIONS = [
   },
 
   {
-    value: "produit_poulet_fume",
-    label: "Produit — Poulet fumé",
-  },
-
-  {
-    value: "produit_poulet_frais",
-    label: "Produit — Poulet frais nettoyé",
-  },
-
-  {
     value: "produit_porcelet",
     label: "Produit — Porcelet",
+  },
+
+  // ==========================================================
+  // NOS PRODUITS — AVICULTURE
+  // ==========================================================
+
+  {
+    value: "produit_poulet_vivant",
+    label: "Produit — Poulet de chair vivant",
+  },
+
+  {
+    value: "produit_poulet_frais_nettoye",
+    label: "Produit — Poulet de chair frais nettoyé",
+  },
+
+  {
+    value: "produit_poulet_fume",
+    label: "Produit — Poulet de chair fumé",
+  },
+
+  {
+    value: "produit_alveoles_oeufs",
+    label: "Produit — Alvéoles d'œufs",
   },
 
   {
@@ -95,15 +141,18 @@ export const SITE_LOCATIONS = [
     label: "Produit — Poussins",
   },
 
+  // ==========================================================
+  // NOS PRODUITS — PISCICULTURE / ALEVINS
+  // ==========================================================
+
   {
     value: "produit_alevins",
     label: "Produit — Alevins",
   },
 
-  {
-    value: "produit_alveoles_oeufs",
-    label: "Produit — Alvéoles d’œufs",
-  },
+  // ==========================================================
+  // ÉDUCATION
+  // ==========================================================
 
   {
     value: "education_pisciculture",
@@ -124,6 +173,10 @@ export const SITE_LOCATIONS = [
     value: "education_agriculture",
     label: "Éducation — Agriculture",
   },
+
+  // ==========================================================
+  // ÉQUIPE
+  // ==========================================================
 
   {
     value: "equipe",
@@ -332,8 +385,28 @@ export const ELEVAGE_CATEGORIES = [
 
 export const PRODUCT_CATEGORIES = [
   {
-    value: "produit_poisson_fume",
-    label: "Produit — Poisson fumé",
+    value: "produit_silure_frais",
+    label: "Produit — Silure frais",
+  },
+
+  {
+    value: "produit_silure_fume",
+    label: "Produit — Silure fumé",
+  },
+
+  {
+    value: "produit_carpe_fraiche",
+    label: "Produit — Carpe fraîche",
+  },
+
+  {
+    value: "produit_porc_entier",
+    label: "Produit — Porc entier",
+  },
+
+  {
+    value: "produit_porc_frais",
+    label: "Produit — Porc frais",
   },
 
   {
@@ -342,18 +415,28 @@ export const PRODUCT_CATEGORIES = [
   },
 
   {
-    value: "produit_poulet_fume",
-    label: "Produit — Poulet fumé",
-  },
-
-  {
-    value: "produit_poulet_frais",
-    label: "Produit — Poulet frais nettoyé",
-  },
-
-  {
     value: "produit_porcelet",
     label: "Produit — Porcelet",
+  },
+
+  {
+    value: "produit_poulet_vivant",
+    label: "Produit — Poulet de chair vivant",
+  },
+
+  {
+    value: "produit_poulet_frais_nettoye",
+    label: "Produit — Poulet de chair frais nettoyé",
+  },
+
+  {
+    value: "produit_poulet_fume",
+    label: "Produit — Poulet de chair fumé",
+  },
+
+  {
+    value: "produit_alveoles_oeufs",
+    label: "Produit — Alvéoles d'œufs",
   },
 
   {
@@ -364,11 +447,6 @@ export const PRODUCT_CATEGORIES = [
   {
     value: "produit_alevins",
     label: "Produit — Alevins",
-  },
-
-  {
-    value: "produit_alveoles_oeufs",
-    label: "Produit — Alvéoles d’œufs",
   },
 ];
 
