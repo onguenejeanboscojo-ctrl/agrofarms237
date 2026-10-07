@@ -7,7 +7,7 @@ const LINKS = [
   { href: "/", label: "Accueil" },
   { href: "/la-vie-de-la-ferme", label: "À propos" },
   { href: "/produits", label: "Produits" },
-  { href: "/notre-elevage", label: "Notre élevage" },
+  { href: "/notre-elevage", label: "Notre ferme" },
   { href: "/galerie", label: "Galerie" },
   { href: "/espace-education", label: "Éducation" },
   {
