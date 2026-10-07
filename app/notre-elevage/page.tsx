@@ -70,48 +70,48 @@ type PageContent = {
 };
 
 const DEFAULT_CONTENT: PageContent = {
-  hero_label: "Notre élevage",
+  hero_label: "Notre ferme",
 
   hero_title:
-    "Une ferme qui grandit, élevage après élevage.",
+    "Une ferme en développement, production après production.",
 
   hero_description:
-    "Le silure constitue aujourd’hui notre activité principale, produite à Yaoundé, Mimboman. Demain, notre ferme accueillera progressivement d’autres productions pour construire un modèle agricole plus complet, local et durable.",
+    "AgroFarms237 développe progressivement une ferme agricole autour de plusieurs filières. La pisciculture constitue aujourd’hui notre activité structurée, tandis que l’aviculture, l’élevage porcin et l’agriculture sont développés étape par étape.",
 
   step1_label: "Aujourd’hui",
 
   step1_title:
-    "Silure frais",
+    "Pisciculture — silure",
 
   step1_text:
-    "Production active à Yaoundé, Mimboman, vendue directement aux familles et professionnels.",
+    "Notre activité actuellement structurée. Le silure est produit et commercialisé selon les disponibilités de la ferme.",
 
   step2_label:
     "Prochaine étape",
 
   step2_title:
-    "Produits fumés",
+    "Poulets de chair",
 
   step2_text:
-    "Une gamme de silure fumé, pensée pour la conservation et pour étendre la livraison au-delà de Yaoundé.",
+    "Une production avicole en préparation, avec une disponibilité commerciale prévue à partir du 20 décembre 2026.",
 
   step3_label:
     "Développement",
 
   step3_title:
-    "Porcs, poulets de chair, poules pondeuses",
+    "Porcs et agriculture",
 
   step3_text:
-    "Une diversification progressive.",
+    "Deux axes de développement de la ferme : l’élevage porcin et la mise en valeur progressive des terres cultivables.",
 
   fish_label:
-    "Notre production",
+    "Production actuelle",
 
   fish_title:
-    "Poissons",
+    "Pisciculture",
 
   fish_description:
-    "Une production piscicole qui commence avec le silure et s’élargira progressivement à d’autres espèces.",
+    "La pisciculture constitue aujourd’hui l’activité structurée d’AgroFarms237, avec le silure comme première production développée et commercialisée.",
 
   pigs_label:
     "Développement",
@@ -120,7 +120,7 @@ const DEFAULT_CONTENT: PageContent = {
     "Élevage porcin",
 
   pigs_description:
-    "Notre projet d’élevage porcin s’inscrit dans une logique de diversification progressive de la ferme.",
+    "L’élevage porcin est en phase de développement. La ferme prépare progressivement les installations et l’organisation nécessaires avant sa commercialisation.",
 
   poultry_label:
     "Aviculture",
@@ -129,16 +129,16 @@ const DEFAULT_CONTENT: PageContent = {
     "Poulets",
 
   poultry_description:
-    "Une future activité avicole qui regroupera progressivement poules pondeuses et poulets de chair.",
+    "L’aviculture est en préparation, avec un premier développement autour des poulets de chair dont la disponibilité commerciale est prévue à partir du 20 décembre 2026.",
 
   vision_label:
     "Notre vision",
 
   vision_title:
-    "Construire une ferme capable de nourrir, de créer et de transmettre.",
+    "Construire une ferme agricole diversifiée, structurée et durable.",
 
   vision_text:
-    "Agrofarms237 avance étape par étape, avec l’ambition de développer une agriculture locale structurée, productive et durable.",
+    "AgroFarms237 avance étape par étape : consolider la pisciculture, développer l’aviculture et l’élevage porcin, puis valoriser progressivement les terres agricoles disponibles.",
 };
 
 
@@ -160,7 +160,7 @@ async function getPageContent(): Promise<PageContent> {
 
     if (error) {
       console.error(
-        "Erreur récupération contenu Notre élevage :",
+        "Erreur récupération contenu Notre ferme :",
         error
       );
 
@@ -718,7 +718,7 @@ export default async function NotreElevagePage() {
 
 
       {/* =====================================================
-          POISSONS
+          PISCICULTURE
       ====================================================== */}
 
       <section className="bg-white">
@@ -819,7 +819,7 @@ export default async function NotreElevagePage() {
 
 
       {/* =====================================================
-          PORCS
+          ÉLEVAGE PORCIN
       ====================================================== */}
 
       <section className="bg-bgAlt">
@@ -922,7 +922,7 @@ export default async function NotreElevagePage() {
 
 
       {/* =====================================================
-          POULETS
+          AVICULTURE
       ====================================================== */}
 
       <section className="bg-white">
@@ -1011,6 +1011,48 @@ export default async function NotreElevagePage() {
 
         </div>
 
+      </section>
+
+
+      {/* =====================================================
+          AGRICULTURE
+      ====================================================== */}
+
+      <section className="bg-[#F3EFE5]">
+        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+
+          <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                Agriculture
+              </p>
+
+              <h2 className="mt-3 font-serif text-4xl leading-tight sm:text-5xl">
+                Des terres disponibles pour développer la ferme.
+              </h2>
+            </div>
+
+            <div className="max-w-3xl">
+              <p className="text-base leading-8 text-black/60">
+                AgroFarms237 dispose de terres cultivables destinées à
+                accompagner progressivement le développement de l’exploitation.
+                Cette activité agricole sera développée au rythme de la ferme,
+                en complément de la pisciculture et des élevages.
+              </p>
+
+              <div className="mt-8 border-l-2 border-gold pl-6">
+                <p className="text-sm leading-7 text-black/60">
+                  L’objectif est de construire progressivement un ensemble
+                  cohérent où les différentes activités agricoles peuvent
+                  évoluer au sein d’une même vision de ferme.
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
       </section>
 
 
