@@ -41,6 +41,16 @@ export const SITE_LOCATIONS = [
   },
 
   {
+    value: "vie_ferme",
+    label: "À propos — La vie à la ferme",
+  },
+
+  {
+    value: "actualites",
+    label: "À propos — Nos actualités",
+  },
+
+  {
     value: "production",
     label: "Accueil — Notre production",
   },
@@ -152,6 +162,8 @@ export const SITE_LOCATION_GROUPS = [
     options: SITE_LOCATIONS.filter((item) =>
       [
         "histoire",
+        "vie_ferme",
+        "actualites",
         "equipe",
       ].includes(item.value)
     ),
@@ -183,6 +195,10 @@ export const SITE_LOCATION_GROUPS = [
 // ============================================================
 // RUBRIQUES DE LA GALERIE PUBLIQUE
 // ============================================================
+//
+// Ces rubriques existent toujours sur la page Galerie,
+// même lorsqu'aucun média n'y est encore publié.
+//
 
 export const GALLERY_CATEGORIES = [
   {
@@ -280,6 +296,10 @@ export const GALLERY_CATEGORY_LABELS: Record<
 // ============================================================
 // COMPATIBILITÉ AVEC L'ANCIEN SYSTÈME
 // ============================================================
+//
+// Ces constantes restent disponibles pour éviter de casser
+// les composants existants pendant la transition.
+//
 
 export const SPECIAL_CATEGORIES = [
   {
