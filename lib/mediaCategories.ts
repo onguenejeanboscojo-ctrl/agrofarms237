@@ -41,43 +41,33 @@ export const SITE_LOCATIONS = [
   },
 
   {
-    value: "vie_ferme",
-    label: "À propos — La vie à la ferme",
-  },
-
-  {
-    value: "actualites",
-    label: "À propos — Nos actualités",
-  },
-
-  {
     value: "production",
     label: "Accueil — Notre production",
   },
 
   {
     value: "elevage_silure",
-    label: "Notre élevage — Silure",
+    label: "Notre ferme — Silure",
   },
 
   {
     value: "elevage_carpe",
-    label: "Notre élevage — Carpe",
+    label: "Notre ferme — Carpe",
   },
 
   {
     value: "elevage_porcs",
-    label: "Notre élevage — Porcs",
+    label: "Notre ferme — Porcs",
   },
 
   {
     value: "elevage_pondeuses",
-    label: "Notre élevage — Poules pondeuses",
+    label: "Notre ferme — Poules pondeuses",
   },
 
   {
     value: "elevage_chair",
-    label: "Notre élevage — Poulets de chair",
+    label: "Notre ferme — Poulets de chair",
   },
 
   {
@@ -162,15 +152,13 @@ export const SITE_LOCATION_GROUPS = [
     options: SITE_LOCATIONS.filter((item) =>
       [
         "histoire",
-        "vie_ferme",
-        "actualites",
         "equipe",
       ].includes(item.value)
     ),
   },
 
   {
-    label: "Notre élevage",
+    label: "Notre ferme",
     options: SITE_LOCATIONS.filter((item) =>
       item.value.startsWith("elevage_")
     ),
