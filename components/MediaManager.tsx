@@ -13,7 +13,7 @@ type MediaItem = {
   storage_path?: string | null;
   kind: "photo" | "video";
 
-  // Compatibilité avec les anciens médias
+  // Ancien système conservé pour compatibilité
   category?: string | null;
 
   // Nouveau système
@@ -32,6 +32,7 @@ export default function MediaManager() {
   const [loading, setLoading] = useState(true);
 
   const [uploading, setUploading] = useState(false);
+
   const [kind, setKind] = useState<"photo" | "video">("photo");
 
   const [siteLocation, setSiteLocation] = useState("");
@@ -41,7 +42,8 @@ export default function MediaManager() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingCaption, setEditingCaption] = useState("");
-  const [editingSiteLocation, setEditingSiteLocation] = useState("");
+  const [editingSiteLocation, setEditingSiteLocation] =
+    useState("");
   const [editingGalleryEnabled, setEditingGalleryEnabled] =
     useState(false);
   const [editingGalleryCategory, setEditingGalleryCategory] =
@@ -52,10 +54,12 @@ export default function MediaManager() {
 
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => {
-      const pa = a.position ?? 0;
-      const pb = b.position ?? 0;
+      const positionA = a.position ?? 0;
+      const positionB = b.position ?? 0;
 
-      if (pa !== pb) return pa - pb;
+      if (positionA !== positionB) {
+        return positionA - positionB;
+      }
 
       return (
         new Date(a.created_at || 0).getTime() -
@@ -67,6 +71,7 @@ export default function MediaManager() {
   async function load() {
     try {
       setLoading(true);
+      setError("");
 
       const res = await fetch("/api/media", {
         cache: "no-store",
@@ -82,7 +87,9 @@ export default function MediaManager() {
 
       setItems(data.items || []);
     } catch (err: any) {
-      setError(err.message || "Erreur de chargement.");
+      setError(
+        err?.message || "Erreur lors du chargement des médias."
+      );
     } finally {
       setLoading(false);
     }
@@ -98,13 +105,25 @@ export default function MediaManager() {
   }
 
   async function handleUpload(
-    e: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>
   ) {
-    const file = e.target.files?.[0];
+    const file = event.target.files?.[0];
 
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     resetMessages();
+
+    if (!siteLocation) {
+      setError(
+        "Choisis d'abord un emplacement sur le site."
+      );
+
+      event.target.value = "";
+      return;
+    }
+
     setUploading(true);
 
     try {
@@ -113,15 +132,24 @@ export default function MediaManager() {
       form.append("file", file);
       form.append("kind", kind);
 
-      form.append("site_location", siteLocation);
+      form.append(
+        "site_location",
+        siteLocation
+      );
 
       form.append(
         "gallery_enabled",
         galleryEnabled ? "true" : "false"
       );
 
-      if (galleryEnabled && galleryCategory) {
-        form.append("gallery_category", galleryCategory);
+      if (
+        galleryEnabled &&
+        galleryCategory
+      ) {
+        form.append(
+          "gallery_category",
+          galleryCategory
+        );
       }
 
       form.append("caption", caption);
@@ -138,7 +166,7 @@ export default function MediaManager() {
 
       if (!res.ok) {
         throw new Error(
-          data.error || "Échec de l'envoi."
+          data.error || "Échec de l'envoi du média."
         );
       }
 
@@ -147,14 +175,18 @@ export default function MediaManager() {
       setGalleryEnabled(false);
       setGalleryCategory("");
 
-      setSuccess("Le média a été ajouté.");
+      setSuccess("Le média a été ajouté avec succès.");
 
       await load();
     } catch (err: any) {
-      setError(err.message || "Échec de l'envoi.");
+      setError(
+        err?.message || "Échec de l'envoi du média."
+      );
     } finally {
       setUploading(false);
-      e.target.value = "";
+
+      // Permet de sélectionner à nouveau le même fichier
+      event.target.value = "";
     }
   }
 
@@ -169,36 +201,48 @@ export default function MediaManager() {
     setItems((current) =>
       current.map((item) =>
         item.id === id
-          ? { ...item, published }
+          ? {
+              ...item,
+              published,
+            }
           : item
       )
     );
 
     try {
-      const res = await fetch(`/api/media/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ published }),
-      });
+      const res = await fetch(
+        `/api/media/${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            published,
+          }),
+        }
+      );
 
       const data = await res.json();
 
       if (!res.ok) {
         throw new Error(
-          data.error || "Impossible de modifier le statut."
+          data.error ||
+            "Impossible de modifier le statut."
         );
       }
 
       setSuccess(
-        published ? "Média publié." : "Média masqué."
+        published
+          ? "Média publié."
+          : "Média masqué."
       );
     } catch (err: any) {
       setItems(previous);
 
       setError(
-        err.message || "Impossible de modifier le statut."
+        err?.message ||
+          "Impossible de modifier le statut."
       );
     }
   }
@@ -208,10 +252,14 @@ export default function MediaManager() {
 
     setEditingId(item.id);
 
-    setEditingCaption(item.caption || "");
+    setEditingCaption(
+      item.caption || ""
+    );
 
     setEditingSiteLocation(
-      item.site_location || item.category || ""
+      item.site_location ||
+        item.category ||
+        ""
     );
 
     setEditingGalleryEnabled(
@@ -232,7 +280,9 @@ export default function MediaManager() {
   }
 
   async function saveEditing() {
-    if (!editingId) return;
+    if (!editingId) {
+      return;
+    }
 
     resetMessages();
 
@@ -259,7 +309,7 @@ export default function MediaManager() {
             gallery_category:
               finalGalleryCategory,
 
-            // Compatibilité legacy
+            // Compatibilité avec l'ancien système
             category:
               editingSiteLocation || null,
 
@@ -284,10 +334,10 @@ export default function MediaManager() {
             ? {
                 ...item,
 
-                category:
+                site_location:
                   editingSiteLocation || null,
 
-                site_location:
+                category:
                   editingSiteLocation || null,
 
                 gallery_enabled:
@@ -303,12 +353,12 @@ export default function MediaManager() {
         )
       );
 
-      setSuccess("Média modifié.");
+      setSuccess("Média modifié avec succès.");
 
       cancelEditing();
     } catch (err: any) {
       setError(
-        err.message ||
+        err?.message ||
           "Impossible de modifier le média."
       );
     }
@@ -319,15 +369,19 @@ export default function MediaManager() {
 
     const confirmed = window.confirm(
       "Supprimer définitivement ce média ?\n\n" +
-        "Cette action supprimera également le fichier du stockage."
+        "Le fichier sera également supprimé du stockage."
     );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
     const previous = items;
 
     setItems((current) =>
-      current.filter((item) => item.id !== id)
+      current.filter(
+        (item) => item.id !== id
+      )
     );
 
     try {
@@ -354,7 +408,7 @@ export default function MediaManager() {
       setItems(previous);
 
       setError(
-        err.message ||
+        err?.message ||
           "Impossible de supprimer le média."
       );
     }
@@ -370,7 +424,9 @@ export default function MediaManager() {
       (item) => item.id === id
     );
 
-    if (index === -1) return;
+    if (index === -1) {
+      return;
+    }
 
     const targetIndex =
       direction === "up"
@@ -384,8 +440,11 @@ export default function MediaManager() {
       return;
     }
 
-    const current = sortedItems[index];
-    const target = sortedItems[targetIndex];
+    const current =
+      sortedItems[index];
+
+    const target =
+      sortedItems[targetIndex];
 
     const currentPosition =
       current.position ?? index;
@@ -418,25 +477,35 @@ export default function MediaManager() {
     try {
       const [res1, res2] =
         await Promise.all([
-          fetch(`/api/media/${current.id}`, {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              position: targetPosition,
-            }),
-          }),
+          fetch(
+            `/api/media/${current.id}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                position:
+                  targetPosition,
+              }),
+            }
+          ),
 
-          fetch(`/api/media/${target.id}`, {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              position: currentPosition,
-            }),
-          }),
+          fetch(
+            `/api/media/${target.id}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                position:
+                  currentPosition,
+              }),
+            }
+          ),
         ]);
 
       if (!res1.ok || !res2.ok) {
@@ -456,7 +525,7 @@ export default function MediaManager() {
       setItems(previous);
 
       setError(
-        err.message ||
+        err?.message ||
           "Impossible de modifier l'ordre."
       );
     }
@@ -466,14 +535,16 @@ export default function MediaManager() {
     item: MediaItem
   ) {
     const value =
-      item.site_location || item.category;
+      item.site_location ||
+      item.category;
 
     if (!value) {
       return "Aucun emplacement";
     }
 
     return (
-      CATEGORY_LABELS[value] || value
+      CATEGORY_LABELS[value] ||
+      value
     );
   }
 
@@ -488,11 +559,15 @@ export default function MediaManager() {
       return "Oui — rubrique non définie";
     }
 
-    return (
+    const category =
       GALLERY_CATEGORIES.find(
-        (category) =>
-          category.value === item.gallery_category
-      )?.label ||
+        (itemCategory) =>
+          itemCategory.value ===
+          item.gallery_category
+      );
+
+    return (
+      category?.label ||
       item.gallery_category
     );
   }
@@ -500,9 +575,9 @@ export default function MediaManager() {
   return (
     <div className="space-y-8">
 
-      {/* =========================================================
+      {/* =====================================================
           MESSAGES
-      ========================================================== */}
+      ====================================================== */}
 
       {error && (
         <div className="rounded-s border border-alert/20 bg-alert/5 px-4 py-3 text-[13px] text-alert">
@@ -516,20 +591,22 @@ export default function MediaManager() {
         </div>
       )}
 
-      {/* =========================================================
+      {/* =====================================================
           AJOUT D'UN MÉDIA
-      ========================================================== */}
+      ====================================================== */}
 
       <div className="rounded-s border border-ink/10 bg-paper p-5">
+
         <div className="mb-5">
           <h2 className="font-serif text-xl font-semibold">
             Ajouter un média
           </h2>
 
           <p className="mt-1 text-[13px] text-inkSoft">
-            Choisis l'emplacement principal du média.
-            Tu peux ensuite décider s'il doit également
-            apparaître dans la Galerie publique.
+            Choisis l'emplacement principal du
+            média. Tu peux ensuite décider s'il doit
+            également apparaître dans la Galerie
+            publique.
           </p>
         </div>
 
@@ -538,13 +615,15 @@ export default function MediaManager() {
           {/* TYPE */}
 
           <div className="field">
-            <label>Type de média</label>
+            <label>
+              Type de média
+            </label>
 
             <select
               value={kind}
-              onChange={(e) =>
+              onChange={(event) =>
                 setKind(
-                  e.target.value as
+                  event.target.value as
                     | "photo"
                     | "video"
                 )
@@ -569,9 +648,9 @@ export default function MediaManager() {
 
             <select
               value={siteLocation}
-              onChange={(e) =>
+              onChange={(event) =>
                 setSiteLocation(
-                  e.target.value
+                  event.target.value
                 )
               }
             >
@@ -588,8 +667,12 @@ export default function MediaManager() {
                     {group.options.map(
                       (option) => (
                         <option
-                          key={option.value}
-                          value={option.value}
+                          key={
+                            option.value
+                          }
+                          value={
+                            option.value
+                          }
                         >
                           {option.label}
                         </option>
@@ -604,13 +687,15 @@ export default function MediaManager() {
           {/* LÉGENDE */}
 
           <div className="field md:col-span-2">
-            <label>Légende</label>
+            <label>
+              Légende
+            </label>
 
             <input
               value={caption}
-              onChange={(e) =>
+              onChange={(event) =>
                 setCaption(
-                  e.target.value
+                  event.target.value
                 )
               }
               placeholder="Courte description du média"
@@ -661,15 +746,16 @@ export default function MediaManager() {
 
             {galleryEnabled && (
               <div className="mt-4 max-w-md field">
+
                 <label>
                   Rubrique de la Galerie
                 </label>
 
                 <select
                   value={galleryCategory}
-                  onChange={(e) =>
+                  onChange={(event) =>
                     setGalleryCategory(
-                      e.target.value
+                      event.target.value
                     )
                   }
                 >
@@ -680,24 +766,73 @@ export default function MediaManager() {
                   {GALLERY_CATEGORIES.map(
                     (category) => (
                       <option
-                        key={category.value}
-                        value={category.value}
+                        key={
+                          category.value
+                        }
+                        value={
+                          category.value
+                        }
                       >
                         {category.label}
                       </option>
                     )
                   )}
                 </select>
+
               </div>
             )}
+
           </div>
 
-          {/* FICHIER */}
+          {/* =================================================
+              SÉLECTION DU FICHIER
+          ================================================== */}
 
           <div className="md:col-span-2">
-            <label className="flex cursor-pointer items-center justify-center rounded-s border border-dashed border-ink/20 bg-bgAlt px-5 py-8 text-center transition hover:border-ink/40">
 
+            <input
+              id="media-file-input"
+              type="file"
+              accept={
+                kind === "photo"
+                  ? "image/*"
+                  : "video/*"
+              }
+              onChange={handleUpload}
+              disabled={
+                uploading ||
+                !siteLocation
+              }
+              className="sr-only"
+            />
+
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  !siteLocation ||
+                  uploading
+                ) {
+                  return;
+                }
+
+                const input =
+                  document.getElementById(
+                    "media-file-input"
+                  ) as HTMLInputElement | null;
+
+                if (input) {
+                  input.click();
+                }
+              }}
+              disabled={
+                uploading ||
+                !siteLocation
+              }
+              className="w-full rounded-s border border-dashed border-ink/20 bg-bgAlt px-5 py-8 text-center transition hover:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50"
+            >
               <div>
+
                 <p className="text-[13px] font-semibold">
                   {uploading
                     ? "Envoi en cours..."
@@ -705,25 +840,17 @@ export default function MediaManager() {
                 </p>
 
                 <p className="mt-1 text-[11.5px] text-inkSoft">
+                  {siteLocation
+                    ? "Clique ici pour sélectionner un fichier sur ton ordinateur."
+                    : "Choisis d'abord un emplacement sur le site."}
+                </p>
+
+                <p className="mt-1 text-[11px] text-inkSoft">
                   Taille maximale : 25 Mo
                 </p>
-              </div>
 
-              <input
-                type="file"
-                accept={
-                  kind === "photo"
-                    ? "image/*"
-                    : "video/*"
-                }
-                onChange={handleUpload}
-                disabled={
-                  uploading ||
-                  !siteLocation
-                }
-                className="hidden"
-              />
-            </label>
+              </div>
+            </button>
 
             {!siteLocation && (
               <p className="mt-2 text-[11.5px] text-inkSoft">
@@ -731,16 +858,18 @@ export default function MediaManager() {
                 sur le site.
               </p>
             )}
+
           </div>
 
         </div>
       </div>
 
-      {/* =========================================================
+      {/* =====================================================
           LISTE DES MÉDIAS
-      ========================================================== */}
+      ====================================================== */}
 
       <div>
+
         <div className="mb-4">
           <h2 className="font-serif text-xl font-semibold">
             Médias
@@ -774,7 +903,8 @@ export default function MediaManager() {
 
                   <div className="aspect-[16/10] bg-bgAlt">
 
-                    {item.kind === "video" ? (
+                    {item.kind ===
+                    "video" ? (
                       <video
                         src={item.url}
                         controls
@@ -795,14 +925,15 @@ export default function MediaManager() {
 
                   <div className="p-4">
 
-                    {/* INFOS */}
+                    {/* INFORMATIONS */}
 
                     <div className="space-y-2">
 
                       <div className="flex flex-wrap gap-2">
 
                         <span className="rounded-full bg-bgAlt px-2.5 py-1 text-[10.5px] font-semibold">
-                          {item.kind === "photo"
+                          {item.kind ===
+                          "photo"
                             ? "Photo"
                             : "Vidéo"}
                         </span>
@@ -827,7 +958,9 @@ export default function MediaManager() {
                         </p>
 
                         <p className="mt-0.5 text-[13px] font-semibold">
-                          {getLocationLabel(item)}
+                          {getLocationLabel(
+                            item
+                          )}
                         </p>
                       </div>
 
@@ -837,7 +970,9 @@ export default function MediaManager() {
                         </p>
 
                         <p className="mt-0.5 text-[13px]">
-                          {getGalleryLabel(item)}
+                          {getGalleryLabel(
+                            item
+                          )}
                         </p>
                       </div>
 
@@ -849,10 +984,13 @@ export default function MediaManager() {
 
                     </div>
 
-                    {/* ACTIONS */}
+                    {/* =================================================
+                        AFFICHAGE NORMAL
+                    ================================================== */}
 
                     {editingId !== item.id ? (
                       <>
+
                         <div className="mt-4 grid grid-cols-2 gap-2">
 
                           <button
@@ -896,7 +1034,9 @@ export default function MediaManager() {
                           <button
                             type="button"
                             onClick={() =>
-                              startEditing(item)
+                              startEditing(
+                                item
+                              )
                             }
                             className="rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt"
                           >
@@ -904,15 +1044,17 @@ export default function MediaManager() {
                           </button>
 
                           <label className="flex cursor-pointer items-center justify-center gap-2 rounded-s border border-ink/10 px-3 py-2 text-[12.5px] font-semibold">
+
                             <input
                               type="checkbox"
                               checked={
                                 item.published
                               }
-                              onChange={(e) =>
+                              onChange={(event) =>
                                 togglePublished(
                                   item.id,
-                                  e.target.checked
+                                  event.target
+                                    .checked
                                 )
                               }
                             />
@@ -920,6 +1062,7 @@ export default function MediaManager() {
                             {item.published
                               ? "Publié"
                               : "Masqué"}
+
                           </label>
 
                         </div>
@@ -933,6 +1076,7 @@ export default function MediaManager() {
                         >
                           Supprimer définitivement
                         </button>
+
                       </>
                     ) : (
                       /* =================================================
@@ -942,6 +1086,7 @@ export default function MediaManager() {
                       <div className="mt-4 space-y-3">
 
                         <div className="field">
+
                           <label>
                             Emplacement du site
                           </label>
@@ -950,12 +1095,14 @@ export default function MediaManager() {
                             value={
                               editingSiteLocation
                             }
-                            onChange={(e) =>
+                            onChange={(event) =>
                               setEditingSiteLocation(
-                                e.target.value
+                                event.target
+                                  .value
                               )
                             }
                           >
+
                             <option value="">
                               Aucun emplacement
                             </option>
@@ -963,11 +1110,17 @@ export default function MediaManager() {
                             {SITE_LOCATION_GROUPS.map(
                               (group) => (
                                 <optgroup
-                                  key={group.label}
-                                  label={group.label}
+                                  key={
+                                    group.label
+                                  }
+                                  label={
+                                    group.label
+                                  }
                                 >
                                   {group.options.map(
-                                    (option) => (
+                                    (
+                                      option
+                                    ) => (
                                       <option
                                         key={
                                           option.value
@@ -976,17 +1129,22 @@ export default function MediaManager() {
                                           option.value
                                         }
                                       >
-                                        {option.label}
+                                        {
+                                          option.label
+                                        }
                                       </option>
                                     )
                                   )}
                                 </optgroup>
                               )
                             )}
+
                           </select>
+
                         </div>
 
                         <div className="field">
+
                           <label>
                             Légende
                           </label>
@@ -995,12 +1153,14 @@ export default function MediaManager() {
                             value={
                               editingCaption
                             }
-                            onChange={(e) =>
+                            onChange={(event) =>
                               setEditingCaption(
-                                e.target.value
+                                event.target
+                                  .value
                               )
                             }
                           />
+
                         </div>
 
                         {/* GALERIE */}
@@ -1061,18 +1221,24 @@ export default function MediaManager() {
                                 value={
                                   editingGalleryCategory
                                 }
-                                onChange={(e) =>
+                                onChange={(
+                                  event
+                                ) =>
                                   setEditingGalleryCategory(
-                                    e.target.value
+                                    event.target
+                                      .value
                                   )
                                 }
                               >
+
                                 <option value="">
                                   Choisir une rubrique
                                 </option>
 
                                 {GALLERY_CATEGORIES.map(
-                                  (category) => (
+                                  (
+                                    category
+                                  ) => (
                                     <option
                                       key={
                                         category.value
@@ -1081,10 +1247,13 @@ export default function MediaManager() {
                                         category.value
                                       }
                                     >
-                                      {category.label}
+                                      {
+                                        category.label
+                                      }
                                     </option>
                                   )
                                 )}
+
                               </select>
 
                             </div>
@@ -1128,6 +1297,7 @@ export default function MediaManager() {
 
           </div>
         )}
+
       </div>
     </div>
   );
