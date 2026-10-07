@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   SITE_LOCATION_GROUPS,
   CATEGORY_LABELS,
@@ -13,7 +13,7 @@ type MediaItem = {
   storage_path?: string | null;
   kind: "photo" | "video";
 
-  // Ancien système conservé pour compatibilité
+  // Compatibilité ancien système
   category?: string | null;
 
   // Nouveau système
@@ -28,24 +28,44 @@ type MediaItem = {
 };
 
 export default function MediaManager() {
+  const fileInputRef =
+    useRef<HTMLInputElement | null>(null);
+
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [uploading, setUploading] = useState(false);
 
-  const [kind, setKind] = useState<"photo" | "video">("photo");
+  const [kind, setKind] =
+    useState<"photo" | "video">("photo");
 
-  const [siteLocation, setSiteLocation] = useState("");
-  const [galleryEnabled, setGalleryEnabled] = useState(false);
-  const [galleryCategory, setGalleryCategory] = useState("");
-  const [caption, setCaption] = useState("");
+  const [selectedFile, setSelectedFile] =
+    useState<File | null>(null);
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingCaption, setEditingCaption] = useState("");
+  const [siteLocation, setSiteLocation] =
+    useState("");
+
+  const [galleryEnabled, setGalleryEnabled] =
+    useState(false);
+
+  const [galleryCategory, setGalleryCategory] =
+    useState("");
+
+  const [caption, setCaption] =
+    useState("");
+
+  const [editingId, setEditingId] =
+    useState<string | null>(null);
+
+  const [editingCaption, setEditingCaption] =
+    useState("");
+
   const [editingSiteLocation, setEditingSiteLocation] =
     useState("");
+
   const [editingGalleryEnabled, setEditingGalleryEnabled] =
     useState(false);
+
   const [editingGalleryCategory, setEditingGalleryCategory] =
     useState("");
 
@@ -81,14 +101,16 @@ export default function MediaManager() {
 
       if (!res.ok) {
         throw new Error(
-          data.error || "Impossible de charger les médias."
+          data.error ||
+            "Impossible de charger les médias."
         );
       }
 
       setItems(data.items || []);
     } catch (err: any) {
       setError(
-        err?.message || "Erreur lors du chargement des médias."
+        err?.message ||
+          "Erreur de chargement."
       );
     } finally {
       setLoading(false);
@@ -104,7 +126,11 @@ export default function MediaManager() {
     setSuccess("");
   }
 
-  async function handleUpload(
+  /* =========================================================
+     CHOIX DU FICHIER
+  ========================================================= */
+
+  function handleFileChange(
     event: React.ChangeEvent<HTMLInputElement>
   ) {
     const file = event.target.files?.[0];
@@ -115,12 +141,65 @@ export default function MediaManager() {
 
     resetMessages();
 
-    if (!siteLocation) {
+    if (file.size > 25 * 1024 * 1024) {
+      setSelectedFile(null);
+
       setError(
-        "Choisis d'abord un emplacement sur le site."
+        "Fichier trop volumineux. La taille maximale est de 25 Mo."
       );
 
       event.target.value = "";
+      return;
+    }
+
+    setSelectedFile(file);
+  }
+
+  function openFilePicker() {
+    resetMessages();
+
+    fileInputRef.current?.click();
+  }
+
+  function removeSelectedFile() {
+    setSelectedFile(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  /* =========================================================
+     ENVOI DU MÉDIA
+  ========================================================= */
+
+  async function handleUpload() {
+    resetMessages();
+
+    if (!selectedFile) {
+      setError(
+        "Choisis d'abord une photo ou une vidéo."
+      );
+
+      return;
+    }
+
+    if (!siteLocation) {
+      setError(
+        "Choisis l'emplacement du média sur le site."
+      );
+
+      return;
+    }
+
+    if (
+      galleryEnabled &&
+      !galleryCategory
+    ) {
+      setError(
+        "Choisis une rubrique pour la Galerie."
+      );
+
       return;
     }
 
@@ -129,8 +208,15 @@ export default function MediaManager() {
     try {
       const form = new FormData();
 
-      form.append("file", file);
-      form.append("kind", kind);
+      form.append(
+        "file",
+        selectedFile
+      );
+
+      form.append(
+        "kind",
+        kind
+      );
 
       form.append(
         "site_location",
@@ -139,7 +225,9 @@ export default function MediaManager() {
 
       form.append(
         "gallery_enabled",
-        galleryEnabled ? "true" : "false"
+        galleryEnabled
+          ? "true"
+          : "false"
       );
 
       if (
@@ -152,43 +240,62 @@ export default function MediaManager() {
         );
       }
 
-      form.append("caption", caption);
+      form.append(
+        "caption",
+        caption
+      );
 
       // Compatibilité avec l'ancien système
-      form.append("category", siteLocation);
+      form.append(
+        "category",
+        siteLocation
+      );
 
-      const res = await fetch("/api/media", {
-        method: "POST",
-        body: form,
-      });
+      const res = await fetch(
+        "/api/media",
+        {
+          method: "POST",
+          body: form,
+        }
+      );
 
       const data = await res.json();
 
       if (!res.ok) {
         throw new Error(
-          data.error || "Échec de l'envoi du média."
+          data.error ||
+            "Échec de l'envoi."
         );
       }
 
-      setCaption("");
+      setSelectedFile(null);
       setSiteLocation("");
       setGalleryEnabled(false);
       setGalleryCategory("");
+      setCaption("");
 
-      setSuccess("Le média a été ajouté avec succès.");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      setSuccess(
+        "Le média a été ajouté avec succès."
+      );
 
       await load();
     } catch (err: any) {
       setError(
-        err?.message || "Échec de l'envoi du média."
+        err?.message ||
+          "Échec de l'envoi du média."
       );
     } finally {
       setUploading(false);
-
-      // Permet de sélectionner à nouveau le même fichier
-      event.target.value = "";
     }
   }
+
+  /* =========================================================
+     PUBLICATION / MASQUAGE
+  ========================================================= */
 
   async function togglePublished(
     id: string,
@@ -215,7 +322,8 @@ export default function MediaManager() {
         {
           method: "PATCH",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
           body: JSON.stringify({
             published,
@@ -247,7 +355,13 @@ export default function MediaManager() {
     }
   }
 
-  function startEditing(item: MediaItem) {
+  /* =========================================================
+     MODIFICATION
+  ========================================================= */
+
+  function startEditing(
+    item: MediaItem
+  ) {
     resetMessages();
 
     setEditingId(item.id);
@@ -286,9 +400,21 @@ export default function MediaManager() {
 
     resetMessages();
 
+    if (
+      editingGalleryEnabled &&
+      !editingGalleryCategory
+    ) {
+      setError(
+        "Choisis une rubrique pour la Galerie."
+      );
+
+      return;
+    }
+
     const finalGalleryCategory =
       editingGalleryEnabled
-        ? editingGalleryCategory || null
+        ? editingGalleryCategory ||
+          null
         : null;
 
     try {
@@ -297,11 +423,13 @@ export default function MediaManager() {
         {
           method: "PATCH",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
           body: JSON.stringify({
             site_location:
-              editingSiteLocation || null,
+              editingSiteLocation ||
+              null,
 
             gallery_enabled:
               editingGalleryEnabled,
@@ -309,12 +437,14 @@ export default function MediaManager() {
             gallery_category:
               finalGalleryCategory,
 
-            // Compatibilité avec l'ancien système
+            // Compatibilité ancien système
             category:
-              editingSiteLocation || null,
+              editingSiteLocation ||
+              null,
 
             caption:
-              editingCaption || null,
+              editingCaption ||
+              null,
           }),
         }
       );
@@ -335,10 +465,12 @@ export default function MediaManager() {
                 ...item,
 
                 site_location:
-                  editingSiteLocation || null,
+                  editingSiteLocation ||
+                  null,
 
                 category:
-                  editingSiteLocation || null,
+                  editingSiteLocation ||
+                  null,
 
                 gallery_enabled:
                   editingGalleryEnabled,
@@ -347,13 +479,16 @@ export default function MediaManager() {
                   finalGalleryCategory,
 
                 caption:
-                  editingCaption || null,
+                  editingCaption ||
+                  null,
               }
             : item
         )
       );
 
-      setSuccess("Média modifié avec succès.");
+      setSuccess(
+        "Média modifié avec succès."
+      );
 
       cancelEditing();
     } catch (err: any) {
@@ -364,13 +499,18 @@ export default function MediaManager() {
     }
   }
 
+  /* =========================================================
+     SUPPRESSION
+  ========================================================= */
+
   async function remove(id: string) {
     resetMessages();
 
-    const confirmed = window.confirm(
-      "Supprimer définitivement ce média ?\n\n" +
-        "Le fichier sera également supprimé du stockage."
-    );
+    const confirmed =
+      window.confirm(
+        "Supprimer définitivement ce média ?\n\n" +
+          "Cette action supprimera également le fichier du stockage."
+      );
 
     if (!confirmed) {
       return;
@@ -414,15 +554,21 @@ export default function MediaManager() {
     }
   }
 
+  /* =========================================================
+     RÉORGANISATION
+  ========================================================= */
+
   async function moveItem(
     id: string,
     direction: "up" | "down"
   ) {
     resetMessages();
 
-    const index = sortedItems.findIndex(
-      (item) => item.id === id
-    );
+    const index =
+      sortedItems.findIndex(
+        (item) =>
+          item.id === id
+      );
 
     if (index === -1) {
       return;
@@ -435,7 +581,8 @@ export default function MediaManager() {
 
     if (
       targetIndex < 0 ||
-      targetIndex >= sortedItems.length
+      targetIndex >=
+        sortedItems.length
     ) {
       return;
     }
@@ -450,23 +597,30 @@ export default function MediaManager() {
       current.position ?? index;
 
     const targetPosition =
-      target.position ?? targetIndex;
+      target.position ??
+      targetIndex;
 
     const previous = items;
 
     setItems((currentItems) =>
       currentItems.map((item) => {
-        if (item.id === current.id) {
+        if (
+          item.id === current.id
+        ) {
           return {
             ...item,
-            position: targetPosition,
+            position:
+              targetPosition,
           };
         }
 
-        if (item.id === target.id) {
+        if (
+          item.id === target.id
+        ) {
           return {
             ...item,
-            position: currentPosition,
+            position:
+              currentPosition,
           };
         }
 
@@ -508,7 +662,10 @@ export default function MediaManager() {
           ),
         ]);
 
-      if (!res1.ok || !res2.ok) {
+      if (
+        !res1.ok ||
+        !res2.ok
+      ) {
         throw new Error(
           "Impossible de modifier l'ordre des médias."
         );
@@ -530,6 +687,10 @@ export default function MediaManager() {
       );
     }
   }
+
+  /* =========================================================
+     LIBELLÉS
+  ========================================================= */
 
   function getLocationLabel(
     item: MediaItem
@@ -559,75 +720,72 @@ export default function MediaManager() {
       return "Oui — rubrique non définie";
     }
 
-    const category =
-      GALLERY_CATEGORIES.find(
-        (itemCategory) =>
-          itemCategory.value ===
-          item.gallery_category
-      );
-
     return (
-      category?.label ||
+      GALLERY_CATEGORIES.find(
+        (category) =>
+          category.value ===
+          item.gallery_category
+      )?.label ||
       item.gallery_category
     );
   }
 
+  /* =========================================================
+     INTERFACE
+  ========================================================= */
+
   return (
-    <div className="space-y-8">
+    <div>
 
       {/* =====================================================
-          MESSAGES
+          AJOUT
       ====================================================== */}
 
-      {error && (
-        <div className="rounded-s border border-alert/20 bg-alert/5 px-4 py-3 text-[13px] text-alert">
-          {error}
-        </div>
-      )}
+      <div className="max-w-[700px] rounded-m border border-ink/10 bg-paper p-7">
 
-      {success && (
-        <div className="rounded-s border border-ink/10 bg-bgAlt px-4 py-3 text-[13px] text-ink">
-          {success}
-        </div>
-      )}
+        <div>
+          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-goldDeep">
+            Bibliothèque média
+          </p>
 
-      {/* =====================================================
-          AJOUT D'UN MÉDIA
-      ====================================================== */}
-
-      <div className="rounded-s border border-ink/10 bg-paper p-5">
-
-        <div className="mb-5">
-          <h2 className="font-serif text-xl font-semibold">
-            Ajouter un média
+          <h2 className="mt-1 font-serif text-[24px] font-semibold">
+            Ajouter une photo ou une vidéo
           </h2>
 
-          <p className="mt-1 text-[13px] text-inkSoft">
-            Choisis l'emplacement principal du
-            média. Tu peux ensuite décider s'il doit
-            également apparaître dans la Galerie
-            publique.
+          <p className="mt-2 text-[14px] leading-6 text-inkSoft">
+            Choisis d'abord ton fichier,
+            puis indique où il doit être
+            utilisé sur le site.
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        {/* ===================================================
+            TYPE + EMPLACEMENT
+        ==================================================== */}
 
-          {/* TYPE */}
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
 
           <div className="field">
             <label>
-              Type de média
+              Type
             </label>
 
             <select
               value={kind}
-              onChange={(event) =>
+              onChange={(e) => {
                 setKind(
-                  event.target.value as
+                  e.target.value as
                     | "photo"
                     | "video"
-                )
-              }
+                );
+
+                setSelectedFile(null);
+
+                if (fileInputRef.current) {
+                  fileInputRef.current.value =
+                    "";
+                }
+              }}
             >
               <option value="photo">
                 Photo
@@ -639,18 +797,16 @@ export default function MediaManager() {
             </select>
           </div>
 
-          {/* EMPLACEMENT */}
-
           <div className="field">
             <label>
-              Emplacement sur le site
+              Emplacement du site
             </label>
 
             <select
               value={siteLocation}
-              onChange={(event) =>
+              onChange={(e) =>
                 setSiteLocation(
-                  event.target.value
+                  e.target.value
                 )
               }
             >
@@ -684,615 +840,681 @@ export default function MediaManager() {
             </select>
           </div>
 
-          {/* LÉGENDE */}
-
-          <div className="field md:col-span-2">
+          <div className="field sm:col-span-2">
             <label>
-              Légende
+              Légende{" "}
+              <span className="ml-1 font-normal text-inkSoft">
+                (optionnel)
+              </span>
             </label>
 
             <input
               value={caption}
-              onChange={(event) =>
+              onChange={(e) =>
                 setCaption(
-                  event.target.value
+                  e.target.value
                 )
               }
-              placeholder="Courte description du média"
+              placeholder="Ex. Bassins de production"
             />
           </div>
 
-          {/* GALERIE */}
+        </div>
 
-          <div className="md:col-span-2 rounded-s border border-ink/10 bg-bgAlt p-4">
+        {/* ===================================================
+            GALERIE
+        ==================================================== */}
 
-            <p className="text-[13px] font-bold">
-              Voulez-vous que cette photo ou vidéo
-              aille aussi dans la Galerie ?
-            </p>
+        <div className="mt-5 rounded-s border border-ink/10 bg-bgAlt p-4">
 
-            <div className="mt-3 flex max-w-sm gap-2">
+          <p className="text-[13px] font-bold">
+            Galerie publique
+          </p>
 
-              <button
-                type="button"
-                onClick={() =>
-                  setGalleryEnabled(true)
-                }
-                className={`flex-1 rounded-s border px-4 py-2 text-[12px] font-semibold ${
-                  galleryEnabled
-                    ? "border-ink bg-ink text-paper"
-                    : "border-ink/15 bg-paper text-ink"
-                }`}
-              >
-                Oui
-              </button>
+          <p className="mt-1 text-[12.5px] leading-5 text-inkSoft">
+            Voulez-vous que cette photo
+            ou vidéo apparaisse également
+            dans la Galerie publique ?
+          </p>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setGalleryEnabled(false);
-                  setGalleryCategory("");
-                }}
-                className={`flex-1 rounded-s border px-4 py-2 text-[12px] font-semibold ${
-                  !galleryEnabled
-                    ? "border-ink bg-ink text-paper"
-                    : "border-ink/15 bg-paper text-ink"
-                }`}
-              >
-                Non
-              </button>
-
-            </div>
-
-            {galleryEnabled && (
-              <div className="mt-4 max-w-md field">
-
-                <label>
-                  Rubrique de la Galerie
-                </label>
-
-                <select
-                  value={galleryCategory}
-                  onChange={(event) =>
-                    setGalleryCategory(
-                      event.target.value
-                    )
-                  }
-                >
-                  <option value="">
-                    Choisir une rubrique
-                  </option>
-
-                  {GALLERY_CATEGORIES.map(
-                    (category) => (
-                      <option
-                        key={
-                          category.value
-                        }
-                        value={
-                          category.value
-                        }
-                      >
-                        {category.label}
-                      </option>
-                    )
-                  )}
-                </select>
-
-              </div>
-            )}
-
-          </div>
-
-          {/* =================================================
-              SÉLECTION DU FICHIER
-          ================================================== */}
-
-          <div className="md:col-span-2">
-
-            <input
-              id="media-file-input"
-              type="file"
-              accept={
-                kind === "photo"
-                  ? "image/*"
-                  : "video/*"
-              }
-              onChange={handleUpload}
-              disabled={
-                uploading ||
-                !siteLocation
-              }
-              className="sr-only"
-            />
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row">
 
             <button
               type="button"
               onClick={() => {
-                if (
-                  !siteLocation ||
-                  uploading
-                ) {
-                  return;
-                }
-
-                const input =
-                  document.getElementById(
-                    "media-file-input"
-                  ) as HTMLInputElement | null;
-
-                if (input) {
-                  input.click();
-                }
+                setGalleryEnabled(true);
               }}
-              disabled={
-                uploading ||
-                !siteLocation
-              }
-              className="w-full rounded-s border border-dashed border-ink/20 bg-bgAlt px-5 py-8 text-center transition hover:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50"
+              className={`rounded-s border px-4 py-2 text-[12.5px] font-semibold transition ${
+                galleryEnabled
+                  ? "border-ink bg-ink text-paper"
+                  : "border-ink/15 bg-paper text-ink hover:bg-bgAlt"
+              }`}
             >
-              <div>
-
-                <p className="text-[13px] font-semibold">
-                  {uploading
-                    ? "Envoi en cours..."
-                    : "Choisir une photo ou une vidéo"}
-                </p>
-
-                <p className="mt-1 text-[11.5px] text-inkSoft">
-                  {siteLocation
-                    ? "Clique ici pour sélectionner un fichier sur ton ordinateur."
-                    : "Choisis d'abord un emplacement sur le site."}
-                </p>
-
-                <p className="mt-1 text-[11px] text-inkSoft">
-                  Taille maximale : 25 Mo
-                </p>
-
-              </div>
+              Oui, ajouter à la Galerie
             </button>
 
-            {!siteLocation && (
-              <p className="mt-2 text-[11.5px] text-inkSoft">
-                Choisis d'abord un emplacement
-                sur le site.
-              </p>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                setGalleryEnabled(false);
+                setGalleryCategory("");
+              }}
+              className={`rounded-s border px-4 py-2 text-[12.5px] font-semibold transition ${
+                !galleryEnabled
+                  ? "border-ink bg-ink text-paper"
+                  : "border-ink/15 bg-paper text-ink hover:bg-bgAlt"
+              }`}
+            >
+              Non, uniquement sur le site
+            </button>
 
           </div>
 
+          {galleryEnabled && (
+            <div className="mt-4 field">
+
+              <label>
+                Rubrique de la Galerie
+              </label>
+
+              <select
+                value={galleryCategory}
+                onChange={(e) =>
+                  setGalleryCategory(
+                    e.target.value
+                  )
+                }
+              >
+                <option value="">
+                  Choisir une rubrique
+                </option>
+
+                {GALLERY_CATEGORIES.map(
+                  (category) => (
+                    <option
+                      key={
+                        category.value
+                      }
+                      value={
+                        category.value
+                      }
+                    >
+                      {category.label}
+                    </option>
+                  )
+                )}
+              </select>
+
+            </div>
+          )}
+
         </div>
+
+        {/* ===================================================
+            FICHIER
+        ==================================================== */}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={
+            kind === "photo"
+              ? "image/*"
+              : "video/*"
+          }
+          className="hidden"
+          onChange={
+            handleFileChange
+          }
+        />
+
+        <button
+          type="button"
+          onClick={
+            openFilePicker
+          }
+          disabled={uploading}
+          className="btn btn-ink mt-5 w-full"
+        >
+          Choisir une{" "}
+          {kind === "photo"
+            ? "photo"
+            : "vidéo"}
+        </button>
+
+        {/* FICHIER SÉLECTIONNÉ */}
+
+        {selectedFile && (
+          <div className="mt-3 rounded-s border border-ink/10 bg-bgAlt p-3">
+
+            <div className="flex items-center justify-between gap-3">
+
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold">
+                  Fichier sélectionné
+                </p>
+
+                <p className="mt-0.5 truncate text-[13px] text-inkSoft">
+                  {selectedFile.name}
+                </p>
+
+                <p className="mt-0.5 text-[11px] text-inkSoft">
+                  {(
+                    selectedFile.size /
+                    1024 /
+                    1024
+                  ).toFixed(2)}{" "}
+                  Mo
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={
+                  removeSelectedFile
+                }
+                className="shrink-0 text-[12px] font-semibold text-alert underline"
+              >
+                Retirer
+              </button>
+
+            </div>
+
+          </div>
+        )}
+
+        <p className="mt-2 text-[13px] text-inkSoft">
+          Taille maximale : 25 Mo.
+        </p>
+
+        {/* ===================================================
+            ENVOYER
+        ==================================================== */}
+
+        <button
+          type="button"
+          onClick={
+            handleUpload
+          }
+          disabled={
+            uploading ||
+            !selectedFile
+          }
+          className="btn btn-ink mt-4 w-full disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {uploading
+            ? "Envoi en cours..."
+            : "Envoyer le média"}
+        </button>
+
+        {error && (
+          <p className="mt-4 text-[14px] font-semibold text-alert">
+            {error}
+          </p>
+        )}
+
+        {success && (
+          <p className="mt-4 text-[14px] font-semibold text-green-700">
+            {success}
+          </p>
+        )}
+
       </div>
 
       {/* =====================================================
-          LISTE DES MÉDIAS
+          MÉDIAS EXISTANTS
       ====================================================== */}
 
-      <div>
+      <div className="mt-9">
 
         <div className="mb-4">
-          <h2 className="font-serif text-xl font-semibold">
-            Médias
+          <h2 className="font-serif text-[24px] font-semibold">
+            MÉDIAS EXISTANTS
           </h2>
 
-          <p className="mt-1 text-[13px] text-inkSoft">
-            {items.length} média
-            {items.length > 1 ? "s" : ""}
+          <p className="mt-1 text-[13.5px] text-inkSoft">
+            Modifie, masque, réorganise ou
+            supprime tes médias depuis
+            cette bibliothèque.
           </p>
         </div>
 
         {loading ? (
-          <div className="rounded-s border border-ink/10 bg-paper p-6 text-[13px] text-inkSoft">
-            Chargement des médias...
-          </div>
+          <p className="text-inkSoft">
+            Chargement...
+          </p>
         ) : sortedItems.length === 0 ? (
-          <div className="rounded-s border border-ink/10 bg-paper p-6 text-[13px] text-inkSoft">
-            Aucun média pour le moment.
+          <div className="rounded-m border border-ink/10 bg-bgAlt p-8 text-center">
+
+            <p className="font-semibold">
+              Aucun média envoyé pour
+              le moment.
+            </p>
+
+            <p className="mt-1 text-[13px] text-inkSoft">
+              Les photos et vidéos ajoutées
+              apparaîtront ici.
+            </p>
+
           </div>
         ) : (
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 
             {sortedItems.map(
-              (item, index) => (
-                <div
-                  key={item.id}
-                  className="overflow-hidden rounded-s border border-ink/10 bg-paper"
-                >
+              (item, index) => {
 
-                  {/* APERÇU */}
+                const isEditing =
+                  editingId === item.id;
 
-                  <div className="aspect-[16/10] bg-bgAlt">
+                const isFirst =
+                  index === 0;
 
-                    {item.kind ===
-                    "video" ? (
-                      <video
-                        src={item.url}
-                        controls
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <img
-                        src={item.url}
-                        alt={
-                          item.caption ||
-                          "Média AgroFarms237"
-                        }
-                        className="h-full w-full object-cover"
-                      />
-                    )}
+                const isLast =
+                  index ===
+                  sortedItems.length - 1;
 
-                  </div>
+                const displayedSiteLocation =
+                  item.site_location ||
+                  item.category ||
+                  "";
 
-                  <div className="p-4">
+                return (
+                  <div
+                    key={item.id}
+                    className="overflow-hidden rounded-m border border-ink/10 bg-paper"
+                  >
 
-                    {/* INFORMATIONS */}
+                    {/* APERÇU */}
 
-                    <div className="space-y-2">
+                    <div className="relative">
 
-                      <div className="flex flex-wrap gap-2">
-
-                        <span className="rounded-full bg-bgAlt px-2.5 py-1 text-[10.5px] font-semibold">
-                          {item.kind ===
-                          "photo"
-                            ? "Photo"
-                            : "Vidéo"}
-                        </span>
-
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-[10.5px] font-semibold ${
-                            item.published
-                              ? "bg-ink text-paper"
-                              : "bg-bgAlt text-inkSoft"
-                          }`}
-                        >
-                          {item.published
-                            ? "Publié"
-                            : "Masqué"}
-                        </span>
-
-                      </div>
-
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-inkSoft">
-                          Emplacement
-                        </p>
-
-                        <p className="mt-0.5 text-[13px] font-semibold">
-                          {getLocationLabel(
-                            item
-                          )}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-inkSoft">
-                          Galerie
-                        </p>
-
-                        <p className="mt-0.5 text-[13px]">
-                          {getGalleryLabel(
-                            item
-                          )}
-                        </p>
-                      </div>
-
-                      {item.caption && (
-                        <p className="text-[12.5px] text-inkSoft">
-                          {item.caption}
-                        </p>
+                      {item.kind ===
+                      "photo" ? (
+                        <img
+                          src={item.url}
+                          alt={
+                            item.caption ||
+                            "Média AgroFarms237"
+                          }
+                          className="aspect-square w-full object-cover"
+                        />
+                      ) : (
+                        <video
+                          src={item.url}
+                          className="aspect-square w-full object-cover"
+                          muted
+                          controls
+                        />
                       )}
+
+                      <div className="absolute left-2.5 top-2.5 rounded-full bg-ink px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-paper">
+                        {item.kind ===
+                        "photo"
+                          ? "Photo"
+                          : "Vidéo"}
+                      </div>
 
                     </div>
 
-                    {/* =================================================
-                        AFFICHAGE NORMAL
-                    ================================================== */}
+                    <div className="p-3.5">
 
-                    {editingId !== item.id ? (
-                      <>
+                      {/* EMPLACEMENT */}
 
-                        <div className="mt-4 grid grid-cols-2 gap-2">
+                      {displayedSiteLocation && (
+                        <p className="text-[11.5px] font-bold text-goldDeep">
+                          {CATEGORY_LABELS[
+                            displayedSiteLocation
+                          ] ||
+                            displayedSiteLocation}
+                        </p>
+                      )}
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              moveItem(
-                                item.id,
-                                "up"
-                              )
-                            }
-                            disabled={
-                              index === 0
-                            }
-                            className="rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12px] font-semibold disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            Monter
-                          </button>
+                      {!isEditing ? (
+                        <>
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              moveItem(
-                                item.id,
-                                "down"
-                              )
-                            }
-                            disabled={
-                              index ===
-                              sortedItems.length -
-                                1
-                            }
-                            className="rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12px] font-semibold disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            Descendre
-                          </button>
+                          {/* LÉGENDE */}
 
-                        </div>
+                          {item.caption ? (
+                            <p className="mt-1 text-[13px] text-inkSoft">
+                              {item.caption}
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-[12px] italic text-inkSoft">
+                              Aucune légende
+                            </p>
+                          )}
 
-                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          {/* GALERIE */}
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              startEditing(
-                                item
-                              )
-                            }
-                            className="rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt"
-                          >
-                            Modifier
-                          </button>
+                          <div className="mt-3 rounded-s border border-ink/10 bg-bgAlt p-2.5">
 
-                          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-s border border-ink/10 px-3 py-2 text-[12.5px] font-semibold">
+                            {item.gallery_enabled ? (
+                              <>
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-green-700">
+                                  Galerie publique
+                                </p>
 
-                            <input
-                              type="checkbox"
-                              checked={
-                                item.published
-                              }
-                              onChange={(event) =>
-                                togglePublished(
-                                  item.id,
-                                  event.target
-                                    .checked
-                                )
-                              }
-                            />
-
-                            {item.published
-                              ? "Publié"
-                              : "Masqué"}
-
-                          </label>
-
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            remove(item.id)
-                          }
-                          className="mt-2 w-full text-[12.5px] font-semibold text-alert underline"
-                        >
-                          Supprimer définitivement
-                        </button>
-
-                      </>
-                    ) : (
-                      /* =================================================
-                         MODE MODIFICATION
-                      ================================================== */
-
-                      <div className="mt-4 space-y-3">
-
-                        <div className="field">
-
-                          <label>
-                            Emplacement du site
-                          </label>
-
-                          <select
-                            value={
-                              editingSiteLocation
-                            }
-                            onChange={(event) =>
-                              setEditingSiteLocation(
-                                event.target
-                                  .value
-                              )
-                            }
-                          >
-
-                            <option value="">
-                              Aucun emplacement
-                            </option>
-
-                            {SITE_LOCATION_GROUPS.map(
-                              (group) => (
-                                <optgroup
-                                  key={
-                                    group.label
-                                  }
-                                  label={
-                                    group.label
-                                  }
-                                >
-                                  {group.options.map(
-                                    (
-                                      option
-                                    ) => (
-                                      <option
-                                        key={
-                                          option.value
-                                        }
-                                        value={
-                                          option.value
-                                        }
-                                      >
-                                        {
-                                          option.label
-                                        }
-                                      </option>
-                                    )
+                                <p className="mt-0.5 text-[12px] text-inkSoft">
+                                  {getGalleryLabel(
+                                    item
                                   )}
-                                </optgroup>
-                              )
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-[11.5px] text-inkSoft">
+                                Uniquement sur son
+                                emplacement du site
+                              </p>
                             )}
 
-                          </select>
+                          </div>
 
-                        </div>
+                          {/* MONTER / DESCENDRE */}
 
-                        <div className="field">
-
-                          <label>
-                            Légende
-                          </label>
-
-                          <input
-                            value={
-                              editingCaption
-                            }
-                            onChange={(event) =>
-                              setEditingCaption(
-                                event.target
-                                  .value
-                              )
-                            }
-                          />
-
-                        </div>
-
-                        {/* GALERIE */}
-
-                        <div className="rounded-s border border-ink/10 bg-bgAlt p-3">
-
-                          <p className="text-[12.5px] font-bold">
-                            Galerie publique
-                          </p>
-
-                          <div className="mt-2 flex gap-2">
+                          <div className="mt-3 flex gap-2">
 
                             <button
                               type="button"
                               onClick={() =>
-                                setEditingGalleryEnabled(
-                                  true
+                                moveItem(
+                                  item.id,
+                                  "up"
                                 )
                               }
-                              className={`flex-1 rounded-s border px-3 py-2 text-[11.5px] font-semibold ${
-                                editingGalleryEnabled
-                                  ? "border-ink bg-ink text-paper"
-                                  : "border-ink/15 bg-paper text-ink"
-                              }`}
+                              disabled={
+                                isFirst
+                              }
+                              className="flex-1 rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt disabled:cursor-not-allowed disabled:opacity-40"
                             >
-                              Oui
+                              Monter
                             </button>
 
                             <button
                               type="button"
-                              onClick={() => {
-                                setEditingGalleryEnabled(
-                                  false
-                                );
-                                setEditingGalleryCategory(
-                                  ""
-                                );
-                              }}
-                              className={`flex-1 rounded-s border px-3 py-2 text-[11.5px] font-semibold ${
-                                !editingGalleryEnabled
-                                  ? "border-ink bg-ink text-paper"
-                                  : "border-ink/15 bg-paper text-ink"
-                              }`}
+                              onClick={() =>
+                                moveItem(
+                                  item.id,
+                                  "down"
+                                )
+                              }
+                              disabled={
+                                isLast
+                              }
+                              className="flex-1 rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt disabled:cursor-not-allowed disabled:opacity-40"
                             >
-                              Non
+                              Descendre
                             </button>
 
                           </div>
 
-                          {editingGalleryEnabled && (
-                            <div className="mt-3 field">
+                          {/* MODIFIER / PUBLICATION */}
 
-                              <label>
-                                Rubrique de la Galerie
-                              </label>
+                          <div className="mt-2 grid grid-cols-2 gap-2">
 
-                              <select
-                                value={
-                                  editingGalleryCategory
+                            <button
+                              type="button"
+                              onClick={() =>
+                                startEditing(
+                                  item
+                                )
+                              }
+                              className="rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt"
+                            >
+                              Modifier
+                            </button>
+
+                            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-s border border-ink/10 px-3 py-2 text-[12.5px] font-semibold">
+
+                              <input
+                                type="checkbox"
+                                checked={
+                                  item.published
                                 }
-                                onChange={(
-                                  event
-                                ) =>
-                                  setEditingGalleryCategory(
-                                    event.target
-                                      .value
+                                onChange={(e) =>
+                                  togglePublished(
+                                    item.id,
+                                    e.target
+                                      .checked
                                   )
                                 }
+                              />
+
+                              {item.published
+                                ? "Publié"
+                                : "Masqué"}
+
+                            </label>
+
+                          </div>
+
+                          {/* SUPPRIMER */}
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              remove(
+                                item.id
+                              )
+                            }
+                            className="mt-2 w-full text-[12.5px] font-semibold text-alert underline"
+                          >
+                            Supprimer définitivement
+                          </button>
+
+                        </>
+                      ) : (
+
+                        /* =================================================
+                           MODE MODIFICATION
+                        ================================================== */
+
+                        <div className="mt-3 space-y-3">
+
+                          <div className="field">
+
+                            <label>
+                              Emplacement du site
+                            </label>
+
+                            <select
+                              value={
+                                editingSiteLocation
+                              }
+                              onChange={(e) =>
+                                setEditingSiteLocation(
+                                  e.target.value
+                                )
+                              }
+                            >
+
+                              <option value="">
+                                Aucun emplacement
+                              </option>
+
+                              {SITE_LOCATION_GROUPS.map(
+                                (group) => (
+                                  <optgroup
+                                    key={
+                                      group.label
+                                    }
+                                    label={
+                                      group.label
+                                    }
+                                  >
+                                    {group.options.map(
+                                      (
+                                        option
+                                      ) => (
+                                        <option
+                                          key={
+                                            option.value
+                                          }
+                                          value={
+                                            option.value
+                                          }
+                                        >
+                                          {
+                                            option.label
+                                          }
+                                        </option>
+                                      )
+                                    )}
+                                  </optgroup>
+                                )
+                              )}
+
+                            </select>
+
+                          </div>
+
+                          <div className="field">
+
+                            <label>
+                              Légende
+                            </label>
+
+                            <input
+                              value={
+                                editingCaption
+                              }
+                              onChange={(e) =>
+                                setEditingCaption(
+                                  e.target.value
+                                )
+                              }
+                            />
+
+                          </div>
+
+                          {/* GALERIE */}
+
+                          <div className="rounded-s border border-ink/10 bg-bgAlt p-3">
+
+                            <p className="text-[12.5px] font-bold">
+                              Galerie publique
+                            </p>
+
+                            <div className="mt-2 flex gap-2">
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEditingGalleryEnabled(
+                                    true
+                                  )
+                                }
+                                className={`flex-1 rounded-s border px-3 py-2 text-[11.5px] font-semibold ${
+                                  editingGalleryEnabled
+                                    ? "border-ink bg-ink text-paper"
+                                    : "border-ink/15 bg-paper text-ink"
+                                }`}
                               >
+                                Oui
+                              </button>
 
-                                <option value="">
-                                  Choisir une rubrique
-                                </option>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingGalleryEnabled(
+                                    false
+                                  );
 
-                                {GALLERY_CATEGORIES.map(
-                                  (
-                                    category
-                                  ) => (
-                                    <option
-                                      key={
-                                        category.value
-                                      }
-                                      value={
-                                        category.value
-                                      }
-                                    >
-                                      {
-                                        category.label
-                                      }
-                                    </option>
-                                  )
-                                )}
-
-                              </select>
+                                  setEditingGalleryCategory(
+                                    ""
+                                  );
+                                }}
+                                className={`flex-1 rounded-s border px-3 py-2 text-[11.5px] font-semibold ${
+                                  !editingGalleryEnabled
+                                    ? "border-ink bg-ink text-paper"
+                                    : "border-ink/15 bg-paper text-ink"
+                                }`}
+                              >
+                                Non
+                              </button>
 
                             </div>
-                          )}
+
+                            {editingGalleryEnabled && (
+                              <div className="mt-3 field">
+
+                                <label>
+                                  Rubrique de la Galerie
+                                </label>
+
+                                <select
+                                  value={
+                                    editingGalleryCategory
+                                  }
+                                  onChange={(e) =>
+                                    setEditingGalleryCategory(
+                                      e.target.value
+                                    )
+                                  }
+                                >
+
+                                  <option value="">
+                                    Choisir une rubrique
+                                  </option>
+
+                                  {GALLERY_CATEGORIES.map(
+                                    (
+                                      galleryCategory
+                                    ) => (
+                                      <option
+                                        key={
+                                          galleryCategory.value
+                                        }
+                                        value={
+                                          galleryCategory.value
+                                        }
+                                      >
+                                        {
+                                          galleryCategory.label
+                                        }
+                                      </option>
+                                    )
+                                  )}
+
+                                </select>
+
+                              </div>
+                            )}
+
+                          </div>
+
+                          {/* ACTIONS */}
+
+                          <div className="flex gap-2">
+
+                            <button
+                              type="button"
+                              onClick={
+                                saveEditing
+                              }
+                              className="btn btn-ink flex-1"
+                            >
+                              Enregistrer
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={
+                                cancelEditing
+                              }
+                              className="flex-1 rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt"
+                            >
+                              Annuler
+                            </button>
+
+                          </div>
 
                         </div>
+                      )}
 
-                        {/* ACTIONS */}
-
-                        <div className="flex gap-2">
-
-                          <button
-                            type="button"
-                            onClick={
-                              saveEditing
-                            }
-                            className="btn btn-ink flex-1"
-                          >
-                            Enregistrer
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={
-                              cancelEditing
-                            }
-                            className="flex-1 rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt"
-                          >
-                            Annuler
-                          </button>
-
-                        </div>
-
-                      </div>
-                    )}
-
+                    </div>
                   </div>
-                </div>
-              )
+                );
+              }
             )}
 
           </div>
