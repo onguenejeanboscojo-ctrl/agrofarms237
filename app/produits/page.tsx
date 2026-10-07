@@ -60,12 +60,8 @@ async function getProducts(): Promise<Product[]> {
       .select(
         "id,name,price_standard,price_bulk,bulk_min_kg,stock_status,stock_quantity,stock_threshold,category,product_group,variant,unit,display_order"
       )
-      .order("display_order", {
-        ascending: true,
-      })
-      .order("name", {
-        ascending: true,
-      });
+      .order("display_order", { ascending: true })
+      .order("name", { ascending: true });
 
     if (error) return [];
 
@@ -83,9 +79,7 @@ async function getMedia(): Promise<MediaItem[]> {
       .eq("published", true)
       .eq("kind", "photo")
       .order("position")
-      .order("created_at", {
-        ascending: false,
-      });
+      .order("created_at", { ascending: false });
 
     return (data || []) as MediaItem[];
   } catch {
@@ -93,191 +87,331 @@ async function getMedia(): Promise<MediaItem[]> {
   }
 }
 
-/**
- * Retourne les emplacements média compatibles avec chaque produit.
- *
- * Le nouvel emplacement site_location est prioritaire.
- * category reste accepté pour assurer la compatibilité
- * avec les anciens médias.
- */
-function mediaCategories(product: Product) {
-  const group = (
-    product.product_group || ""
-  ).toLowerCase().trim();
 
-  const variant = (
-    product.variant || ""
-  ).toLowerCase().trim();
+// ============================================================
+// NORMALISATION
+// ============================================================
 
-  const name = (
-    product.name || ""
-  ).toLowerCase().trim();
+function normalize(value: string | null | undefined) {
+  return (value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
 
-  // PISCICULTURE
+
+// ============================================================
+// EMPLACEMENTS MÉDIA D'UN PRODUIT
+// ============================================================
+//
+// Le nouveau système utilise site_location.
+//
+// Les anciennes catégories sont conservées en fallback afin
+// de ne pas casser les photos déjà enregistrées dans Supabase.
+//
+
+function mediaLocations(product: Product): string[] {
+  const group = normalize(product.product_group);
+  const variant = normalize(product.variant);
+  const name = normalize(product.name);
+
+  // ==========================================================
+  // SILURE
+  // ==========================================================
+
   if (group === "silure") {
-    return [
-      "produit_silure_frais",
-      "produit_poisson_fume",
-      "elevage_silure",
-      "silure",
-    ];
+    if (
+      variant.includes("fum") ||
+      name.includes("fume")
+    ) {
+      return ["produit_silure_fume"];
+    }
+
+    return ["produit_silure_frais"];
   }
+
+  // ==========================================================
+  // CARPE
+  // ==========================================================
 
   if (group === "carpe") {
-    return [
-      "produit_carpe",
-      "produit_carpe_frais",
-      "produit_carpe_fume",
-      "carpe",
-    ];
+    return ["produit_carpe_fraiche"];
   }
 
+  // ==========================================================
   // PORC
-  if (
-    group === "porc" &&
-    variant.includes("fum")
-  ) {
-    return [
-      "produit_porc_fume",
-      "porc",
-    ];
-  }
+  // ==========================================================
 
   if (group === "porc") {
-    return [
-      "produit_porc_frais",
-      "produit_porcelet",
-      "elevage_porcs",
-      "porc",
-    ];
+    if (
+      variant.includes("fum") ||
+      name.includes("fume")
+    ) {
+      return ["produit_porc_fume"];
+    }
+
+    if (
+      variant.includes("entier") ||
+      name.includes("entier")
+    ) {
+      return ["produit_porc_entier"];
+    }
+
+    if (
+      variant.includes("frais") ||
+      name.includes("frais")
+    ) {
+      return ["produit_porc_frais"];
+    }
+
+    return ["produit_porc_frais"];
   }
 
-  // POULET
+  // ==========================================================
+  // PORCELET
+  // ==========================================================
+
   if (
-    group === "poulet de chair" &&
-    variant.includes("fum")
+    group === "porcelet" ||
+    name.includes("porcelet")
   ) {
-    return [
-      "produit_poulet_fume",
-      "poulet",
-    ];
+    return ["produit_porcelet"];
   }
 
-  if (group === "poulet de chair") {
-    return [
-      "produit_poulet_frais",
-      "produit_poulet_vivant",
-      "elevage_chair",
-      "poulet",
-    ];
-  }
+  // ==========================================================
+  // POULET DE CHAIR
+  // ==========================================================
 
-  // ŒUFS
-  //
-  // Nouveau emplacement officiel :
-  // produit_alveoles_oeufs
-  //
-  // On garde aussi les anciennes valeurs
-  // pour ne pas casser les anciennes photos.
   if (
-    group === "œufs" ||
+    group === "poulet de chair" ||
+    group === "poulet"
+  ) {
+    if (
+      variant.includes("fum") ||
+      name.includes("fume")
+    ) {
+      return ["produit_poulet_fume"];
+    }
+
+    if (
+      variant.includes("vivant") ||
+      name.includes("vivant")
+    ) {
+      return ["produit_poulet_vivant"];
+    }
+
+    if (
+      variant.includes("frais") ||
+      variant.includes("nettoye") ||
+      name.includes("frais") ||
+      name.includes("nettoye")
+    ) {
+      return ["produit_poulet_frais_nettoye"];
+    }
+
+    return ["produit_poulet_frais_nettoye"];
+  }
+
+  // ==========================================================
+  // ŒUFS / ALVÉOLES
+  // ==========================================================
+
+  if (
     group === "oeufs" ||
-    group === "œuf" ||
     group === "oeuf" ||
-    name.includes("œuf") ||
-    name.includes("oeuf")
+    name.includes("alveole") ||
+    name.includes("alvéole") ||
+    variant.includes("alveole") ||
+    variant.includes("alvéole")
   ) {
-    return [
-      "produit_alveoles_oeufs",
-      "oeufs",
-      "œufs",
-    ];
+    return ["produit_alveoles_oeufs"];
+  }
+
+  // ==========================================================
+  // POUSSINS
+  // ==========================================================
+
+  if (
+    group === "poussins" ||
+    name.includes("poussin")
+  ) {
+    return ["produit_poussins"];
+  }
+
+  // ==========================================================
+  // ALEVINS
+  // ==========================================================
+
+  if (
+    group === "alevins" ||
+    name.includes("alevin")
+  ) {
+    return ["produit_alevins"];
   }
 
   return [];
 }
 
+
+// ============================================================
+// ANCIENNES CATÉGORIES — FALLBACK
+// ============================================================
+//
+// Ces valeurs permettent aux anciennes photos de continuer
+// à fonctionner tant qu'elles n'ont pas encore été migrées
+// vers site_location.
+//
+
+function legacyMediaCategories(product: Product): string[] {
+  const group = normalize(product.product_group);
+  const variant = normalize(product.variant);
+  const name = normalize(product.name);
+
+  // Silure
+  if (group === "silure") {
+    return ["elevage_silure", "silure"];
+  }
+
+  // Carpe
+  if (group === "carpe") {
+    return ["carpe", "produit_carpe"];
+  }
+
+  // Porc fumé
+  if (
+    group === "porc" &&
+    (variant.includes("fum") || name.includes("fume"))
+  ) {
+    return ["produit_porc_fume"];
+  }
+
+  // Porc
+  if (group === "porc") {
+    return ["porc", "elevage_porc"];
+  }
+
+  // Poulet fumé
+  if (
+    (group === "poulet de chair" || group === "poulet") &&
+    (variant.includes("fum") || name.includes("fume"))
+  ) {
+    return ["produit_poulet_fume"];
+  }
+
+  // Poulet
+  if (
+    group === "poulet de chair" ||
+    group === "poulet"
+  ) {
+    return [
+      "produit_poulet_frais",
+      "poulet",
+    ];
+  }
+
+  // Œufs
+  if (
+    group === "oeufs" ||
+    group === "oeuf"
+  ) {
+    return [
+      "oeufs",
+      "œufs",
+    ];
+  }
+
+  // Porcelets
+  if (
+    group === "porcelet" ||
+    name.includes("porcelet")
+  ) {
+    return ["produit_porcelet"];
+  }
+
+  // Poussins
+  if (
+    group === "poussins" ||
+    name.includes("poussin")
+  ) {
+    return ["produit_poussins"];
+  }
+
+  // Alevins
+  if (
+    group === "alevins" ||
+    name.includes("alevin")
+  ) {
+    return ["produit_alevins"];
+  }
+
+  return [];
+}
+
+
+// ============================================================
+// RÉCUPÉRATION DES IMAGES
+// ============================================================
+
 function getImages(
   product: Product,
   media: MediaItem[]
 ) {
-  const categories = mediaCategories(product);
+  const locations = mediaLocations(product);
+  const legacyCategories = legacyMediaCategories(product);
 
-  if (!categories.length) {
+  if (
+    locations.length === 0 &&
+    legacyCategories.length === 0
+  ) {
     return [];
   }
 
   return media
     .filter((item) => {
-      const location =
-        item.site_location || item.category;
+      // ------------------------------------------------------
+      // NOUVEAU SYSTÈME
+      // ------------------------------------------------------
+      //
+      // Dès qu'un média possède un site_location,
+      // celui-ci devient la référence principale.
+      //
 
-      return (
-        location &&
-        categories.includes(location)
-      );
+      if (
+        item.site_location &&
+        locations.includes(item.site_location)
+      ) {
+        return true;
+      }
+
+      // ------------------------------------------------------
+      // ANCIEN SYSTÈME
+      // ------------------------------------------------------
+      //
+      // On utilise category uniquement pour les anciens médias
+      // qui n'ont pas encore de site_location.
+      //
+
+      if (
+        !item.site_location &&
+        item.category &&
+        legacyCategories.includes(item.category)
+      ) {
+        return true;
+      }
+
+      return false;
     })
     .map((item) => item.url);
 }
 
-function getProductDisplayName(product: Product) {
-  const group = (
-    product.product_group || ""
-  ).toLowerCase();
 
-  const name = (
-    product.name || ""
-  ).toLowerCase();
-
-  const variant = (
-    product.variant || ""
-  ).toLowerCase();
-
-  if (
-    group === "œufs" ||
-    group === "oeufs" ||
-    group === "œuf" ||
-    group === "oeuf" ||
-    name.includes("œuf") ||
-    name.includes("oeuf") ||
-    variant.includes("œuf") ||
-    variant.includes("oeuf")
-  ) {
-    return "Alvéoles d’œufs";
-  }
-
-  return product.variant || product.name;
-}
-
-function getProductDescription(product: Product) {
-  const group = (
-    product.product_group || ""
-  ).toLowerCase();
-
-  const name = (
-    product.name || ""
-  ).toLowerCase();
-
-  if (
-    group === "œufs" ||
-    group === "oeufs" ||
-    group === "œuf" ||
-    group === "oeuf" ||
-    name.includes("œuf") ||
-    name.includes("oeuf")
-  ) {
-    return "Œufs conditionnés en alvéoles, selon les disponibilités de notre activité avicole.";
-  }
-
-  return `${product.variant || product.name} · vendu au ${
-    product.unit || "format indiqué"
-  }.`;
-}
+// ============================================================
+// STATUT
+// ============================================================
 
 function statusLabel(status: string) {
-  if (status === "disponible") {
-    return "Disponible";
-  }
+  if (status === "disponible") return "Disponible";
 
   if (status === "stock_limite") {
     return "Stock limité";
@@ -285,6 +419,7 @@ function statusLabel(status: string) {
 
   return "Indisponible";
 }
+
 
 function statusClass(status: string) {
   if (status === "disponible") {
@@ -298,11 +433,13 @@ function statusClass(status: string) {
   return "border-ink/10 bg-ink/5 text-inkSoft";
 }
 
+
+// ============================================================
+// PRIX
+// ============================================================
+
 function priceText(product: Product) {
-  if (
-    typeof product.price_standard !==
-    "number"
-  ) {
+  if (typeof product.price_standard !== "number") {
     return "Prix à confirmer";
   }
 
@@ -310,9 +447,8 @@ function priceText(product: Product) {
     ? `/${product.unit}`
     : "";
 
-  const standard = `${formatFCFA(
-    product.price_standard
-  )}${unit}`;
+  const standard =
+    `${formatFCFA(product.price_standard)}${unit}`;
 
   if (
     typeof product.price_bulk === "number" &&
@@ -328,36 +464,39 @@ function priceText(product: Product) {
   return standard;
 }
 
+
+// ============================================================
+// COMMANDE
+// ============================================================
+
 function toOrderProduct(
   product: Product
 ): HomeOrderProduct {
   return {
     id: product.id,
-    name: getProductDisplayName(product),
-    description: getProductDescription(product),
+    name: product.name,
+    description: null,
     status: product.stock_status,
     price: product.price_standard,
     price_unit: product.unit,
-
     price_1_label: null,
     price_1: product.price_standard,
-
     price_2_label:
       typeof product.bulk_min_kg === "number"
         ? `À partir de ${product.bulk_min_kg} kg`
         : null,
-
     price_2: product.price_bulk,
-
     order_enabled:
-      product.stock_status !==
-        "indisponible" &&
-      typeof product.price_standard ===
-        "number",
-
+      product.stock_status !== "indisponible" &&
+      typeof product.price_standard === "number",
     order_options: [],
   };
 }
+
+
+// ============================================================
+// IMAGE PRODUIT
+// ============================================================
 
 function ProductImage({
   images,
@@ -393,6 +532,11 @@ function ProductImage({
   );
 }
 
+
+// ============================================================
+// CARTE PRODUIT
+// ============================================================
+
 function ProductCard({
   product,
   media,
@@ -406,22 +550,17 @@ function ProductCard({
   );
 
   const hasPrice =
-    typeof product.price_standard ===
-    "number";
+    typeof product.price_standard === "number";
 
   const canOrder =
-    product.stock_status !==
-      "indisponible" &&
+    product.stock_status !== "indisponible" &&
     hasPrice;
-
-  const displayName =
-    getProductDisplayName(product);
 
   return (
     <article className="overflow-hidden rounded-l border border-ink/10 bg-paper shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg">
       <ProductImage
         images={images}
-        title={displayName}
+        title={product.name}
       />
 
       <div className="p-6 md:p-7">
@@ -448,13 +587,12 @@ function ProductCard({
         </p>
 
         <h3 className="mt-1 font-serif text-[28px] font-semibold text-ink">
-          {displayName}
+          {product.variant || product.name}
         </h3>
 
         <p className="mt-3 text-[14px] leading-6 text-inkSoft">
-          {getProductDescription(
-            product
-          )}
+          {product.variant} · vendu au{" "}
+          {product.unit || "format indiqué"}.
         </p>
 
         <div className="mt-5 rounded-2xl bg-bgAlt px-4 py-4">
@@ -470,9 +608,7 @@ function ProductCard({
         <div className="mt-5">
           {canOrder ? (
             <HomeProductOrderModal
-              product={toOrderProduct(
-                product
-              )}
+              product={toOrderProduct(product)}
               useDefaultOptions={false}
             />
           ) : (
@@ -492,6 +628,11 @@ function ProductCard({
   );
 }
 
+
+// ============================================================
+// PAGE PRODUITS
+// ============================================================
+
 export default async function ProduitsPage() {
   const [
     products,
@@ -502,13 +643,11 @@ export default async function ProduitsPage() {
   ]);
 
   const categories =
-    CATEGORY_ORDER.filter(
-      (category) =>
-        products.some(
-          (product) =>
-            product.category ===
-            category
-        )
+    CATEGORY_ORDER.filter((category) =>
+      products.some(
+        (product) =>
+          product.category === category
+      )
     );
 
   const availableCount =
@@ -522,7 +661,10 @@ export default async function ProduitsPage() {
 
   return (
     <main>
-      {/* HERO */}
+      {/* ======================================================
+          HERO
+      ====================================================== */}
+
       <section className="relative overflow-hidden bg-ink px-5 py-[100px] text-paper">
         <div className="absolute inset-0 bg-[radial-gradient(120%_140%_at_15%_0%,#1D4B44_0%,#0E2622_60%,#081815_100%)]" />
 
@@ -548,16 +690,17 @@ export default async function ProduitsPage() {
 
             <span className="rounded-full border border-paper/15 bg-paper/5 px-4 py-2">
               {availableCount} disponible
-              {availableCount > 1
-                ? "s"
-                : ""}{" "}
-              à la commande
+              {availableCount > 1 ? "s" : ""} à la commande
             </span>
           </div>
         </div>
       </section>
 
-      {/* CATALOGUE */}
+
+      {/* ======================================================
+          CATALOGUE
+      ====================================================== */}
+
       <section className="px-5 py-[72px]">
         <div className="mx-auto max-w-[1180px] space-y-20">
           {categories.map(
@@ -595,9 +738,15 @@ export default async function ProduitsPage() {
                     {categoryProducts.map(
                       (product) => (
                         <ProductCard
-                          key={product.id}
-                          product={product}
-                          media={media}
+                          key={
+                            product.id
+                          }
+                          product={
+                            product
+                          }
+                          media={
+                            media
+                          }
                         />
                       )
                     )}
@@ -609,6 +758,11 @@ export default async function ProduitsPage() {
         </div>
       </section>
 
+
+      {/* ======================================================
+          CATALOGUE VIDE
+      ====================================================== */}
+
       {products.length === 0 && (
         <section className="px-5 py-20 text-center">
           <p className="text-inkSoft">
@@ -617,7 +771,11 @@ export default async function ProduitsPage() {
         </section>
       )}
 
-      {/* CTA */}
+
+      {/* ======================================================
+          FOOTER CTA
+      ====================================================== */}
+
       <section className="bg-ink px-5 py-[72px] text-paper">
         <div className="mx-auto max-w-[850px] text-center">
           <span className="text-[13px] font-bold text-gold">
