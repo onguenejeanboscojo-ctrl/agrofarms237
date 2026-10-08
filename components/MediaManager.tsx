@@ -211,7 +211,16 @@ export default function MediaManager() {
 
       return {
         ...group,
-        options: productSiteOptions,
+        // Keep the dedicated visual slots for the Products page,
+        // then append the dynamic product-photo slots from the catalogue.
+        options: Array.from(
+          new Map(
+            [...group.options, ...productSiteOptions].map((item) => [
+              item.value,
+              item,
+            ])
+          ).values()
+        ),
       };
     });
   }, [productSiteOptions]);
