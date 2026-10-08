@@ -38,65 +38,24 @@ async function getHeroImage(): Promise<string | null> {
   }
 }
 
-async function getFarmImage(): Promise<string | null> {
-  try {
-    const { data } = await supabaseAdmin()
-      .from("media")
-      .select("url")
-      .eq("published", true)
-      .eq("kind", "photo")
-      .eq("site_location", "vie_ferme")
-      .order("position", { ascending: true })
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    return data?.url || null;
-  } catch {
-    return null;
-  }
-}
-
 export default async function Home() {
-  const [heroImage, farmImage] = await Promise.all([
-    getHeroImage(),
-    getFarmImage(),
-  ]);
-
+  const heroImage = await getHeroImage();
   const heroBackgroundImage =
     heroImage ||
     "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2200&q=90";
 
-  const farmBackgroundImage =
-    farmImage ||
-    "https://images.unsplash.com/photo-1500076656116-558758c991c1?auto=format&fit=crop&w=1800&q=85";
+  const farmBackgroundImage = "/images/notre-ferme-agrofarms.jpg";
 
   return (
     <main className="min-h-screen bg-[#F7F5EF] text-[#173D2D]">
-      {/* =========================================================
-          HERO
-      ========================================================== */}
-      <section
-        id="accueil"
-        className="px-3 pb-3 pt-3 sm:px-5 lg:px-7"
-      >
+      {/* HERO */}
+      <section id="accueil" className="px-3 pb-3 pt-3 sm:px-5 lg:px-7">
         <div
           className="relative mx-auto flex min-h-[650px] max-w-[1500px] items-end overflow-hidden rounded-[30px] bg-[#173D2D] bg-cover bg-center sm:min-h-[720px] lg:min-h-[780px]"
           style={{
-            backgroundImage: `
-              linear-gradient(
-                90deg,
-                rgba(8,29,20,0.96) 0%,
-                rgba(8,29,20,0.91) 28%,
-                rgba(8,29,20,0.70) 48%,
-                rgba(8,29,20,0.28) 72%,
-                rgba(8,29,20,0.08) 100%
-              ),
-              url("${heroBackgroundImage}")
-            `,
+            backgroundImage: `linear-gradient(90deg, rgba(8,29,20,0.96) 0%, rgba(8,29,20,0.91) 28%, rgba(8,29,20,0.70) 48%, rgba(8,29,20,0.28) 72%, rgba(8,29,20,0.08) 100%), url("${heroBackgroundImage}")`,
           }}
         >
-          {/* subtle top frame */}
           <div className="absolute inset-x-0 top-0 h-px bg-white/15" />
 
           <div className="relative z-10 w-full px-7 pb-10 pt-28 sm:px-12 sm:pb-14 lg:px-20 lg:pb-16">
@@ -139,33 +98,25 @@ export default async function Home() {
               </div>
             </div>
 
-            {/* Hero bottom navigation */}
             <div className="mt-14 flex flex-wrap items-center gap-x-8 gap-y-4 border-t border-white/20 pt-6">
               <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
                 Une ferme camerounaise
               </span>
-
               <span className="h-px w-8 bg-[#D5B16D]" />
-
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-white">
                 Pisciculture
               </span>
-
               <span className="text-xs text-white/30">/</span>
-
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-white">
                 Élevage
               </span>
-
               <span className="text-xs text-white/30">/</span>
-
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-white">
                 Agriculture
               </span>
             </div>
           </div>
 
-          {/* Scroll marker */}
           <a
             href="#intro"
             aria-label="Découvrir la suite"
@@ -177,9 +128,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* =========================================================
-          INTRO — AGROFARMS237 EN UN REGARD
-      ========================================================== */}
+      {/* INTRO */}
       <section
         id="intro"
         className="mx-auto max-w-[1320px] px-5 py-16 sm:px-8 lg:px-10 lg:py-20"
@@ -192,10 +141,7 @@ export default async function Home() {
 
             <h2 className="max-w-[720px] text-[clamp(2.4rem,5vw,4.7rem)] font-semibold leading-[1.01] tracking-[-0.04em]">
               Une ferme qui se construit,
-              <span className="font-light italic">
-                {" "}
-                production après production.
-              </span>
+              <span className="font-light italic"> production après production.</span>
             </h2>
           </div>
 
@@ -215,90 +161,65 @@ export default async function Home() {
           </div>
         </div>
 
-        {/* Key facts */}
         <div className="mt-14 grid border-y border-[#173D2D]/10 sm:grid-cols-3">
           <div className="border-b border-[#173D2D]/10 px-1 py-7 sm:border-b-0 sm:border-r sm:px-7">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B7863D]">
-              01
-            </p>
-            <h3 className="mt-3 text-lg font-semibold">
-              Pisciculture
-            </h3>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B7863D]">01</p>
+            <h3 className="mt-3 text-lg font-semibold">Pisciculture</h3>
             <p className="mt-2 text-sm leading-6 text-[#718074]">
-              Une activité déjà développée autour de la production de
-              silure.
+              Une activité déjà développée autour de la production de silure.
             </p>
           </div>
 
           <div className="border-b border-[#173D2D]/10 px-1 py-7 sm:border-b-0 sm:border-r sm:px-7">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B7863D]">
-              02
-            </p>
-            <h3 className="mt-3 text-lg font-semibold">
-              Élevage
-            </h3>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B7863D]">02</p>
+            <h3 className="mt-3 text-lg font-semibold">Élevage</h3>
             <p className="mt-2 text-sm leading-6 text-[#718074]">
-              Une diversification progressive vers plusieurs productions
-              animales.
+              Une diversification progressive vers plusieurs productions animales.
             </p>
           </div>
 
           <div className="px-1 py-7 sm:px-7">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B7863D]">
-              03
-            </p>
-            <h3 className="mt-3 text-lg font-semibold">
-              Agriculture
-            </h3>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B7863D]">03</p>
+            <h3 className="mt-3 text-lg font-semibold">Agriculture</h3>
             <p className="mt-2 text-sm leading-6 text-[#718074]">
-              Des espaces cultivables intégrés à la vision de développement
-              de la ferme.
+              Des espaces cultivables intégrés à la vision de développement de la ferme.
             </p>
           </div>
         </div>
       </section>
 
-      {/* =========================================================
-          PRODUITS
-      ========================================================== */}
-      <section
-        id="produits"
-        className="scroll-mt-10 bg-[#EEEAE0] py-4"
-      >
+      {/* PRODUITS */}
+      <section id="produits" className="scroll-mt-10 bg-[#EEEAE0] py-4">
         <HomeProductsSection />
       </section>
 
-      {/* =========================================================
-          NOTRE FERME — IMAGE + STORY
-      ========================================================== */}
+      {/* NOTRE FERME */}
       <section
         id="ferme"
         className="mx-auto max-w-[1320px] scroll-mt-10 px-5 py-20 sm:px-8 lg:px-10 lg:py-28"
       >
         <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-20">
-          {/* Image */}
           <div className="relative min-h-[480px] overflow-hidden rounded-[28px] bg-[#173D2D] sm:min-h-[600px]">
             <img
               src={farmBackgroundImage}
-              alt="La ferme Agrofarms237"
+              alt="Illustration d’une ferme agricole intégrant pisciculture et élevage"
               className="absolute inset-0 h-full w-full object-cover"
             />
 
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0C281C]/85 via-[#0C281C]/15 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0C281C]/90 via-[#0C281C]/20 to-transparent" />
 
             <div className="absolute bottom-7 left-7 right-7 sm:bottom-9 sm:left-9">
               <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#E8C98A]">
                 Notre ferme
               </p>
 
-              <p className="mt-3 max-w-[430px] text-xl font-semibold leading-tight text-white sm:text-2xl">
-                Une exploitation réelle, développée progressivement autour
-                de plusieurs activités agricoles.
+              <p className="mt-3 max-w-[500px] text-xl font-semibold leading-tight text-white sm:text-2xl">
+                Une exploitation réelle, développée progressivement autour de
+                plusieurs activités agricoles.
               </p>
             </div>
           </div>
 
-          {/* Content */}
           <div>
             <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.28em] text-[#B7863D]">
               Une ferme en développement
@@ -306,10 +227,7 @@ export default async function Home() {
 
             <h2 className="text-[clamp(2.5rem,5vw,4.8rem)] font-semibold leading-[1] tracking-[-0.04em]">
               Production après
-              <span className="font-light italic">
-                {" "}
-                production.
-              </span>
+              <span className="font-light italic"> production.</span>
             </h2>
 
             <p className="mt-7 max-w-[580px] text-base leading-8 text-[#627166] sm:text-lg">
@@ -319,9 +237,9 @@ export default async function Home() {
             </p>
 
             <p className="mt-5 max-w-[580px] text-base leading-8 text-[#627166]">
-              La pisciculture constitue aujourd’hui le point de départ de
-              cette aventure. L’élevage porcin, l’aviculture et l’agriculture
-              font partie de la trajectoire de développement de la ferme.
+              La pisciculture constitue aujourd’hui le point de départ de cette
+              aventure. L’élevage porcin, l’aviculture et l’agriculture font
+              partie de la trajectoire de développement de la ferme.
             </p>
 
             <a
@@ -334,9 +252,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* =========================================================
-          ENGAGEMENTS
-      ========================================================== */}
+      {/* ENGAGEMENTS */}
       <section className="bg-[#173D2D] text-white">
         <div className="mx-auto max-w-[1320px] px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
           <div className="grid gap-14 lg:grid-cols-[0.8fr_1.2fr] lg:gap-24">
@@ -347,10 +263,7 @@ export default async function Home() {
 
               <h2 className="max-w-[520px] text-[clamp(2.4rem,5vw,4.6rem)] font-semibold leading-[1.02] tracking-[-0.04em]">
                 Construire quelque chose qui
-                <span className="font-light italic text-[#E8C98A]">
-                  {" "}
-                  dure.
-                </span>
+                <span className="font-light italic text-[#E8C98A]"> dure.</span>
               </h2>
 
               <p className="mt-6 max-w-[500px] text-base leading-8 text-white/65">
@@ -378,10 +291,7 @@ export default async function Home() {
                   </span>
 
                   <div>
-                    <h3 className="text-xl font-semibold sm:text-2xl">
-                      {item.title}
-                    </h3>
-
+                    <h3 className="text-xl font-semibold sm:text-2xl">{item.title}</h3>
                     <p className="mt-3 max-w-[600px] text-sm leading-7 text-white/60 sm:text-base">
                       {item.text}
                     </p>
@@ -393,9 +303,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* =========================================================
-          PROFESSIONNELS / PARTENAIRES
-      ========================================================== */}
+      {/* PROFESSIONNELS / PARTENAIRES */}
       <section className="mx-auto max-w-[1320px] px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
         <div className="max-w-[700px]">
           <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.28em] text-[#B7863D]">
@@ -404,23 +312,20 @@ export default async function Home() {
 
           <h2 className="text-[clamp(2.4rem,5vw,4.6rem)] font-semibold leading-[1.02] tracking-[-0.04em]">
             Vous souhaitez
-            <span className="font-light italic">
-              {" "}
-              aller plus loin ?
-            </span>
+            <span className="font-light italic"> aller plus loin ?</span>
           </h2>
 
           <p className="mt-6 max-w-[620px] text-base leading-8 text-[#627166] sm:text-lg">
-            Que vous soyez professionnel à la recherche d’un
-            approvisionnement régulier ou partenaire intéressé par le
-            développement de la ferme, Agrofarms237 ouvre la discussion.
+            Que vous soyez professionnel à la recherche d’un approvisionnement
+            régulier ou partenaire intéressé par le développement de la ferme,
+            Agrofarms237 ouvre la discussion.
           </p>
         </div>
 
         <div className="mt-12 grid gap-5 md:grid-cols-2">
           <a
             href="/professionnels"
-            className="group relative overflow-hidden rounded-[26px] bg-[#173D2D] p-8 text-white transition duration-300 hover:-translate-y-1 sm:p-10"
+            className="group rounded-[26px] bg-[#173D2D] p-8 text-white transition duration-300 hover:-translate-y-1 sm:p-10"
           >
             <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#E8C98A]">
               Professionnels
@@ -442,7 +347,7 @@ export default async function Home() {
 
           <a
             href="/partenaires"
-            className="group relative overflow-hidden rounded-[26px] border border-[#173D2D]/10 bg-[#EEEAE0] p-8 transition duration-300 hover:-translate-y-1 sm:p-10"
+            className="group rounded-[26px] border border-[#173D2D]/10 bg-[#EEEAE0] p-8 transition duration-300 hover:-translate-y-1 sm:p-10"
           >
             <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#B7863D]">
               Partenaires
@@ -464,21 +369,12 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* =========================================================
-          FINAL CTA
-      ========================================================== */}
+      {/* FINAL CTA */}
       <section className="px-3 pb-3 sm:px-5 lg:px-7">
         <div
           className="mx-auto max-w-[1500px] overflow-hidden rounded-[30px] bg-cover bg-center"
           style={{
-            backgroundImage: `
-              linear-gradient(
-                90deg,
-                rgba(10,38,27,0.96),
-                rgba(10,38,27,0.80)
-              ),
-              url("${heroBackgroundImage}")
-            `,
+            backgroundImage: `linear-gradient(90deg, rgba(10,38,27,0.96), rgba(10,38,27,0.80)), url("${heroBackgroundImage}")`,
           }}
         >
           <div className="px-7 py-16 sm:px-12 sm:py-20 lg:px-20 lg:py-24">
@@ -489,10 +385,7 @@ export default async function Home() {
 
               <h2 className="text-[clamp(2.5rem,5vw,5rem)] font-semibold leading-[1] tracking-[-0.04em] text-white">
                 De la production
-                <span className="font-light italic text-[#E8C98A]">
-                  {" "}
-                  à la table.
-                </span>
+                <span className="font-light italic text-[#E8C98A]"> à la table.</span>
               </h2>
 
               <p className="mt-6 max-w-[620px] text-base leading-8 text-white/70 sm:text-lg">
@@ -520,16 +413,10 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* =========================================================
-          FOOTER
-      ========================================================== */}
-      <footer
-        id="contact"
-        className="mt-12 bg-[#123426] px-5 py-14 text-white sm:px-8 lg:px-10 lg:py-18"
-      >
+      {/* FOOTER */}
+      <footer id="contact" className="mt-12 bg-[#123426] px-5 py-14 text-white sm:px-8 lg:px-10 lg:py-18">
         <div className="mx-auto max-w-[1320px]">
           <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-[1.3fr_0.7fr_1fr] lg:gap-20">
-            {/* BRAND */}
             <div>
               <div className="flex items-center gap-4">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#E8C98A] text-2xl font-bold text-[#E8C98A]">
@@ -538,10 +425,8 @@ export default async function Home() {
 
                 <div>
                   <p className="text-2xl font-bold tracking-tight">
-                    AGROFARMS
-                    <span className="text-[#E8C98A]">237</span>
+                    AGROFARMS<span className="text-[#E8C98A]">237</span>
                   </p>
-
                   <p className="mt-1 text-[10px] uppercase tracking-[0.25em] text-white/55">
                     L’agriculture de demain
                   </p>
@@ -558,97 +443,38 @@ export default async function Home() {
               </p>
             </div>
 
-            {/* NAVIGATION */}
             <div>
-              <h3 className="text-sm font-semibold uppercase tracking-[0.18em]">
-                Navigation
-              </h3>
-
+              <h3 className="text-sm font-semibold uppercase tracking-[0.18em]">Navigation</h3>
               <nav className="mt-6 flex flex-col items-start gap-3.5 text-sm text-white/60">
-                <a
-                  href="#accueil"
-                  className="transition hover:text-[#E8C98A]"
-                >
-                  Accueil
-                </a>
-
-                <a
-                  href="/produits"
-                  className="transition hover:text-[#E8C98A]"
-                >
-                  Nos produits
-                </a>
-
-                <a
-                  href="/notre-elevage"
-                  className="transition hover:text-[#E8C98A]"
-                >
-                  Notre ferme
-                </a>
-
-                <a
-                  href="/professionnels"
-                  className="transition hover:text-[#E8C98A]"
-                >
-                  Professionnels
-                </a>
-
-                <a
-                  href="/partenaires"
-                  className="transition hover:text-[#E8C98A]"
-                >
-                  Partenaires
-                </a>
-
-                <a
-                  href="/contact"
-                  className="transition hover:text-[#E8C98A]"
-                >
-                  Contact
-                </a>
+                <a href="#accueil" className="transition hover:text-[#E8C98A]">Accueil</a>
+                <a href="/produits" className="transition hover:text-[#E8C98A]">Nos produits</a>
+                <a href="/notre-elevage" className="transition hover:text-[#E8C98A]">Notre ferme</a>
+                <a href="/professionnels" className="transition hover:text-[#E8C98A]">Professionnels</a>
+                <a href="/partenaires" className="transition hover:text-[#E8C98A]">Partenaires</a>
+                <a href="/contact" className="transition hover:text-[#E8C98A]">Contact</a>
               </nav>
             </div>
 
-            {/* CONTACT */}
             <div>
-              <h3 className="text-sm font-semibold uppercase tracking-[0.18em]">
-                Nous contacter
-              </h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.18em]">Nous contacter</h3>
 
               <div className="mt-6 space-y-6">
                 <div className="border-b border-white/10 pb-5">
-                  <p className="text-sm font-medium text-white">
-                    Yaoundé, Mimboman OPEP
-                  </p>
-
-                  <p className="mt-1 text-xs text-white/45">
-                    Cameroun
-                  </p>
+                  <p className="text-sm font-medium text-white">Yaoundé, Mimboman OPEP</p>
+                  <p className="mt-1 text-xs text-white/45">Cameroun</p>
                 </div>
 
-                <a
-                  href="tel:+237659505823"
-                  className="group block border-b border-white/10 pb-5"
-                >
+                <a href="tel:+237659505823" className="group block border-b border-white/10 pb-5">
                   <span className="block text-sm font-medium text-white transition group-hover:text-[#E8C98A]">
                     +237 6 59 50 58 23
                   </span>
-
-                  <span className="mt-1 block text-xs text-white/45">
-                    Appeler Agrofarms237
-                  </span>
+                  <span className="mt-1 block text-xs text-white/45">Appeler Agrofarms237</span>
                 </a>
 
-                <a
-                  href="https://wa.me/237697983119"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group block"
-                >
+                <a href="https://wa.me/237697983119" target="_blank" rel="noreferrer" className="group block">
                   <span className="block text-sm font-medium text-white transition group-hover:text-[#E8C98A]">
                     +237 6 97 98 31 19
                   </span>
-
                   <span className="mt-1 block text-xs text-white/45">
                     WhatsApp — commandes et informations
                   </span>
@@ -658,10 +484,7 @@ export default async function Home() {
           </div>
 
           <div className="mt-12 flex flex-col gap-4 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row sm:items-center sm:justify-between">
-            <p>
-              © {new Date().getFullYear()} Agrofarms237. Tous droits réservés.
-            </p>
-
+            <p>© {new Date().getFullYear()} Agrofarms237. Tous droits réservés.</p>
             <p className="font-semibold uppercase tracking-[0.18em] text-[#E8C98A]/80">
               Produire aujourd’hui, nourrir demain
             </p>
@@ -669,9 +492,7 @@ export default async function Home() {
         </div>
       </footer>
 
-      {/* =========================================================
-          WHATSAPP
-      ========================================================== */}
+      {/* WHATSAPP */}
       <a
         href="https://wa.me/237697983119?text=Bonjour%20Agrofarms237%2C%20je%20souhaite%20avoir%20des%20informations."
         target="_blank"
