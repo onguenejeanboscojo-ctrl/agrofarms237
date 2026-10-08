@@ -46,10 +46,8 @@ export default async function Home() {
     "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2200&q=90";
 
   return (
-    <main className="min-h-screen bg-[#F6F3EB] text-[#173D2D]">
-      {/* =========================================================
-          HERO
-      ========================================================== */}
+    <main className="min-h-screen bg-[#F7F5EF] text-[#173D2D]">
+      {/* HERO */}
       <section
         id="accueil"
         className="px-4 pb-5 pt-4 sm:px-6 lg:px-8"
@@ -69,7 +67,6 @@ export default async function Home() {
             `,
           }}
         >
-          {/* HERO CONTENT */}
           <div className="relative z-10 w-full px-7 pb-12 pt-24 sm:px-12 sm:pb-16 lg:px-20 lg:pb-20">
             <div className="max-w-[760px]">
               <p className="mb-5 text-[11px] font-bold uppercase tracking-[0.28em] text-[#E8C98A] sm:text-xs">
@@ -103,12 +100,11 @@ export default async function Home() {
                   href="#ferme"
                   className="inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/35 bg-white/[0.04] px-7 text-sm font-semibold text-white backdrop-blur-sm transition duration-300 hover:-translate-y-0.5 hover:bg-white/10"
                 >
-                  Découvrir notre ferme
+                  Notre vision
                 </a>
               </div>
             </div>
 
-            {/* HERO BOTTOM INFO */}
             <div className="mt-14 flex flex-wrap gap-x-10 gap-y-4 border-t border-white/15 pt-6 text-xs font-medium uppercase tracking-[0.16em] text-white/65 sm:text-sm">
               <span className="inline-flex items-center gap-3">
                 <span className="h-px w-7 bg-[#D5B16D]" />
@@ -129,103 +125,76 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* =========================================================
-          INTRODUCTION
-      ========================================================== */}
-      <section className="mx-auto max-w-[1280px] px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
-        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-end lg:gap-20">
-          <div>
-            <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.28em] text-[#B7863D]">
-              Bienvenue chez Agrofarms237
-            </p>
+      {/* INTRODUCTION */}
+      <section className="mx-auto grid max-w-7xl gap-8 px-5 py-16 sm:px-8 lg:grid-cols-2 lg:items-end lg:px-10 lg:py-24">
+        <div>
+          <p className="mb-4 text-xs font-bold uppercase tracking-[0.24em] text-[#B7863D]">
+            Bienvenue chez Agrofarms237
+          </p>
 
-            <h2 className="max-w-[650px] text-[clamp(2.3rem,5vw,4.5rem)] font-semibold leading-[1.02] tracking-[-0.035em] text-[#173D2D]">
-              De la ferme à vos besoins,
-              <span className="font-light italic">
-                {" "}
-                avec une vision claire.
-              </span>
-            </h2>
-          </div>
-
-          <div className="max-w-[620px] lg:pb-1">
-            <p className="text-base leading-8 text-[#627166] sm:text-lg">
-              Nous construisons une entreprise agricole qui associe
-              production, proximité et transmission du savoir. Notre
-              démarche s’inscrit dans une volonté de développer des
-              activités responsables et de créer de la valeur localement.
-            </p>
-
-            <a
-              href="/la-vie-de-la-ferme"
-              className="mt-7 inline-flex items-center border-b border-[#173D2D]/30 pb-1.5 text-sm font-semibold text-[#173D2D] transition hover:border-[#B7863D] hover:text-[#B7863D]"
-            >
-              Découvrir notre histoire
-            </a>
-          </div>
+          <h2 className="max-w-xl text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">
+            De la ferme à vos besoins, avec une vision claire.
+          </h2>
         </div>
+
+        <p className="max-w-2xl text-base leading-8 text-[#627166]">
+          Nous construisons une entreprise agricole qui associe
+          production, proximité et transmission du savoir. Notre
+          démarche s’inscrit dans une volonté de développer des
+          activités responsables et de créer de la valeur localement.
+        </p>
       </section>
 
-      {/* =========================================================
-          PRODUITS
-      ========================================================== */}
-      <section id="produits" className="scroll-mt-20">
+      {/* PRODUITS DYNAMIQUES — DONNÉES SUPABASE */}
+      <section id="produits">
         <HomeProductsSection />
       </section>
 
-      {/* =========================================================
-          NOTRE FERME / ENGAGEMENT
-      ========================================================== */}
+      {/* ENGAGEMENTS */}
       <section
         id="ferme"
-        className="mx-auto max-w-[1280px] scroll-mt-20 px-5 py-20 sm:px-8 lg:px-10 lg:py-28"
+        className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-10 lg:py-24"
       >
-        <div className="grid gap-14 lg:grid-cols-[0.8fr_1.2fr] lg:gap-24">
-          {/* LEFT */}
+        <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr]">
           <div>
-            <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.28em] text-[#B7863D]">
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-[#B7863D]">
               Notre engagement
             </p>
 
-            <h2 className="max-w-[500px] text-[clamp(2.3rem,5vw,4.3rem)] font-semibold leading-[1.02] tracking-[-0.035em] text-[#173D2D]">
-              Une ferme pensée
-              <span className="font-light italic">
-                {" "}
-                pour l’avenir.
-              </span>
+            <h2 className="text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">
+              Une ferme pensée pour l’avenir.
             </h2>
 
-            <p className="mt-6 max-w-[500px] text-base leading-8 text-[#627166]">
+            <p className="mt-5 max-w-md leading-8 text-[#627166]">
               Au-delà de la production, Agrofarms237 porte une vision
               entrepreneuriale de l’agriculture : apprendre, structurer,
               produire et grandir durablement.
             </p>
 
             <a
-              href="/notre-elevage"
-              className="mt-8 inline-flex min-h-[50px] items-center justify-center rounded-full border border-[#173D2D]/20 bg-transparent px-6 text-sm font-semibold text-[#173D2D] transition duration-300 hover:-translate-y-0.5 hover:bg-[#173D2D] hover:text-white"
+              href="#contact"
+              className="mt-7 inline-flex rounded-full border border-[#173D2D]/20 px-6 py-3.5 text-sm font-semibold transition hover:bg-[#173D2D] hover:text-white"
             >
-              Découvrir notre ferme
+              En savoir plus
             </a>
           </div>
 
-          {/* RIGHT */}
-          <div className="border-t border-[#173D2D]/10">
+          <div className="divide-y divide-[#173D2D]/12">
             {commitments.map((item) => (
               <div
                 key={item.number}
-                className="grid gap-5 border-b border-[#173D2D]/10 py-8 sm:grid-cols-[70px_1fr] sm:py-9"
+                className="grid gap-3 py-6 sm:grid-cols-[60px_1fr]"
               >
-                <span className="text-sm font-bold tracking-[0.15em] text-[#B7863D]">
+                <span className="text-sm font-bold text-[#B7863D]">
                   {item.number}
                 </span>
 
                 <div>
-                  <h3 className="text-xl font-semibold tracking-tight text-[#173D2D] sm:text-2xl">
+                  <h3 className="text-xl font-semibold">
                     {item.title}
                   </h3>
 
-                  <p className="mt-3 max-w-[600px] text-sm leading-7 text-[#718074] sm:text-base">
+                  <p className="mt-2 max-w-xl text-sm leading-7 text-[#718074]">
                     {item.text}
                   </p>
                 </div>
@@ -235,54 +204,42 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* =========================================================
-          CONTACT / CTA
-      ========================================================== */}
-      <section className="px-4 pb-5 sm:px-6 lg:px-8">
+      {/* CONTACT */}
+      <section className="px-4 pb-5 sm:px-6 lg:px-10">
         <div
-          className="mx-auto max-w-[1440px] overflow-hidden rounded-[30px] bg-cover bg-center px-7 py-16 sm:px-12 sm:py-20 lg:px-20 lg:py-24"
+          className="mx-auto max-w-7xl overflow-hidden rounded-[26px] bg-cover bg-center px-7 py-14 sm:px-12 sm:py-16"
           style={{
-            backgroundImage: `
-              linear-gradient(
-                90deg,
-                rgba(16,53,37,0.97),
-                rgba(16,53,37,0.82)
-              ),
-              url("https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2000&q=85")
-            `,
+            backgroundImage:
+              "linear-gradient(90deg, rgba(16,53,37,0.96), rgba(16,53,37,0.80)), url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1800&q=80')",
           }}
         >
-          <div className="max-w-[760px]">
-            <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.28em] text-[#E8C98A]">
+          <div className="max-w-2xl">
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-[#E8C98A]">
               Travaillons ensemble
             </p>
 
-            <h2 className="text-[clamp(2.4rem,5vw,4.8rem)] font-semibold leading-[1] tracking-[-0.035em] text-white">
-              Un projet, un besoin
-              <span className="font-light italic text-[#E8C98A]">
-                {" "}
-                ou un partenariat ?
-              </span>
+            <h2 className="text-3xl font-semibold leading-tight text-white sm:text-5xl">
+              Un projet, un besoin ou un partenariat ?
             </h2>
 
-            <p className="mt-6 max-w-[600px] text-base leading-8 text-white/72 sm:text-lg">
-              Échangeons autour de vos besoins, de vos commandes ou de vos
-              projets dans le secteur agricole.
+            <p className="mt-5 leading-7 text-white/75">
+              Échangeons autour de vos besoins, de vos commandes ou de
+              vos projets dans le secteur agricole.
             </p>
 
-            <div className="mt-9 flex flex-wrap gap-3">
+            <div className="mt-8 flex flex-wrap gap-3">
               <a
-                href="/contact"
-                className="inline-flex min-h-[52px] items-center justify-center rounded-full bg-[#E8C98A] px-7 text-sm font-bold text-[#173D2D] transition duration-300 hover:-translate-y-0.5 hover:bg-white"
+                href="tel:+237659505823"
+                className="inline-flex items-center justify-center rounded-full border border-white/40 px-7 py-4 text-sm font-semibold text-white transition hover:bg-white/10"
               >
-                Nous contacter
+                Appeler Agrofarms237
               </a>
 
               <a
                 href="https://wa.me/237697983119"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/35 bg-white/[0.04] px-7 text-sm font-semibold text-white backdrop-blur-sm transition duration-300 hover:-translate-y-0.5 hover:bg-white/10"
+                className="inline-flex items-center justify-center rounded-full bg-[#E8C98A] px-7 py-4 text-sm font-bold text-[#173D2D] transition hover:bg-white"
               >
                 Écrire sur WhatsApp
               </a>
@@ -291,108 +248,73 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* =========================================================
-          FOOTER
-      ========================================================== */}
+      {/* FOOTER */}
       <footer
         id="contact"
-        className="mt-16 bg-[#123426] px-5 py-14 text-white sm:px-8 lg:px-10 lg:py-20"
+        className="mt-12 bg-[#123426] px-5 py-12 text-white sm:px-8 lg:px-10"
       >
-        <div className="mx-auto max-w-[1280px]">
-          <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-[1.3fr_0.7fr_1fr] lg:gap-20">
-            {/* BRAND */}
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3 lg:gap-14">
             <div>
               <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[#E8C98A]/70 text-xl font-bold text-[#E8C98A]">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#E8C98A] text-2xl font-bold text-[#E8C98A]">
                   A
                 </div>
 
                 <div>
-                  <p className="text-xl font-bold tracking-tight">
-                    AGROFARMS
-                    <span className="text-[#E8C98A]">237</span>
+                  <p className="text-2xl font-bold tracking-tight">
+                    AGROFARMS<span className="text-[#E8C98A]">237</span>
                   </p>
 
-                  <p className="mt-1 text-[9px] uppercase tracking-[0.25em] text-white/50">
+                  <p className="mt-1 text-[10px] uppercase tracking-[0.25em] text-white/65">
                     L’agriculture de demain
                   </p>
                 </div>
               </div>
 
-              <p className="mt-6 max-w-[420px] text-sm leading-7 text-white/65">
-                Des produits frais et sains, issus de notre ferme, pour une
-                alimentation de qualité au Cameroun.
+              <p className="mt-6 max-w-sm text-sm leading-7 text-white/70">
+                Des produits frais et sains, issus de notre ferme, pour
+                une alimentation de qualité au Cameroun.
               </p>
 
-              <p className="mt-5 text-sm text-white/45">
+              <p className="mt-5 text-sm text-white/65">
                 Agrofarms237 — Produire aujourd’hui, nourrir demain.
               </p>
             </div>
 
-            {/* LINKS */}
             <div>
-              <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-white">
-                Navigation
-              </h3>
+              <h3 className="text-lg font-semibold">Liens rapides</h3>
+              <div className="mt-4 h-1 w-14 rounded-full bg-[#E8C98A]" />
 
-              <nav className="mt-6 flex flex-col items-start gap-3.5 text-sm text-white/60">
-                <a
-                  href="#accueil"
-                  className="transition hover:text-[#E8C98A]"
-                >
+              <nav className="mt-5 flex flex-col items-start gap-3 text-sm text-white/75">
+                <a href="#accueil" className="transition hover:text-[#E8C98A]">
                   Accueil
                 </a>
 
-                <a
-                  href="#produits"
-                  className="transition hover:text-[#E8C98A]"
-                >
+                <a href="#produits" className="transition hover:text-[#E8C98A]">
                   Nos produits
                 </a>
 
-                <a
-                  href="/notre-elevage"
-                  className="transition hover:text-[#E8C98A]"
-                >
+                <a href="#ferme" className="transition hover:text-[#E8C98A]">
                   Notre ferme
                 </a>
 
-                <a
-                  href="/professionnels"
-                  className="transition hover:text-[#E8C98A]"
-                >
-                  Professionnels
-                </a>
-
-                <a
-                  href="/partenaires"
-                  className="transition hover:text-[#E8C98A]"
-                >
-                  Partenaires
-                </a>
-
-                <a
-                  href="/contact"
-                  className="transition hover:text-[#E8C98A]"
-                >
+                <a href="#contact" className="transition hover:text-[#E8C98A]">
                   Contact
                 </a>
               </nav>
             </div>
 
-            {/* CONTACT */}
             <div>
-              <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-white">
-                Nous contacter
-              </h3>
+              <h3 className="text-lg font-semibold">Nos coordonnées</h3>
+              <div className="mt-4 h-1 w-14 rounded-full bg-[#E8C98A]" />
 
-              <div className="mt-6 space-y-6">
+              <div className="mt-6 max-w-sm space-y-6">
                 <div className="border-b border-white/10 pb-5">
-                  <p className="text-sm font-medium text-white">
+                  <p className="text-sm font-medium leading-6 text-white">
                     Yaoundé, Mimboman OPEP
                   </p>
-
-                  <p className="mt-1 text-xs text-white/45">
+                  <p className="mt-1 text-xs leading-5 text-white/55">
                     Cameroun
                   </p>
                 </div>
@@ -401,11 +323,10 @@ export default async function Home() {
                   href="tel:+237659505823"
                   className="group block border-b border-white/10 pb-5"
                 >
-                  <span className="block text-sm font-medium text-white transition group-hover:text-[#E8C98A]">
+                  <span className="block text-sm font-medium leading-6 text-white transition group-hover:text-[#E8C98A]">
                     +237 6 59 50 58 23
                   </span>
-
-                  <span className="mt-1 block text-xs text-white/45">
+                  <span className="mt-1 block text-xs leading-5 text-white/55">
                     Appeler Agrofarms237
                   </span>
                 </a>
@@ -416,11 +337,10 @@ export default async function Home() {
                   rel="noreferrer"
                   className="group block"
                 >
-                  <span className="block text-sm font-medium text-white transition group-hover:text-[#E8C98A]">
+                  <span className="block text-sm font-medium leading-6 text-white transition group-hover:text-[#E8C98A]">
                     +237 6 97 98 31 19
                   </span>
-
-                  <span className="mt-1 block text-xs text-white/45">
+                  <span className="mt-1 block text-xs leading-5 text-white/55">
                     WhatsApp — commandes et informations
                   </span>
                 </a>
@@ -428,28 +348,25 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* COPYRIGHT */}
-          <div className="mt-12 flex flex-col gap-4 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-10 flex flex-col gap-4 border-t border-white/15 pt-6 text-xs text-white/55 sm:flex-row sm:items-center sm:justify-between">
             <p>
-              © {new Date().getFullYear()} Agrofarms237. Tous droits réservés.
+              © {new Date().getFullYear()} Agrofarms237. Tous droits
+              réservés.
             </p>
 
-            <p className="font-semibold uppercase tracking-[0.18em] text-[#E8C98A]/80">
+            <p className="font-semibold uppercase tracking-[0.2em] text-[#E8C98A]">
               Produire aujourd’hui, nourrir demain
             </p>
           </div>
         </div>
       </footer>
 
-      {/* =========================================================
-          WHATSAPP FLOATING ACTION
-      ========================================================== */}
       <a
         href="https://wa.me/237697983119?text=Bonjour%20Agrofarms237%2C%20je%20souhaite%20avoir%20des%20informations."
         target="_blank"
         rel="noreferrer"
         aria-label="Contacter Agrofarms237 sur WhatsApp"
-        className="fixed bottom-5 right-5 z-50 inline-flex min-h-[48px] items-center justify-center rounded-full border border-[#D5B16D]/40 bg-[#173D2D] px-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8C98A] shadow-[0_12px_35px_rgba(0,0,0,0.18)] transition duration-300 hover:-translate-y-0.5 hover:bg-[#123426] sm:bottom-6 sm:right-6"
+        className="fixed bottom-6 right-6 z-50 rounded-full border border-[#D5B16D]/40 bg-[#173D2D] px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#E8C98A] shadow-xl transition duration-300 hover:-translate-y-0.5 hover:bg-[#123426]"
       >
         WhatsApp
       </a>
