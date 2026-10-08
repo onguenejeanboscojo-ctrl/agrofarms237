@@ -1,6 +1,8 @@
 import HomeProductsSection from "@/components/HomeProductsSection";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+export const dynamic = "force-dynamic";
+
 const commitments = [
   {
     number: "01",
@@ -598,7 +600,9 @@ export default async function Home() {
           </div>
 
           <div className="mt-12 flex flex-col gap-4 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row sm:items-center sm:justify-between">
-            <p>© {new Date().getFullYear()} Agrofarms237. Tous droits réservés.</p>
+            <p>
+              © {new Date().getFullYear()} Agrofarms237. Tous droits réservés.
+            </p>
 
             <p className="font-semibold uppercase tracking-[0.18em] text-[#E8C98A]/80">
               Produire aujourd’hui, nourrir demain
