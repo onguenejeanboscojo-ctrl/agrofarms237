@@ -119,6 +119,11 @@ export default function MediaManager() {
         : "produit_carpe_fraiche";
     }
 
+    // Vérifier porcelet avant porc, car le mot « porcelet » contient « porc ».
+    if (haystack.includes("porcelet")) {
+      return "produit_porcelet";
+    }
+
     if (haystack.includes("porc")) {
       if (haystack.includes("fum")) {
         return "produit_porc_fume";
@@ -129,10 +134,6 @@ export default function MediaManager() {
       }
 
       return "produit_porc_frais";
-    }
-
-    if (haystack.includes("porcelet")) {
-      return "produit_porcelet";
     }
 
     if (haystack.includes("poulet")) {
