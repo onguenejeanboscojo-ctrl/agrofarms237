@@ -515,6 +515,12 @@ function toOrderProduct(
 // IMAGE PRODUIT
 // ============================================================
 
+const CATEGORY_MEDIA_LOCATION: Record<string, string> = {
+  Pisciculture: "produits_pisciculture",
+  "Élevage porcin": "produits_porcin",
+  Aviculture: "produits_aviculture",
+};
+
 function ProductImage({
   images,
   title,
@@ -677,6 +683,11 @@ export default async function ProduitsPage() {
   );
 
   const categoryVisuals = categories.map((category) => {
+    const dedicatedImage = media.find(
+      (item) =>
+        item.site_location === CATEGORY_MEDIA_LOCATION[category]
+    );
+
     const categoryProduct = products.find(
       (product) => product.category === category
     );
@@ -686,7 +697,8 @@ export default async function ProduitsPage() {
 
     return {
       category,
-      image: categoryImages[0],
+      // Photo dédiée gérée depuis Admin, avec fallback sur la photo produit.
+      image: dedicatedImage?.url || categoryImages[0],
     };
   });
 
@@ -1004,5 +1016,3 @@ export default async function ProduitsPage() {
     </main>
   );
 }
-
-
