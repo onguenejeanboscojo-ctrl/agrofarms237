@@ -30,9 +30,27 @@
 // ============================================================
 
 export const SITE_LOCATIONS = [
+  // ----------------------------------------------------------
+  // ACCUEIL
+  // ----------------------------------------------------------
+
   {
     value: "hero",
     label: "Accueil — Diaporama principal",
+  },
+
+  {
+    value: "production",
+    label: "Accueil — Notre production",
+  },
+
+  // ----------------------------------------------------------
+  // À PROPOS
+  // ----------------------------------------------------------
+
+  {
+    value: "apropos_hero",
+    label: "À propos — Hero",
   },
 
   {
@@ -41,39 +59,82 @@ export const SITE_LOCATIONS = [
   },
 
   {
-    value: "production",
-    label: "Accueil — Notre production",
+    value: "apropos_pisciculture",
+    label: "À propos — Pisciculture",
   },
 
   {
-    value: "ferme_accueil",
-    label: "Notre ferme — Accueil",
+    value: "apropos_porcin",
+    label: "À propos — Élevage porcin",
   },
+
+  {
+    value: "apropos_aviculture",
+    label: "À propos — Aviculture",
+  },
+
+  {
+    value: "apropos_vision",
+    label: "À propos — Notre vision",
+  },
+
+  {
+    value: "apropos_etape_01",
+    label: "À propos — Croissance — Étape 01",
+  },
+
+  {
+    value: "apropos_etape_02",
+    label: "À propos — Croissance — Étape 02",
+  },
+
+  {
+    value: "apropos_etape_03",
+    label: "À propos — Croissance — Étape 03",
+  },
+
+  {
+    value: "apropos_etape_04",
+    label: "À propos — Croissance — Étape 04",
+  },
+
+  {
+    value: "equipe",
+    label: "À propos — Notre équipe",
+  },
+
+  // ----------------------------------------------------------
+  // NOTRE ÉLEVAGE
+  // ----------------------------------------------------------
 
   {
     value: "elevage_silure",
-    label: "Notre ferme — Silure",
+    label: "Notre élevage — Silure",
   },
 
   {
     value: "elevage_carpe",
-    label: "Notre ferme — Carpe",
+    label: "Notre élevage — Carpe",
   },
 
   {
     value: "elevage_porcs",
-    label: "Notre ferme — Porcs",
+    label: "Notre élevage — Porcs",
   },
 
   {
     value: "elevage_pondeuses",
-    label: "Notre ferme — Poules pondeuses",
+    label: "Notre élevage — Poules pondeuses",
   },
 
   {
     value: "elevage_chair",
-    label: "Notre ferme — Poulets de chair",
+    label: "Notre élevage — Poulets de chair",
   },
+
+  // ----------------------------------------------------------
+  // PRODUITS
+  // ----------------------------------------------------------
 
   {
     value: "produit_poisson_fume",
@@ -110,6 +171,10 @@ export const SITE_LOCATIONS = [
     label: "Produit — Alevins",
   },
 
+  // ----------------------------------------------------------
+  // ÉDUCATION
+  // ----------------------------------------------------------
+
   {
     value: "education_pisciculture",
     label: "Éducation — Pisciculture",
@@ -129,11 +194,6 @@ export const SITE_LOCATIONS = [
     value: "education_agriculture",
     label: "Éducation — Agriculture",
   },
-
-  {
-    value: "equipe",
-    label: "À propos — Notre équipe",
-  },
 ];
 
 
@@ -142,33 +202,57 @@ export const SITE_LOCATIONS = [
 // ============================================================
 
 export const SITE_LOCATION_GROUPS = [
+  // ----------------------------------------------------------
+  // ACCUEIL
+  // ----------------------------------------------------------
+
   {
     label: "Accueil",
     options: SITE_LOCATIONS.filter((item) =>
       [
         "hero",
         "production",
-        "ferme_accueil",
       ].includes(item.value)
     ),
   },
+
+  // ----------------------------------------------------------
+  // À PROPOS
+  // ----------------------------------------------------------
 
   {
     label: "À propos",
     options: SITE_LOCATIONS.filter((item) =>
       [
+        "apropos_hero",
         "histoire",
+        "apropos_pisciculture",
+        "apropos_porcin",
+        "apropos_aviculture",
+        "apropos_vision",
+        "apropos_etape_01",
+        "apropos_etape_02",
+        "apropos_etape_03",
+        "apropos_etape_04",
         "equipe",
       ].includes(item.value)
     ),
   },
 
+  // ----------------------------------------------------------
+  // NOTRE ÉLEVAGE
+  // ----------------------------------------------------------
+
   {
-    label: "Notre ferme",
+    label: "Notre élevage",
     options: SITE_LOCATIONS.filter((item) =>
       item.value.startsWith("elevage_")
     ),
   },
+
+  // ----------------------------------------------------------
+  // NOS PRODUITS
+  // ----------------------------------------------------------
 
   {
     label: "Nos produits",
@@ -176,6 +260,10 @@ export const SITE_LOCATION_GROUPS = [
       item.value.startsWith("produit_")
     ),
   },
+
+  // ----------------------------------------------------------
+  // ESPACE ÉDUCATION
+  // ----------------------------------------------------------
 
   {
     label: "Espace Éducation",
