@@ -1,4 +1,3 @@
-//
 // ============================================================
 // AGROFARMS237 — CATÉGORIES MÉDIAS
 // ============================================================
@@ -44,6 +43,7 @@ export const SITE_LOCATIONS = [
     label: "Accueil — Notre production",
   },
 
+
   // ----------------------------------------------------------
   // À PROPOS
   // ----------------------------------------------------------
@@ -59,49 +59,65 @@ export const SITE_LOCATIONS = [
   },
 
   {
+    value: "apropos_qui_sommes_nous",
+    label: "À propos — Qui sommes-nous ?",
+  },
+
+  {
     value: "apropos_pisciculture",
-    label: "À propos — Pisciculture",
+    label: "À propos — Carte / filière Pisciculture",
   },
 
   {
     value: "apropos_porcin",
-    label: "À propos — Élevage porcin",
+    label: "À propos — Carte / filière Élevage porcin",
   },
 
   {
     value: "apropos_aviculture",
-    label: "À propos — Aviculture",
+    label: "À propos — Carte / filière Aviculture",
   },
 
   {
     value: "apropos_vision",
-    label: "À propos — Notre vision",
+    label: "À propos — Carte / section Une vision",
   },
 
   {
     value: "apropos_etape_01",
-    label: "À propos — Croissance — Étape 01",
+    label: "À propos — Étape 01 — Les premières productions",
   },
 
   {
     value: "apropos_etape_02",
-    label: "À propos — Croissance — Étape 02",
+    label: "À propos — Étape 02 — La structuration",
   },
 
   {
     value: "apropos_etape_03",
-    label: "À propos — Croissance — Étape 03",
+    label: "À propos — Étape 03 — La diversification",
   },
 
   {
     value: "apropos_etape_04",
-    label: "À propos — Croissance — Étape 04",
+    label: "À propos — Étape 04 — La valorisation",
+  },
+
+  {
+    value: "apropos_vie_ferme",
+    label: "À propos — La vie de la ferme",
+  },
+
+  {
+    value: "apropos_actualites",
+    label: "À propos — Actualités",
   },
 
   {
     value: "equipe",
     label: "À propos — Notre équipe",
   },
+
 
   // ----------------------------------------------------------
   // NOTRE ÉLEVAGE
@@ -131,6 +147,7 @@ export const SITE_LOCATIONS = [
     value: "elevage_chair",
     label: "Notre élevage — Poulets de chair",
   },
+
 
   // ----------------------------------------------------------
   // PRODUITS
@@ -170,6 +187,7 @@ export const SITE_LOCATIONS = [
     value: "produit_alevins",
     label: "Produit — Alevins",
   },
+
 
   // ----------------------------------------------------------
   // ÉDUCATION
@@ -216,6 +234,7 @@ export const SITE_LOCATION_GROUPS = [
     ),
   },
 
+
   // ----------------------------------------------------------
   // À PROPOS
   // ----------------------------------------------------------
@@ -226,6 +245,7 @@ export const SITE_LOCATION_GROUPS = [
       [
         "apropos_hero",
         "histoire",
+        "apropos_qui_sommes_nous",
         "apropos_pisciculture",
         "apropos_porcin",
         "apropos_aviculture",
@@ -234,10 +254,13 @@ export const SITE_LOCATION_GROUPS = [
         "apropos_etape_02",
         "apropos_etape_03",
         "apropos_etape_04",
+        "apropos_vie_ferme",
+        "apropos_actualites",
         "equipe",
       ].includes(item.value)
     ),
   },
+
 
   // ----------------------------------------------------------
   // NOTRE ÉLEVAGE
@@ -250,6 +273,7 @@ export const SITE_LOCATION_GROUPS = [
     ),
   },
 
+
   // ----------------------------------------------------------
   // NOS PRODUITS
   // ----------------------------------------------------------
@@ -260,6 +284,7 @@ export const SITE_LOCATION_GROUPS = [
       item.value.startsWith("produit_")
     ),
   },
+
 
   // ----------------------------------------------------------
   // ESPACE ÉDUCATION
