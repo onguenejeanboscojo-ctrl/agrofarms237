@@ -672,9 +672,9 @@ export default async function ProduitsPage() {
     media.find((item) => item.site_location === "produits_catalogue_hero") ||
     media.find((item) => item.site_location?.startsWith("produit_"));
 
-  const introProduct = products[0];
-  const introImages = introProduct ? getImages(introProduct, media) : [];
-  const introImage = introImages[0] || heroMedia?.url;
+  const catalogueImages = Array.from(
+    new Set(products.flatMap((product) => getImages(product, media)))
+  );
 
   const categoryVisuals = categories.map((category) => {
     const categoryProduct = products.find(
@@ -744,15 +744,11 @@ export default async function ProduitsPage() {
       ====================================================== */}
       <section className="relative z-10 -mt-12 px-5 sm:-mt-16">
         <div className="mx-auto grid max-w-7xl overflow-hidden border border-black/10 bg-white shadow-[0_24px_70px_rgba(24,53,43,0.12)] lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="relative min-h-[340px] bg-[#E8EDE5] lg:min-h-[430px]">
-            {introImage ? (
-              <img
-                src={introImage}
-                alt="AgroFarms237 — production agricole"
-                className="h-full w-full object-cover transition duration-700 hover:scale-[1.02]"
-              />
+          <div className="relative min-h-[340px] overflow-hidden bg-[#E8EDE5] lg:min-h-[430px]">
+            {catalogueImages.length > 0 ? (
+              <ProductCarousel images={catalogueImages} />
             ) : (
-              <div className="flex h-full min-h-[340px] items-center justify-center bg-[radial-gradient(circle_at_70%_20%,#315F50_0%,#18352B_55%,#081B16_100%)] p-10 text-center text-white">
+              <div className="flex h-full min-h-[340px] items-center justify-center bg-[radial-gradient(circle_at_70%_20%,#315F50_0%,#18352B_55%,#081B16_100%)] p-10 text-center text-white lg:min-h-[430px]">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D5A62A]">
                     AgroFarms237
@@ -763,7 +759,6 @@ export default async function ProduitsPage() {
                 </div>
               </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#071D18]/30 to-transparent" />
           </div>
 
           <div className="flex flex-col justify-center p-8 sm:p-12 lg:p-14">
