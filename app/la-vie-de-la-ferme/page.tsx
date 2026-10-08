@@ -200,21 +200,21 @@ const activities = [
     title: "Pisciculture",
     location: "apropos_pisciculture",
     description:
-      "La pisciculture constitue une activité structurée d’AgroFarms237. Elle représente l’une des bases de notre développement agricole et de notre volonté de produire localement.",
+      "La pisciculture constitue l’une des premières bases du développement d’AgroFarms237. À travers cette activité, nous travaillons autour de la production de poissons et de la construction progressive d’un savoir-faire adapté à notre réalité. Mais la pisciculture représente pour nous plus qu’une production : elle constitue l’un des points de départ d’un projet agricole appelé à évoluer vers plusieurs filières complémentaires.",
   },
   {
     number: "02",
     title: "Élevage porcin",
     location: "apropos_porcin",
     description:
-      "L’élevage porcin s’inscrit dans notre démarche de diversification. Cette filière participe à la construction progressive d’une ferme agricole plus complète.",
+      "L’élevage porcin s’inscrit dans notre volonté de diversifier progressivement la ferme. Cette filière nous permet de développer une nouvelle activité d’élevage tout en renforçant notre vision d’une exploitation capable de réunir plusieurs productions au sein d’un même projet. Comme pour chacune de nos activités, nous avançons progressivement, avec l’objectif de construire des bases solides avant de passer à l’étape suivante.",
   },
   {
     number: "03",
     title: "Aviculture",
     location: "apropos_aviculture",
     description:
-      "L’aviculture complète notre modèle avec le développement des poulets de chair et des poules pondeuses, dans une logique de production agricole diversifiée.",
+      "L’aviculture complète aujourd’hui notre vision d’une ferme diversifiée. Poulets de chair, poules pondeuses et développement progressif des capacités de production participent à cette volonté de répondre à différents besoins tout en construisant une activité agricole cohérente. Notre ambition est de faire évoluer cette filière progressivement, en développant à la fois la production et les possibilités de valorisation.",
   },
 ];
 
@@ -225,7 +225,7 @@ const stages = [
     title: "Les premières productions",
     location: "apropos_etape_01",
     text:
-      "AgroFarms237 développe ses premières productions autour de plusieurs filières agricoles complémentaires.",
+      "Toute aventure agricole commence par une première production. Nos premières activités nous permettent de confronter nos idées à la réalité du terrain, de comprendre les exigences de chaque production et de poser les premières bases de la ferme. C’est le début d’une construction qui se fait progressivement, avec chaque expérience comme source d’apprentissage.",
   },
   {
     number: "02",
@@ -233,7 +233,7 @@ const stages = [
     title: "La structuration",
     location: "apropos_etape_02",
     text:
-      "Nous renforçons progressivement les infrastructures, l’organisation et les méthodes nécessaires au développement de la ferme.",
+      "Produire ne suffit pas. Il faut pouvoir organiser, suivre, améliorer et répéter. Nous travaillons donc progressivement à structurer les infrastructures, les méthodes de travail et l’organisation nécessaires pour accompagner le développement de la ferme. L’objectif est simple : construire des bases suffisamment solides pour pouvoir grandir avec cohérence.",
   },
   {
     number: "03",
@@ -241,7 +241,7 @@ const stages = [
     title: "La diversification",
     location: "apropos_etape_03",
     text:
-      "La ferme évolue avec plusieurs filières afin de construire progressivement une exploitation agricole plus diversifiée.",
+      "La diversification répond à une volonté : construire une exploitation agricole plus complète. Pisciculture, élevage porcin et aviculture apportent chacun leur rôle au projet. Leur développement progressif permet à AgroFarms237 de construire un modèle agricole plus diversifié tout en conservant une direction commune. Nous ne cherchons pas à multiplier les activités pour multiplier les activités. Nous cherchons à construire un ensemble cohérent.",
   },
   {
     number: "04",
@@ -249,7 +249,7 @@ const stages = [
     title: "La valorisation",
     location: "apropos_etape_04",
     text:
-      "La prochaine évolution consiste à mieux valoriser les productions grâce à la transformation, au conditionnement et à une distribution adaptée.",
+      "Produire est une première étape. Savoir mieux valoriser ce que l’on produit en est une autre. À mesure que la ferme grandit, notre ambition est de développer davantage la transformation, le conditionnement, la présentation et la distribution de nos productions. L’objectif est de rapprocher davantage le travail réalisé à la ferme de la valeur réellement proposée au client.",
   },
 ];
 
@@ -335,18 +335,14 @@ export default async function LaVieDeLaFermePage() {
             </p>
 
             <h1 className="font-serif text-5xl leading-[0.98] sm:text-6xl lg:text-[82px]">
-              Construire une agriculture
+              Faire grandir une agriculture
               <span className="block text-white/75">
-                locale, structurée et durable.
+                qui nous ressemble.
               </span>
             </h1>
 
             <p className="mt-8 max-w-2xl text-base leading-8 text-white/80 sm:text-lg">
-              AgroFarms237 développe une exploitation
-              agricole camerounaise autour de plusieurs
-              filières, avec une ambition claire :
-              produire localement, structurer nos activités
-              et créer de la valeur durablement.
+              AgroFarms237 est un projet agricole camerounais né d’une conviction simple : la qualité de ce que nous mangeons commence par la manière dont nous produisons. Nous construisons progressivement une ferme autour de plusieurs filières — pisciculture, élevage porcin et aviculture — avec la volonté de produire localement, de mieux valoriser nos productions et de construire, étape après étape, une activité agricole solide et durable.
             </p>
 
           </div>
@@ -441,9 +437,9 @@ export default async function LaVieDeLaFermePage() {
               </p>
 
               <h2 className="mt-5 font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-6xl">
-                Une ferme camerounaise
+                Une ferme qui se construit.
                 <span className="block text-[#A67D1A]">
-                  pensée pour grandir.
+                  Une vision qui grandit.
                 </span>
               </h2>
 
@@ -452,35 +448,19 @@ export default async function LaVieDeLaFermePage() {
             <div className="max-w-3xl text-base leading-8 text-black/65 sm:text-lg">
 
               <p>
-                AgroFarms237 est une entreprise agricole
-                camerounaise qui construit progressivement
-                une exploitation autour de plusieurs filières :
-                pisciculture, élevage porcin et aviculture.
+                AgroFarms237, c’est avant tout une volonté : construire quelque chose de durable dans l’agriculture camerounaise. Nous avons choisi de commencer progressivement, en développant nos premières productions et en apprenant à chaque étape ce qu’il faut pour faire grandir une véritable exploitation agricole.
               </p>
 
               <p className="mt-6">
-                Notre démarche ne consiste pas simplement
-                à produire. Elle consiste à construire une
-                véritable activité agricole : développer les
-                infrastructures, organiser les productions,
-                améliorer leur valorisation et créer des
-                circuits de distribution adaptés.
+                Aujourd’hui, notre projet s’articule autour de plusieurs filières : la pisciculture, l’élevage porcin et l’aviculture. Elles sont différentes dans leur fonctionnement, mais elles répondent à une même ambition : construire une ferme capable de produire localement, de valoriser ses productions et de créer de la valeur autour du travail agricole.
               </p>
 
               <p className="mt-6">
-                Chaque filière a sa place dans cette vision.
-                La pisciculture fait partie de nos activités
-                structurées, tandis que l’élevage porcin et
-                l’aviculture participent également au
-                développement de la ferme.
+                Pour nous, une ferme ne se résume pas à ce qui sort de ses portes. Elle repose aussi sur les infrastructures, les méthodes, les personnes, l’organisation, la qualité du travail et la capacité à progresser dans le temps. C’est cette construction que nous voulons partager avec vous.
               </p>
 
               <p className="mt-6">
-                À terme, AgroFarms237 ambitionne de construire
-                une exploitation agricole diversifiée, capable
-                de produire localement, de mieux valoriser ses
-                productions et de créer durablement de la valeur
-                autour de l’agriculture camerounaise.
+                AgroFarms237 avance donc avec une vision de long terme : commencer avec ce que nous avons, consolider ce qui fonctionne, développer progressivement de nouvelles capacités et faire grandir la ferme sans perdre ce qui fait son identité.
               </p>
 
             </div>
@@ -502,9 +482,8 @@ export default async function LaVieDeLaFermePage() {
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#071D18]/80 to-transparent p-8">
 
                   <p className="max-w-xl font-serif text-2xl leading-tight text-white sm:text-3xl">
-                    Des productions locales,
-                    au service d’une agriculture
-                    qui se construit dans le temps.
+                    Des productions locales.
+                    Un projet construit avec le temps.
                   </p>
 
                 </div>
@@ -523,18 +502,15 @@ export default async function LaVieDeLaFermePage() {
                 </span>
 
                 <h3 className="mt-7 font-serif text-3xl leading-tight sm:text-4xl">
-                  Produire localement.
+                  Commencer. Apprendre.
                   <br />
-                  Progresser durablement.
+                  Structurer. Grandir.
                 </h3>
 
               </div>
 
               <p className="max-w-md text-sm leading-7 text-white/65">
-                Nous avançons progressivement en renforçant
-                nos productions, nos infrastructures et nos
-                méthodes afin de construire une exploitation
-                agricole capable de grandir dans le temps.
+                Nous ne cherchons pas à construire une ferme en un jour. Nous croyons davantage à une croissance progressive : commencer par maîtriser nos premières productions, comprendre les réalités du terrain, renforcer nos infrastructures, améliorer nos méthodes et réinvestir dans les étapes suivantes. Chaque nouvelle production doit trouver sa place dans un ensemble cohérent.
               </p>
 
             </div>
@@ -561,15 +537,12 @@ export default async function LaVieDeLaFermePage() {
             </p>
 
             <h2 className="mt-5 font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-6xl">
-              Une croissance pensée
-              étape par étape.
+              Une ferme ne se construit
+              pas en une seule étape.
             </h2>
 
             <p className="mt-7 max-w-2xl text-base leading-8 text-black/60 sm:text-lg">
-              Le développement d’AgroFarms237 repose sur une
-              progression maîtrisée : consolider les productions,
-              structurer la ferme, diversifier les filières puis
-              mieux valoriser les produits.
+              Notre développement suit une logique progressive. Chaque étape prépare la suivante et nous permet de construire AgroFarms237 sur des bases de plus en plus solides.
             </p>
 
           </div>
@@ -656,9 +629,7 @@ export default async function LaVieDeLaFermePage() {
             </div>
 
             <p className="max-w-2xl text-base leading-8 text-black/60 sm:text-lg">
-              Nos activités sont complémentaires et participent
-              chacune à la construction progressive d’une ferme
-              agricole diversifiée.
+              AgroFarms237 se construit autour de plusieurs productions qui répondent à une même volonté : participer à une agriculture camerounaise capable de produire localement et de créer davantage de valeur autour de ses productions.
             </p>
 
           </div>
@@ -748,18 +719,14 @@ export default async function LaVieDeLaFermePage() {
               </p>
 
               <h2 className="mt-5 font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-6xl">
-                Construire une ferme
-                agricole camerounaise
+                Construire plus qu’une ferme.
                 <span className="block text-white/60">
-                  diversifiée et durable.
+                  Construire une activité agricole qui peut durer.
                 </span>
               </h2>
 
               <p className="mt-8 max-w-xl text-base leading-8 text-white/65 sm:text-lg">
-                Notre ambition est de développer progressivement
-                plusieurs filières de production, de renforcer
-                leur organisation et de créer de nouvelles
-                possibilités de valorisation.
+                Nous voulons qu’AgroFarms237 devienne progressivement une exploitation agricole camerounaise diversifiée, structurée autour de plusieurs filières et capable de créer de la valeur à différents niveaux de la chaîne. Notre vision ne s’arrête donc pas à la production. Nous voulons pouvoir mieux produire, mieux transformer, mieux présenter et mieux distribuer nos produits, tout en développant progressivement les infrastructures et les compétences nécessaires à cette évolution. À plus long terme, l’ambition est de construire une ferme qui puisse grandir avec son environnement, créer des opportunités autour d’elle et montrer qu’un projet agricole peut être pensé comme une véritable entreprise : avec une vision, des méthodes, des exigences et une volonté constante de progresser. Nous sommes encore en construction. Et c’est précisément ce qui rend notre histoire intéressante : vous pouvez la découvrir au fur et à mesure qu’elle s’écrit.
               </p>
 
             </div>
@@ -812,7 +779,7 @@ export default async function LaVieDeLaFermePage() {
             </p>
 
             <h2 className="mt-5 font-serif text-4xl leading-tight sm:text-5xl">
-              Ce qui guide notre développement.
+              Ce qui guide notre manière de construire.
             </h2>
 
           </div>
@@ -824,22 +791,22 @@ export default async function LaVieDeLaFermePage() {
               {
                 title: "Qualité",
                 text:
-                  "Porter une attention constante à la qualité de nos productions et à l’expérience proposée à nos clients.",
+                  "La qualité commence bien avant que le produit arrive entre les mains du client. Elle se construit dans le choix des pratiques, l’attention portée à la production et le soin apporté à chaque étape. Nous voulons que cette exigence devienne une partie naturelle de notre manière de travailler.",
               },
               {
                 title: "Rigueur",
                 text:
-                  "Structurer progressivement nos méthodes et nos activités pour construire une exploitation solide.",
+                  "L’agriculture demande de la constance. Suivre, organiser, anticiper, corriger et recommencer font partie du travail quotidien. Nous voulons construire AgroFarms237 avec cette exigence : ne pas simplement avancer vite, mais avancer sur des bases solides.",
               },
               {
                 title: "Développement local",
                 text:
-                  "Participer au développement d’une agriculture camerounaise capable de créer de la valeur localement.",
+                  "Produire localement a du sens pour nous. C’est participer à une économie où davantage de valeur peut être créée autour de la production, du travail et des savoir-faire présents sur notre territoire. AgroFarms237 veut contribuer, à son échelle, à cette dynamique.",
               },
               {
                 title: "Durabilité",
                 text:
-                  "Construire progressivement un modèle agricole pensé pour durer et évoluer dans le temps.",
+                  "Construire pour aujourd’hui ne suffit pas. Nous voulons développer une exploitation capable d’évoluer dans le temps, de s’adapter, de renforcer ses activités et de transmettre une vision de long terme. Notre ambition est donc de construire progressivement, plutôt que de chercher une croissance sans fondations.",
               },
             ].map((value, index) => (
               <article
@@ -886,12 +853,11 @@ export default async function LaVieDeLaFermePage() {
             </p>
 
             <h2 className="mt-5 font-serif text-4xl leading-tight sm:text-5xl">
-              Dans les coulisses d’AgroFarms237.
+              Derrière chaque production, il y a du travail.
             </h2>
 
             <p className="mt-6 text-base leading-8 text-black/60 sm:text-lg">
-              Découvrez les moments, les activités et les réalités
-              qui accompagnent le développement quotidien de notre ferme.
+              Une ferme ne se résume jamais à ce que l’on voit sur une étagère ou dans une assiette. Derrière chaque production, il y a des journées de travail, des soins, de l’entretien, de l’organisation, des décisions, des apprentissages et parfois des imprévus. Cette partie de notre site est une fenêtre ouverte sur cette réalité. Vous y découvrirez progressivement les coulisses d’AgroFarms237 : les productions, les installations, les animaux, les moments de travail et les étapes qui font évoluer la ferme. Parce que nous voulons aussi vous montrer ce qu’il y a derrière ce que nous produisons.
             </p>
 
           </div>
@@ -940,15 +906,11 @@ export default async function LaVieDeLaFermePage() {
             </p>
 
             <h2 className="mt-5 font-serif text-4xl leading-tight sm:text-5xl">
-              Les personnes derrière
-              le développement de la ferme.
+              Derrière une ferme, il y a toujours des femmes et des hommes.
             </h2>
 
             <p className="mt-6 text-base leading-8 text-black/60 sm:text-lg">
-              AgroFarms237 se construit grâce aux personnes
-              qui participent à son développement, à la gestion
-              de ses activités et à la construction progressive
-              de son projet agricole.
+              AgroFarms237 ne se construit pas uniquement avec des bâtiments, des équipements ou des productions. Le projet avance grâce aux personnes qui y consacrent leur temps, leur énergie, leurs compétences et leur volonté de faire progresser la ferme. Cette équipe évoluera avec le projet. Nous voulons prendre le temps de présenter celles et ceux qui participent réellement à cette aventure et qui contribuent, chacun à leur manière, à faire grandir AgroFarms237.
             </p>
 
           </div>
@@ -1074,12 +1036,11 @@ export default async function LaVieDeLaFermePage() {
             </p>
 
             <h2 className="mt-5 font-serif text-4xl leading-tight sm:text-5xl">
-              Les nouvelles d’AgroFarms237.
+              L’histoire continue de s’écrire.
             </h2>
 
             <p className="mt-6 text-base leading-8 text-black/60 sm:text-lg">
-              Retrouvez ici les évolutions, les nouveautés et
-              les moments importants de la vie de notre entreprise.
+              AgroFarms237 est un projet en mouvement. Les productions évoluent, les activités se développent, de nouvelles étapes se préparent et chaque avancée participe à la construction de la ferme. À travers nos actualités, nous partageons cette évolution avec vous : les nouveautés, les étapes importantes, les projets et les moments qui marquent la vie d’AgroFarms237. Suivez notre évolution et découvrez la ferme au fur et à mesure qu’elle grandit.
             </p>
 
           </div>
@@ -1178,14 +1139,12 @@ export default async function LaVieDeLaFermePage() {
                 Une ferme.
                 Plusieurs productions.
                 <span className="block text-white/60">
-                  Une vision commune.
+                  Une histoire qui ne fait que commencer.
                 </span>
               </h2>
 
               <p className="mt-7 max-w-2xl text-base leading-8 text-white/60">
-                Découvrez notre ferme, nos productions et
-                la manière dont AgroFarms237 construit
-                progressivement son développement.
+                AgroFarms237 se construit progressivement, avec une ambition simple : faire grandir une véritable activité agricole camerounaise autour de productions locales, d’un travail exigeant et d’une vision de long terme. Vous venez de découvrir notre histoire. La prochaine étape peut être de découvrir ce que nous produisons, de suivre notre évolution ou de construire quelque chose avec nous.
               </p>
 
             </div>
