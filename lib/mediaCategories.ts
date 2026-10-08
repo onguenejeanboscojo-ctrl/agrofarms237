@@ -1,3 +1,4 @@
+//
 // ============================================================
 // AGROFARMS237 — CATÉGORIES MÉDIAS
 // ============================================================
@@ -43,7 +44,6 @@ export const SITE_LOCATIONS = [
     label: "Accueil — Notre production",
   },
 
-
   // ----------------------------------------------------------
   // À PROPOS
   // ----------------------------------------------------------
@@ -56,11 +56,6 @@ export const SITE_LOCATIONS = [
   {
     value: "histoire",
     label: "À propos — Notre histoire",
-  },
-
-  {
-    value: "apropos_qui_sommes_nous",
-    label: "À propos — Qui sommes-nous ?",
   },
 
   {
@@ -118,7 +113,6 @@ export const SITE_LOCATIONS = [
     label: "À propos — Notre équipe",
   },
 
-
   // ----------------------------------------------------------
   // NOTRE ÉLEVAGE
   // ----------------------------------------------------------
@@ -147,7 +141,6 @@ export const SITE_LOCATIONS = [
     value: "elevage_chair",
     label: "Notre élevage — Poulets de chair",
   },
-
 
   // ----------------------------------------------------------
   // PRODUITS
@@ -187,7 +180,6 @@ export const SITE_LOCATIONS = [
     value: "produit_alevins",
     label: "Produit — Alevins",
   },
-
 
   // ----------------------------------------------------------
   // ÉDUCATION
@@ -234,7 +226,6 @@ export const SITE_LOCATION_GROUPS = [
     ),
   },
 
-
   // ----------------------------------------------------------
   // À PROPOS
   // ----------------------------------------------------------
@@ -245,7 +236,6 @@ export const SITE_LOCATION_GROUPS = [
       [
         "apropos_hero",
         "histoire",
-        "apropos_qui_sommes_nous",
         "apropos_pisciculture",
         "apropos_porcin",
         "apropos_aviculture",
@@ -261,7 +251,6 @@ export const SITE_LOCATION_GROUPS = [
     ),
   },
 
-
   // ----------------------------------------------------------
   // NOTRE ÉLEVAGE
   // ----------------------------------------------------------
@@ -273,7 +262,6 @@ export const SITE_LOCATION_GROUPS = [
     ),
   },
 
-
   // ----------------------------------------------------------
   // NOS PRODUITS
   // ----------------------------------------------------------
@@ -284,7 +272,6 @@ export const SITE_LOCATION_GROUPS = [
       item.value.startsWith("produit_")
     ),
   },
-
 
   // ----------------------------------------------------------
   // ESPACE ÉDUCATION
@@ -306,6 +293,7 @@ export const SITE_LOCATION_GROUPS = [
 // Ces rubriques existent toujours sur la page Galerie,
 // même lorsqu'aucun média n'y est encore publié.
 //
+// ============================================================
 
 export const GALLERY_CATEGORIES = [
   {
@@ -407,6 +395,7 @@ export const GALLERY_CATEGORY_LABELS: Record<
 // Ces constantes restent disponibles pour éviter de casser
 // les composants existants pendant la transition.
 //
+// ============================================================
 
 export const SPECIAL_CATEGORIES = [
   {
