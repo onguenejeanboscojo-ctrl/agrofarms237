@@ -46,6 +46,11 @@ export const SITE_LOCATIONS = [
   },
 
   {
+    value: "ferme_accueil",
+    label: "Notre ferme — Accueil",
+  },
+
+  {
     value: "elevage_silure",
     label: "Notre ferme — Silure",
   },
@@ -143,6 +148,7 @@ export const SITE_LOCATION_GROUPS = [
       [
         "hero",
         "production",
+        "ferme_accueil",
       ].includes(item.value)
     ),
   },
