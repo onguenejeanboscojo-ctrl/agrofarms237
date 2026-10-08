@@ -255,7 +255,7 @@ export default function ContactPage() {
 
             <a
               href="/notre-elevage"
-              className="btn btn-outline"
+              className="inline-flex items-center justify-center rounded-full border border-ink/15 bg-paper px-6 py-3.5 text-sm font-semibold text-ink transition hover:-translate-y-0.5 hover:bg-ink hover:text-paper"
             >
               Découvrir notre ferme
             </a>
