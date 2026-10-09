@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -20,11 +21,35 @@ type Product = {
   display_order: number | null;
 };
 
+type NewProduct = {
+  name: string;
+  category: string;
+  product_group: string;
+  variant: string;
+  unit: string;
+  price_standard: string;
+  stock_status: "disponible" | "stock_limite" | "indisponible";
+  stock_quantity: string;
+  display_order: string;
+};
+
 const CATEGORY_ORDER = [
   "Pisciculture",
   "Élevage porcin",
   "Aviculture",
 ];
+
+const EMPTY_PRODUCT: NewProduct = {
+  name: "",
+  category: "Élevage porcin",
+  product_group: "porcelet",
+  variant: "Vente à l’unité",
+  unit: "piece",
+  price_standard: "",
+  stock_status: "indisponible",
+  stock_quantity: "0",
+  display_order: "4",
+};
 
 const inputClass =
   "w-full rounded-xl border border-ink/10 bg-paper px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-ink/30 focus:ring-2 focus:ring-ink/10";
@@ -34,9 +59,11 @@ function formatFCFA(value: number | null) {
   return `${new Intl.NumberFormat("fr-FR").format(value)} FCFA`;
 }
 
-function normalizeNumber(value: string) {
+function normalizeNumber(value: string): number | null {
   if (value.trim() === "") return null;
+
   const parsed = Number(value);
+
   return Number.isFinite(parsed) ? parsed : null;
 }
 
@@ -48,6 +75,7 @@ function unitLabel(unit: string | null) {
   if (unit === "kg") return "kg";
   if (unit === "piece") return "pièce";
   if (unit === "alvéole") return "alvéole";
+
   return unit || "unité";
 }
 
@@ -57,6 +85,13 @@ export default function ProductEditor() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newProduct, setNewProduct] = useState<NewProduct>({
+    ...EMPTY_PRODUCT,
+  });
 
   async function loadProducts() {
     try {
@@ -70,10 +105,14 @@ export default function ProductEditor() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.error || "Impossible de charger les produits.");
+        throw new Error(
+          data?.error || "Impossible de charger les produits."
+        );
       }
 
-      const rows = Array.isArray(data?.products) ? data.products : [];
+      const rows = Array.isArray(data?.products)
+        ? data.products
+        : [];
 
       rows.sort(
         (a: Product, b: Product) =>
@@ -117,6 +156,7 @@ export default function ProductEditor() {
     try {
       setSavingId(product.id);
       setError("");
+      setSuccess("");
 
       const payload = {
         id: product.id,
@@ -152,9 +192,12 @@ export default function ProductEditor() {
       }
 
       setSavedId(product.id);
+      setSuccess(`Le produit « ${product.name} » a été enregistré.`);
 
-      setTimeout(() => {
-        setSavedId((current) => (current === product.id ? null : current));
+      window.setTimeout(() => {
+        setSavedId((current) =>
+          current === product.id ? null : current
+        );
       }, 1800);
     } catch (err) {
       setError(
@@ -164,6 +207,107 @@ export default function ProductEditor() {
       );
     } finally {
       setSavingId(null);
+    }
+  }
+
+  async function createProduct(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    try {
+      setCreating(true);
+      setError("");
+      setSuccess("");
+
+      const parsedPrice = normalizeNumber(
+        newProduct.price_standard
+      );
+      const parsedQuantity = normalizeNumber(
+        newProduct.stock_quantity
+      );
+      const parsedOrder = Number(newProduct.display_order);
+
+      if (!newProduct.name.trim()) {
+        throw new Error("Le nom du produit est obligatoire.");
+      }
+
+      if (
+        parsedPrice !== null &&
+        (!Number.isInteger(parsedPrice) || parsedPrice < 0)
+      ) {
+        throw new Error(
+          "Le prix doit être un nombre entier positif ou rester vide."
+        );
+      }
+
+      if (
+        parsedQuantity === null ||
+        !Number.isInteger(parsedQuantity) ||
+        parsedQuantity < 0
+      ) {
+        throw new Error(
+          "Le stock doit être un nombre entier positif ou nul."
+        );
+      }
+
+      if (
+        !Number.isInteger(parsedOrder) ||
+        parsedOrder < 0
+      ) {
+        throw new Error(
+          "L'ordre d'affichage doit être un entier positif ou nul."
+        );
+      }
+
+      const payload = {
+        name: newProduct.name.trim(),
+        category: newProduct.category,
+        product_group: newProduct.product_group.trim(),
+        variant: newProduct.variant.trim() || null,
+        unit: newProduct.unit,
+        price_standard: parsedPrice,
+        price_bulk: null,
+        bulk_min_kg: null,
+        stock_status: newProduct.stock_status,
+        stock_quantity: parsedQuantity,
+        stock_threshold: 0,
+        display_order: parsedOrder,
+        next_availability: null,
+      };
+
+      const response = await fetch("/api/products", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error || "Impossible de créer le produit."
+        );
+      }
+
+      setNewProduct({ ...EMPTY_PRODUCT });
+      setShowCreateForm(false);
+
+      await loadProducts();
+
+      setSuccess(
+        `Le produit « ${payload.name} » a été créé avec succès.`
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Une erreur est survenue lors de la création."
+      );
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -193,7 +337,10 @@ export default function ProductEditor() {
       const aIndex = CATEGORY_ORDER.indexOf(a);
       const bIndex = CATEGORY_ORDER.indexOf(b);
 
-      if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+      if (aIndex === -1 && bIndex === -1) {
+        return a.localeCompare(b);
+      }
+
       if (aIndex === -1) return 1;
       if (bIndex === -1) return -1;
 
@@ -212,8 +359,20 @@ export default function ProductEditor() {
   return (
     <div className="space-y-8">
       {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+        <div
+          role="alert"
+          className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700"
+        >
           {error}
+        </div>
+      ) : null}
+
+      {success ? (
+        <div
+          role="status"
+          className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800"
+        >
+          {success}
         </div>
       ) : null}
 
@@ -224,8 +383,8 @@ export default function ProductEditor() {
               Catalogue AgroFarms237
             </p>
             <p className="mt-1 text-xs text-inkSoft">
-              {products.length} produits · modifiez les prix et la disponibilité
-              directement ici.
+              {products.length} produits · modifiez les prix et la
+              disponibilité directement ici.
             </p>
           </div>
 
@@ -239,6 +398,249 @@ export default function ProductEditor() {
         </div>
       </div>
 
+      {/* CRÉATION D'UN PRODUIT */}
+      <section className="rounded-2xl border border-ink/10 bg-paper p-5 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-ink">
+              Gestion du catalogue
+            </p>
+            <h2 className="mt-1 font-serif text-2xl font-semibold text-ink">
+              Ajouter un produit
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-inkSoft">
+              Créez une nouvelle fiche qui sera ajoutée au catalogue.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowCreateForm((current) => !current);
+              setError("");
+              setSuccess("");
+            }}
+            className="self-start rounded-xl bg-ink px-5 py-3 text-sm font-semibold text-paper transition hover:opacity-90"
+          >
+            {showCreateForm ? "Fermer le formulaire" : "+ Nouveau produit"}
+          </button>
+        </div>
+
+        {showCreateForm ? (
+          <form
+            onSubmit={createProduct}
+            className="mt-6 grid gap-5 border-t border-ink/10 pt-6 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            <div>
+              <label className="mb-2 block text-xs font-semibold text-inkSoft">
+                Nom du produit *
+              </label>
+              <input
+                required
+                maxLength={120}
+                value={newProduct.name}
+                onChange={(event) =>
+                  setNewProduct({
+                    ...newProduct,
+                    name: event.target.value,
+                  })
+                }
+                placeholder="Ex. Porcelet"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-semibold text-inkSoft">
+                Catégorie *
+              </label>
+              <select
+                required
+                value={newProduct.category}
+                onChange={(event) =>
+                  setNewProduct({
+                    ...newProduct,
+                    category: event.target.value,
+                  })
+                }
+                className={inputClass}
+              >
+                {CATEGORY_ORDER.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-semibold text-inkSoft">
+                Groupe du produit *
+              </label>
+              <input
+                required
+                maxLength={100}
+                value={newProduct.product_group}
+                onChange={(event) =>
+                  setNewProduct({
+                    ...newProduct,
+                    product_group: event.target.value,
+                  })
+                }
+                placeholder="Ex. porcelet"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-semibold text-inkSoft">
+                Variante
+              </label>
+              <input
+                maxLength={100}
+                value={newProduct.variant}
+                onChange={(event) =>
+                  setNewProduct({
+                    ...newProduct,
+                    variant: event.target.value,
+                  })
+                }
+                placeholder="Vente à l’unité"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-semibold text-inkSoft">
+                Unité de vente *
+              </label>
+              <select
+                required
+                value={newProduct.unit}
+                onChange={(event) =>
+                  setNewProduct({
+                    ...newProduct,
+                    unit: event.target.value,
+                  })
+                }
+                className={inputClass}
+              >
+                <option value="piece">Pièce</option>
+                <option value="kg">Kilogramme (kg)</option>
+                <option value="alvéole">Alvéole</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-semibold text-inkSoft">
+                Prix standard (FCFA)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={newProduct.price_standard}
+                onChange={(event) =>
+                  setNewProduct({
+                    ...newProduct,
+                    price_standard: event.target.value,
+                  })
+                }
+                placeholder="À définir"
+                className={inputClass}
+              />
+              <p className="mt-1.5 text-xs text-inkSoft">
+                Tu pourras renseigner le prix ultérieurement.
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-semibold text-inkSoft">
+                Disponibilité
+              </label>
+              <select
+                value={newProduct.stock_status}
+                onChange={(event) =>
+                  setNewProduct({
+                    ...newProduct,
+                    stock_status: event.target.value as NewProduct["stock_status"],
+                  })
+                }
+                className={inputClass}
+              >
+                <option value="indisponible">Indisponible</option>
+                <option value="stock_limite">Stock limité</option>
+                <option value="disponible">Disponible</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-semibold text-inkSoft">
+                Stock initial
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                required
+                value={newProduct.stock_quantity}
+                onChange={(event) =>
+                  setNewProduct({
+                    ...newProduct,
+                    stock_quantity: event.target.value,
+                  })
+                }
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-semibold text-inkSoft">
+                Ordre d’affichage
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                required
+                value={newProduct.display_order}
+                onChange={(event) =>
+                  setNewProduct({
+                    ...newProduct,
+                    display_order: event.target.value,
+                  })
+                }
+                className={inputClass}
+              />
+            </div>
+
+            <div className="flex flex-col gap-3 sm:col-span-2 lg:col-span-3 sm:flex-row">
+              <button
+                type="submit"
+                disabled={creating}
+                className="rounded-xl bg-ink px-6 py-3 text-sm font-semibold text-paper transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+              >
+                {creating ? "Création en cours…" : "Créer le produit"}
+              </button>
+
+              <button
+                type="button"
+                disabled={creating}
+                onClick={() => {
+                  setNewProduct({ ...EMPTY_PRODUCT });
+                  setShowCreateForm(false);
+                  setError("");
+                }}
+                className="rounded-xl border border-ink/10 bg-white px-6 py-3 text-sm font-semibold text-ink transition hover:border-ink/25 disabled:opacity-60"
+              >
+                Annuler
+              </button>
+            </div>
+          </form>
+        ) : null}
+      </section>
+
+      {/* PRODUITS EXISTANTS */}
       {groupedProducts.map(([category, categoryProducts]) => (
         <section key={category} className="space-y-4">
           <div>
@@ -252,7 +654,8 @@ export default function ProductEditor() {
 
           <div className="grid gap-4">
             {categoryProducts.map((product) => {
-              const isAvailable = product.stock_status === "disponible";
+              const isAvailable =
+                product.stock_status === "disponible";
               const hasBulkPrice =
                 typeof product.price_bulk === "number";
 
@@ -309,6 +712,7 @@ export default function ProductEditor() {
                       <input
                         type="number"
                         min="0"
+                        step="1"
                         value={product.price_standard ?? ""}
                         onChange={(event) =>
                           updateProduct(
@@ -317,7 +721,7 @@ export default function ProductEditor() {
                             normalizeNumber(event.target.value)
                           )
                         }
-                        placeholder="Ex. 2500"
+                        placeholder="À définir"
                         className={inputClass}
                       />
                       <p className="mt-1.5 text-[11px] text-inkSoft">
@@ -332,6 +736,7 @@ export default function ProductEditor() {
                       <input
                         type="number"
                         min="0"
+                        step="1"
                         value={product.price_bulk ?? ""}
                         onChange={(event) =>
                           updateProduct(
@@ -340,7 +745,9 @@ export default function ProductEditor() {
                             normalizeNumber(event.target.value)
                           )
                         }
-                        placeholder={product.unit === "kg" ? "Ex. 2400" : "Optionnel"}
+                        placeholder={
+                          product.unit === "kg" ? "Ex. 2400" : "Optionnel"
+                        }
                         className={inputClass}
                       />
                       <p className="mt-1.5 text-[11px] text-inkSoft">
@@ -357,6 +764,7 @@ export default function ProductEditor() {
                       <input
                         type="number"
                         min="1"
+                        step="1"
                         value={product.bulk_min_kg ?? ""}
                         onChange={(event) =>
                           updateProduct(
@@ -365,7 +773,9 @@ export default function ProductEditor() {
                             normalizeNumber(event.target.value)
                           )
                         }
-                        placeholder={product.unit === "kg" ? "Ex. 30" : "Optionnel"}
+                        placeholder={
+                          product.unit === "kg" ? "Ex. 30" : "Optionnel"
+                        }
                         className={inputClass}
                       />
                       <p className="mt-1.5 text-[11px] text-inkSoft">
@@ -418,6 +828,7 @@ export default function ProductEditor() {
                       <input
                         type="number"
                         min="0"
+                        step="1"
                         value={product.stock_quantity ?? ""}
                         onChange={(event) =>
                           updateProduct(
@@ -444,7 +855,7 @@ export default function ProductEditor() {
             Aucun produit dans le catalogue
           </p>
           <p className="mt-2 text-sm text-inkSoft">
-            Les produits créés dans Supabase apparaîtront ici.
+            Créez un premier produit avec le formulaire ci-dessus.
           </p>
         </div>
       ) : null}
