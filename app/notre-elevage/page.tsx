@@ -356,10 +356,21 @@ function MediaBlock({
 }) {
   if (media.length === 0) {
     return (
-      <div className="flex aspect-[4/3] items-center justify-center bg-black/5 px-6 text-center">
-        <p className="text-sm text-black/45">
-          {fallback}
-        </p>
+      <div className="group relative isolate flex aspect-[4/3] min-h-[240px] flex-col items-center justify-center overflow-hidden bg-[#18352B] px-6 py-10 text-center text-white sm:min-h-[300px]">
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,rgba(190,154,83,0.24),transparent_48%),linear-gradient(135deg,#18352B_0%,#244838_55%,#10271F_100%)]" />
+        <div aria-hidden="true" className="absolute -right-12 -top-16 h-56 w-56 rounded-full border border-white/10 sm:h-72 sm:w-72" />
+        <div aria-hidden="true" className="absolute -bottom-24 -left-12 h-64 w-64 rounded-full border border-[#C4A568]/25 sm:h-80 sm:w-80" />
+        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-[#C4A568]/60 bg-white/[0.04] text-[#D7BD83]">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-7 w-7" stroke="currentColor" strokeWidth="1.25">
+            <rect x="3.25" y="4.25" width="17.5" height="15.5" rx="1.5" />
+            <circle cx="8.5" cy="9" r="1.5" />
+            <path d="m4 17 5-4.5 3.5 3 3-2.5 4.5 4" />
+          </svg>
+        </div>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#D7BD83]">La vie à la ferme</p>
+        <p className="mt-3 max-w-sm font-serif text-2xl leading-tight sm:text-3xl">Une histoire à photographier</p>
+        <p className="mt-3 max-w-sm text-xs leading-6 text-white/65 sm:text-sm">{fallback}</p>
+        <span className="mt-6 h-px w-12 bg-[#C4A568]/80" />
       </div>
     );
   }
@@ -612,13 +623,13 @@ export default async function NotreElevagePage() {
 
 
   return (
-    <main className="bg-white text-ink">
+    <main className="overflow-hidden bg-white text-ink">
 
       {/* =====================================================
           HERO
       ====================================================== */}
 
-      <section className="relative min-h-[520px] overflow-hidden bg-[#18352B] text-white">
+      <section className="relative isolate min-h-[600px] overflow-hidden bg-[#18352B] text-white sm:min-h-[660px]">
 
         {heroImages.length > 0 && (
           <HeroSlideshow
@@ -626,21 +637,23 @@ export default async function NotreElevagePage() {
           />
         )}
 
-        <div className="absolute inset-0 z-[1] bg-gradient-to-r from-black/70 via-black/50 to-black/30" />
+        <div className="absolute inset-0 z-[1] bg-gradient-to-r from-[#0B1B14]/90 via-[#0B1B14]/65 to-[#0B1B14]/25" />
+        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 z-[2] h-32 bg-gradient-to-t from-[#10271F]/50 to-transparent" />
 
-        <div className="relative z-10 mx-auto flex min-h-[520px] max-w-7xl items-center px-6 py-24 lg:px-8 lg:py-32">
+        <div className="relative z-10 mx-auto flex min-h-[600px] max-w-7xl items-center px-5 py-20 sm:min-h-[660px] sm:px-8 sm:py-28 lg:px-12">
 
           <div className="max-w-4xl">
 
-            <p className="mb-5 text-sm font-medium uppercase tracking-[0.25em] text-gold">
+            <p className="mb-5 inline-flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-[#D7BD83] sm:text-xs">
+              <span aria-hidden="true" className="h-px w-8 bg-[#D7BD83]" />
               {content.hero_label}
             </p>
 
-            <h1 className="whitespace-nowrap font-serif text-4xl leading-tight sm:text-5xl lg:text-6xl">
+            <h1 className="max-w-4xl break-words font-serif text-4xl leading-[1.08] tracking-[-0.025em] sm:text-5xl md:text-6xl lg:text-7xl">
               {content.hero_title}
             </h1>
 
-            <p className="mt-7 max-w-3xl text-base leading-8 text-white/80 sm:text-lg">
+            <p className="mt-7 max-w-2xl text-sm leading-7 text-white/85 sm:text-base sm:leading-8 lg:text-lg">
               {content.hero_description}
             </p>
 
@@ -654,15 +667,15 @@ export default async function NotreElevagePage() {
           ÉTAPES
       ====================================================== */}
 
-      <section className="border-b border-black/10 bg-white">
+      <section className="relative border-b border-black/5 bg-[#F7F5EF]">
 
-        <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+        <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8 sm:py-20 lg:px-12">
 
-          <div className="grid gap-10 md:grid-cols-3">
+          <div className="grid gap-0 md:grid-cols-3 md:divide-x md:divide-black/10">
 
-            <div>
+            <div className="py-6 md:px-8 md:py-3 first:pl-0 last:pr-0">
 
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9B7A3E] sm:text-xs">
                 {content.step1_label}
               </p>
 
@@ -677,9 +690,9 @@ export default async function NotreElevagePage() {
             </div>
 
 
-            <div>
+            <div className="py-6 md:px-8 md:py-3 first:pl-0 last:pr-0">
 
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9B7A3E] sm:text-xs">
                 {content.step2_label}
               </p>
 
@@ -694,13 +707,13 @@ export default async function NotreElevagePage() {
             </div>
 
 
-            <div>
+            <div className="py-6 md:px-8 md:py-3 first:pl-0 last:pr-0">
 
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9B7A3E] sm:text-xs">
                 {content.step3_label}
               </p>
 
-              <h2 className="mt-3 whitespace-nowrap font-serif text-2xl">
+              <h2 className="mt-3 break-words font-serif text-2xl leading-tight sm:text-3xl">
                 {content.step3_title}
               </h2>
 
@@ -723,19 +736,19 @@ export default async function NotreElevagePage() {
 
       <section className="bg-white">
 
-        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-24 lg:px-12 lg:py-28">
 
-          <div className="mb-12 max-w-3xl">
+          <div className="mb-10 max-w-3xl sm:mb-14">
 
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#9B7A3E] sm:text-xs">
               {content.fish_label}
             </p>
 
-            <h2 className="mt-3 font-serif text-4xl">
+            <h2 className="mt-3 break-words font-serif text-3xl leading-tight tracking-[-0.02em] sm:text-4xl lg:text-5xl">
               {content.fish_title}
             </h2>
 
-            <p className="mt-4 text-base leading-8 text-black/60">
+            <p className="mt-4 text-sm leading-7 text-black/65 sm:text-base sm:leading-8">
               {content.fish_description}
             </p>
 
@@ -744,7 +757,7 @@ export default async function NotreElevagePage() {
 
           {poissons.length === 0 ? (
 
-            <div className="border border-black/10 bg-bgAlt p-8 text-center">
+            <div className="rounded-sm border border-dashed border-[#18352B]/20 bg-[#F7F5EF] px-6 py-12 text-center sm:px-10">
 
               <p className="text-sm text-black/50">
                 Aucun élevage de poisson n’est actuellement publié.
@@ -754,7 +767,7 @@ export default async function NotreElevagePage() {
 
           ) : (
 
-            <div className="grid gap-8 lg:grid-cols-2">
+            <div className="grid gap-6 sm:gap-8 lg:grid-cols-2">
 
               {poissons.map((item) => {
 
@@ -769,7 +782,7 @@ export default async function NotreElevagePage() {
                 return (
                   <article
                     key={item.id}
-                    className="overflow-hidden border border-black/10 bg-white"
+                    className="group overflow-hidden rounded-sm border border-black/[0.07] bg-white shadow-[0_12px_40px_rgba(24,53,43,0.055)] transition-shadow duration-300 hover:shadow-[0_20px_55px_rgba(24,53,43,0.12)]"
                   >
 
                     <MediaBlock
@@ -778,20 +791,20 @@ export default async function NotreElevagePage() {
                     />
 
 
-                    <div className="p-7">
+                    <div className="p-5 sm:p-7 lg:p-8">
 
                       <StatusBadge
                         status={item.status}
                       />
 
 
-                      <h3 className="mt-4 font-serif text-3xl">
+                      <h3 className="mt-4 break-words font-serif text-2xl leading-tight sm:text-3xl">
                         {item.name}
                       </h3>
 
 
                       {item.description && (
-                        <p className="mt-4 text-sm leading-7 text-black/60">
+                        <p className="mt-4 text-sm leading-7 text-black/65">
                           {item.description}
                         </p>
                       )}
@@ -824,19 +837,19 @@ export default async function NotreElevagePage() {
 
       <section className="bg-bgAlt">
 
-        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-24 lg:px-12 lg:py-28">
 
-          <div className="mb-12 max-w-3xl">
+          <div className="mb-10 max-w-3xl sm:mb-14">
 
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#9B7A3E] sm:text-xs">
               {content.pigs_label}
             </p>
 
-            <h2 className="mt-3 font-serif text-4xl">
+            <h2 className="mt-3 break-words font-serif text-3xl leading-tight tracking-[-0.02em] sm:text-4xl lg:text-5xl">
               {content.pigs_title}
             </h2>
 
-            <p className="mt-4 text-base leading-8 text-black/60">
+            <p className="mt-4 text-sm leading-7 text-black/65 sm:text-base sm:leading-8">
               {content.pigs_description}
             </p>
 
@@ -845,7 +858,7 @@ export default async function NotreElevagePage() {
 
           {porcs.length === 0 ? (
 
-            <div className="border border-black/10 bg-white p-8 text-center">
+            <div className="rounded-sm border border-dashed border-[#18352B]/20 bg-white/70 px-6 py-12 text-center sm:px-10">
 
               <p className="text-sm text-black/50">
                 Aucun élevage porcin n’est actuellement publié.
@@ -855,7 +868,7 @@ export default async function NotreElevagePage() {
 
           ) : (
 
-            <div className="grid gap-8 lg:grid-cols-2">
+            <div className="grid gap-6 sm:gap-8 lg:grid-cols-2">
 
               {porcs.map((item) => {
 
@@ -880,7 +893,7 @@ export default async function NotreElevagePage() {
                 return (
                   <article
                     key={item.id}
-                    className="overflow-hidden border border-black/10 bg-white"
+                    className="group overflow-hidden rounded-sm border border-black/[0.07] bg-white shadow-[0_12px_40px_rgba(24,53,43,0.055)] transition-shadow duration-300 hover:shadow-[0_20px_55px_rgba(24,53,43,0.12)]"
                   >
 
                     <MediaBlock
@@ -889,20 +902,20 @@ export default async function NotreElevagePage() {
                     />
 
 
-                    <div className="p-7">
+                    <div className="p-5 sm:p-7 lg:p-8">
 
                       <StatusBadge
                         status={item.status}
                       />
 
 
-                      <h3 className="mt-4 font-serif text-3xl">
+                      <h3 className="mt-4 break-words font-serif text-2xl leading-tight sm:text-3xl">
                         {item.name}
                       </h3>
 
 
                       {item.description && (
-                        <p className="mt-4 text-sm leading-7 text-black/60">
+                        <p className="mt-4 text-sm leading-7 text-black/65">
                           {item.description}
                         </p>
                       )}
@@ -927,19 +940,19 @@ export default async function NotreElevagePage() {
 
       <section className="bg-white">
 
-        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-24 lg:px-12 lg:py-28">
 
-          <div className="mb-12 max-w-3xl">
+          <div className="mb-10 max-w-3xl sm:mb-14">
 
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#9B7A3E] sm:text-xs">
               {content.poultry_label}
             </p>
 
-            <h2 className="mt-3 font-serif text-4xl">
+            <h2 className="mt-3 break-words font-serif text-3xl leading-tight tracking-[-0.02em] sm:text-4xl lg:text-5xl">
               {content.poultry_title}
             </h2>
 
-            <p className="mt-4 text-base leading-8 text-black/60">
+            <p className="mt-4 text-sm leading-7 text-black/65 sm:text-base sm:leading-8">
               {content.poultry_description}
             </p>
 
@@ -948,7 +961,7 @@ export default async function NotreElevagePage() {
 
           {poulets.length === 0 ? (
 
-            <div className="border border-black/10 bg-bgAlt p-8 text-center">
+            <div className="rounded-sm border border-dashed border-[#18352B]/20 bg-[#F7F5EF] px-6 py-12 text-center sm:px-10">
 
               <p className="text-sm text-black/50">
                 Aucun élevage avicole n’est actuellement publié.
@@ -958,7 +971,7 @@ export default async function NotreElevagePage() {
 
           ) : (
 
-            <div className="grid gap-8 lg:grid-cols-2">
+            <div className="grid gap-6 sm:gap-8 lg:grid-cols-2">
 
               {poulets.map((item) => {
 
@@ -973,7 +986,7 @@ export default async function NotreElevagePage() {
                 return (
                   <article
                     key={item.id}
-                    className="overflow-hidden border border-black/10 bg-white"
+                    className="group overflow-hidden rounded-sm border border-black/[0.07] bg-white shadow-[0_12px_40px_rgba(24,53,43,0.055)] transition-shadow duration-300 hover:shadow-[0_20px_55px_rgba(24,53,43,0.12)]"
                   >
 
                     <MediaBlock
@@ -982,20 +995,20 @@ export default async function NotreElevagePage() {
                     />
 
 
-                    <div className="p-7">
+                    <div className="p-5 sm:p-7 lg:p-8">
 
                       <StatusBadge
                         status={item.status}
                       />
 
 
-                      <h3 className="mt-4 font-serif text-3xl">
+                      <h3 className="mt-4 break-words font-serif text-2xl leading-tight sm:text-3xl">
                         {item.name}
                       </h3>
 
 
                       {item.description && (
-                        <p className="mt-4 text-sm leading-7 text-black/60">
+                        <p className="mt-4 text-sm leading-7 text-black/65">
                           {item.description}
                         </p>
                       )}
@@ -1018,30 +1031,30 @@ export default async function NotreElevagePage() {
           AGRICULTURE
       ====================================================== */}
 
-      <section className="bg-[#F3EFE5]">
-        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+      <section className="relative bg-[#F3EFE5]">
+        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-24 lg:px-12 lg:py-28">
 
           <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
 
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#9B7A3E] sm:text-xs">
                 Agriculture
               </p>
 
-              <h2 className="mt-3 font-serif text-4xl leading-tight sm:text-5xl">
+              <h2 className="mt-3 break-words font-serif text-3xl leading-tight tracking-[-0.02em] sm:text-4xl lg:text-5xl">
                 Des terres disponibles pour développer la ferme.
               </h2>
             </div>
 
             <div className="max-w-3xl">
-              <p className="text-base leading-8 text-black/60">
+              <p className="text-sm leading-7 text-black/65 sm:text-base sm:leading-8">
                 AgroFarms237 dispose de terres cultivables destinées à
                 accompagner progressivement le développement de l’exploitation.
                 Cette activité agricole sera développée au rythme de la ferme,
                 en complément de la pisciculture et des élevages.
               </p>
 
-              <div className="mt-8 border-l-2 border-gold pl-6">
+              <div className="mt-8 border-l-2 border-[#B99A5A] pl-5 sm:pl-6">
                 <p className="text-sm leading-7 text-black/60">
                   L’objectif est de construire progressivement un ensemble
                   cohérent où les différentes activités agricoles peuvent
@@ -1062,17 +1075,17 @@ export default async function NotreElevagePage() {
 
       <section className="bg-[#18352B] text-white">
 
-        <div className="mx-auto max-w-5xl px-6 py-20 text-center lg:px-8 lg:py-28">
+        <div className="mx-auto max-w-5xl px-5 py-16 text-center sm:px-8 sm:py-24 lg:px-12 lg:py-32">
 
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold">
             {content.vision_label}
           </p>
 
-          <h2 className="mt-5 font-serif text-3xl leading-tight sm:text-4xl lg:text-5xl">
+          <h2 className="mt-5 break-words font-serif text-3xl leading-tight tracking-[-0.02em] sm:text-4xl lg:text-6xl">
             {content.vision_title}
           </h2>
 
-          <p className="mx-auto mt-7 max-w-3xl text-base leading-8 text-white/70">
+          <p className="mx-auto mt-7 max-w-3xl text-sm leading-7 text-white/75 sm:text-base sm:leading-8">
             {content.vision_text}
           </p>
 
