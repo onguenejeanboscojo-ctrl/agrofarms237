@@ -230,23 +230,15 @@ export default function MediaManager() {
     try {
       setProductsLoading(true);
 
-      // Source principale : le catalogue products.
-      // Fallback conservé vers /api/products si l'ancien endpoint
-      // est encore celui exposé par le déploiement en cours.
-      const endpoints = [
-        "/api/catalog-products",
-        "/api/products",
-      ];
-
-      let loadedProducts: CatalogProduct[] = [];
+      // Interroger les deux endpoints : selon le déploiement,
+      // l'un peut contenir des produits absents de l'autre.
+      const endpoints = ["/api/catalog-products", "/api/products"];
+      const productsById = new Map<string, CatalogProduct>();
       let lastError = "";
 
       for (const endpoint of endpoints) {
         try {
-          const res = await fetch(endpoint, {
-            cache: "no-store",
-          });
-
+          const res = await fetch(endpoint, { cache: "no-store" });
           const data = await res.json();
 
           if (!res.ok) {
@@ -256,39 +248,58 @@ export default function MediaManager() {
             continue;
           }
 
-          const candidates =
-            Array.isArray(data)
-              ? data
-              : Array.isArray(data?.items)
-                ? data.items
-                : Array.isArray(data?.products)
-                  ? data.products
-                  : Array.isArray(data?.data)
-                    ? data.data
-                    : [];
+          const candidates: unknown = Array.isArray(data)
+            ? data
+            : Array.isArray(data?.items)
+              ? data.items
+              : Array.isArray(data?.products)
+                ? data.products
+                : Array.isArray(data?.data)
+                  ? data.data
+                  : [];
 
-          if (candidates.length > 0) {
-            loadedProducts = candidates;
-            break;
+          if (Array.isArray(candidates)) {
+            for (const candidate of candidates) {
+              if (
+                candidate &&
+                typeof candidate === "object" &&
+                "id" in candidate &&
+                "name" in candidate &&
+                typeof candidate.id === "string" &&
+                typeof candidate.name === "string"
+              ) {
+                const product = candidate as CatalogProduct;
+                // Fusion par ID pour éviter les doublons. Les champs
+                // disponibles du dernier endpoint complètent les précédents.
+                productsById.set(product.id, {
+                  ...productsById.get(product.id),
+                  ...product,
+                });
+              }
+            }
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           lastError =
-            err?.message ||
-            "Impossible de charger les produits.";
+            err instanceof Error
+              ? err.message
+              : "Impossible de charger les produits.";
         }
       }
 
+      const loadedProducts = Array.from(productsById.values());
+
       if (loadedProducts.length === 0) {
         throw new Error(
-          lastError ||
-            "Aucun produit n'a été récupéré du catalogue."
+          lastError || "Aucun produit n'a été récupéré du catalogue."
         );
       }
 
       setProducts(loadedProducts);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(
-        err.message || "Impossible de charger les produits."
+        err instanceof Error
+          ? err.message
+          : "Impossible de charger les produits."
       );
     } finally {
       setProductsLoading(false);
