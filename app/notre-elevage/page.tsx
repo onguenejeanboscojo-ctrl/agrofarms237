@@ -326,6 +326,17 @@ async function getSiteMedia(): Promise<SiteMedia[]> {
 }
 
 
+/** Images publiées affectées à un emplacement précis dans Admin → Galerie. */
+function getImagesForLocation(
+  siteMedia: SiteMedia[],
+  location: string
+): string[] {
+  return siteMedia
+    .filter((item) => item.site_location === location)
+    .sort((a, b) => a.position - b.position)
+    .map((item) => item.url);
+}
+
 function StatusBadge({
   status,
 }: {
@@ -611,12 +622,37 @@ export default async function NotreElevagePage() {
   );
 
 
-  const allImages = heroImages.slice(0, 6);
+  // Les photos affectées aux emplacements de la page ont priorité.
+  // Les médias historiques restent disponibles en secours pour préserver le contenu existant.
+  const heroSlotImages = getImagesForLocation(siteMedia, "apropos_hero");
+  const lieuSlotImages = getImagesForLocation(siteMedia, "apropos_lieu");
+  const gestesSlotImages = getImagesForLocation(siteMedia, "apropos_gestes");
+  const elevagesSlotImages = getImagesForLocation(siteMedia, "apropos_nos_elevages");
+  const detailsSlotImages = getImagesForLocation(siteMedia, "apropos_details");
+  const demainSlotImages = getImagesForLocation(siteMedia, "apropos_ferme_demain");
+  const agricultureSlotImages = getImagesForLocation(siteMedia, "apropos_agriculture");
+  const storySlotImages = getImagesForLocation(siteMedia, "histoire");
   const firstFish = poissons[0];
   const firstFishMedia = firstFish
     ? getMediaForFarm(firstFish, siteMedia, mediaByFarm)
     : [];
-  const storyImage = firstFishMedia[0]?.url || allImages[0] || null;
+  const heroDisplayImages = heroSlotImages.length > 0 ? heroSlotImages : heroImages;
+  const legacyImages = heroImages.slice(0, 6);
+  const allImages = [
+    lieuSlotImages[0] || legacyImages[0] || null,
+    gestesSlotImages[0] || legacyImages[1] || null,
+    elevagesSlotImages[0] || legacyImages[2] || null,
+    detailsSlotImages[0] || legacyImages[3] || null,
+    demainSlotImages[0] || legacyImages[4] || null,
+  ];
+  const elevageSlideshowImages = elevagesSlotImages.length > 0
+    ? elevagesSlotImages
+    : Array.from(new Set([
+        ...firstFishMedia.map((item) => item.url),
+        ...(porcs[0] ? getMediaForFarm(porcs[0], siteMedia, mediaByFarm).map((item) => item.url) : []),
+        ...(poulets[0] ? getMediaForFarm(poulets[0], siteMedia, mediaByFarm).map((item) => item.url) : []),
+      ]));
+  const storyImage = storySlotImages[0] || firstFishMedia[0]?.url || legacyImages[0] || null;
 
   const PhotoPlaceholder = ({ title, subtitle }: { title: string; subtitle: string }) => (
     <div className="relative flex min-h-[230px] items-end overflow-hidden rounded-2xl border border-[#D8D0BE] bg-[radial-gradient(ellipse_at_20%_10%,#54766A_0%,#18352B_55%,#0C211A_100%)] p-6 text-white sm:min-h-[280px]">
@@ -633,9 +669,9 @@ export default async function NotreElevagePage() {
     <main className="overflow-hidden bg-[#F7F5EF] text-[#19362C]">
       {/* HERO IMMERSIF */}
       <section className="relative isolate min-h-[640px] overflow-hidden bg-[#10271F] text-white sm:min-h-[720px]">
-        {heroImages.length > 0 ? (
+        {heroDisplayImages.length > 0 ? (
           <div className="absolute inset-0">
-            <HeroSlideshow images={heroImages} />
+            <HeroSlideshow images={heroDisplayImages} />
           </div>
         ) : (
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_75%_20%,#58766B_0%,#18352B_48%,#0B1D17_100%)]" />
@@ -730,7 +766,7 @@ export default async function NotreElevagePage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#07150F]/70 to-transparent" /><p className="absolute bottom-5 left-5 text-sm font-semibold text-white">02 · Les gestes du quotidien</p>
               </div>
               <div className="relative min-h-[220px] overflow-hidden rounded-2xl bg-[#18352B]">
-                {allImages[2] ? <img src={allImages[2]} alt="Élevage AgroFarms237" className="absolute inset-0 h-full w-full object-cover" /> : <div className="absolute inset-0"><PhotoPlaceholder title="Nos élevages" subtitle="Photo à ajouter : poissons, porcs ou volailles dans leur environnement réel." /></div>}
+                {elevageSlideshowImages.length > 0 ? <HeroSlideshow images={elevageSlideshowImages} /> : allImages[2] ? <img src={allImages[2]} alt="Élevage AgroFarms237" className="absolute inset-0 h-full w-full object-cover" /> : <div className="absolute inset-0"><PhotoPlaceholder title="Nos élevages" subtitle="Photos à ajouter : poissons, porcs ou volailles dans leur environnement réel." /></div>}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#07150F]/70 to-transparent" /><p className="absolute bottom-5 left-5 text-sm font-semibold text-white">03 · Nos élevages</p>
               </div>
             </div>
@@ -785,13 +821,14 @@ export default async function NotreElevagePage() {
       {/* AGRICULTURE */}
       <section className="bg-[#EDE9DE] py-20 sm:py-24">
         <div className="mx-auto grid max-w-[1180px] gap-10 px-5 sm:px-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center lg:gap-20 lg:px-10">
-          <div><p className="text-[10px] font-bold uppercase tracking-[.25em] text-[#A8833D]">Une vision d’ensemble</p><h2 className="mt-4 font-serif text-3xl leading-tight sm:text-5xl">Des terres pour faire grandir le projet.</h2></div>
+          <div><p className="text-[10px] font-bold uppercase tracking-[.25em] text-[#A8833D]">Une vision d’ensemble</p><h2 className="mt-4 font-serif text-3xl leading-tight sm:text-5xl">Des terres pour faire grandir le projet.</h2><div className="mt-7 overflow-hidden rounded-2xl bg-[#18352B]">{agricultureSlotImages[0] ? <img src={agricultureSlotImages[0]} alt="Terres agricoles d’AgroFarms237" className="h-64 w-full object-cover sm:h-80" /> : <PhotoPlaceholder title="Agriculture et terres" subtitle="Photo à ajouter : terrain, cultures et terres agricoles." />}</div></div>
           <div><p className="text-base leading-8 text-[#52645B]">AgroFarms237 dispose de terres cultivables destinées à accompagner progressivement le développement de l’exploitation. Cette activité agricole sera développée au rythme de la ferme, en complément de la pisciculture et des élevages.</p><div className="mt-7 border-l-2 border-[#B89957] pl-6"><p className="text-sm leading-7 text-[#66736B]">L’objectif est de construire un ensemble cohérent où les différentes activités agricoles avancent au sein d’une même vision durable.</p></div></div>
         </div>
       </section>
 
       {/* VISION FINALE */}
       <section className="relative isolate overflow-hidden bg-[#10271F] text-white">
+        {demainSlotImages[0] ? <img src={demainSlotImages[0]} alt="La ferme de demain" className="absolute inset-0 h-full w-full object-cover opacity-20" /> : null}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(91,126,104,.45),transparent_50%)]" />
         <div className="relative mx-auto max-w-5xl px-5 py-24 text-center sm:px-8 sm:py-32">
           <p className="text-[10px] font-bold uppercase tracking-[.28em] text-[#E8D4A1]">{content.vision_label}</p>
