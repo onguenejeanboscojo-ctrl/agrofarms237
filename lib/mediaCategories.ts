@@ -66,6 +66,9 @@
    { value: "education_porcs", label: "Éducation — Élevage porcin" },
    { value: "education_aviculture", label: "Éducation — Aviculture" },
    { value: "education_agriculture", label: "Éducation — Agriculture" },
+
+   // FORMATION PROFESSIONNELLE
+   { value: "formation_pro_hero", label: "Formation professionnelle — Hero de la page" },
  ];
 
  // ============================================================
@@ -127,6 +130,12 @@
      label: "Espace Éducation",
      options: SITE_LOCATIONS.filter((item) =>
        item.value.startsWith("education_")
+     ),
+   },
+   {
+     label: "Formation professionnelle",
+     options: SITE_LOCATIONS.filter((item) =>
+       item.value.startsWith("formation_pro_")
      ),
    },
  ];
