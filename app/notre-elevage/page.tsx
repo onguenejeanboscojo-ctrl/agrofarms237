@@ -624,7 +624,14 @@ export default async function NotreElevagePage() {
 
   // Les photos affectées aux emplacements de la page ont priorité.
   // Les médias historiques restent disponibles en secours pour préserver le contenu existant.
-  const heroSlotImages = getImagesForLocation(siteMedia, "apropos_hero");
+  // Le Hero accepte le nouvel emplacement dédié et l’ancien emplacement "hero"
+  // pour rester compatible avec les médias déjà configurés dans l’Admin.
+  const heroSlotImages = Array.from(
+    new Set([
+      ...getImagesForLocation(siteMedia, "apropos_hero"),
+      ...getImagesForLocation(siteMedia, "hero"),
+    ])
+  );
   const lieuSlotImages = getImagesForLocation(siteMedia, "apropos_lieu");
   const gestesSlotImages = getImagesForLocation(siteMedia, "apropos_gestes");
   const elevagesSlotImages = getImagesForLocation(siteMedia, "apropos_nos_elevages");
