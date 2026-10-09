@@ -3,205 +3,251 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { isAdminAuthed } from "@/lib/adminAuth";
 
-const ALLOWED_STATUSES = [
-  "disponible",
-  "stock_limite",
-  "indisponible",
+const CATEGORIES = [
+  "Pisciculture",
+  "Élevage porcin",
+  "Aviculture",
 ] as const;
 
-function isValidNumberOrNull(value: unknown): boolean {
+const STOCK_STATUSES = [
+  "disponible",
+  "indisponible",
+  "bientôt disponible",
+] as const;
+
+const UNITS = ["piece", "kg", "alvéole"] as const;
+
+function jsonError(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status });
+}
+
+function isNonNegativeNumber(value: unknown): value is number {
   return (
-    value === null ||
-    (typeof value === "number" &&
-      Number.isFinite(value) &&
-      value >= 0)
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= 0
   );
 }
 
+// GET : récupérer les produits du catalogue
 export async function GET() {
-  if (!(await isAdminAuthed())) {
-    return NextResponse.json(
-      { error: "Non autorisé" },
-      { status: 401 }
-    );
-  }
-
-  const { data, error } = await supabaseAdmin()
-    .from("products")
-    .select("*")
-    .order("display_order", { ascending: true });
-
-  if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
-  }
-
-  return NextResponse.json({ products: data });
-}
-
-export async function POST(req: NextRequest) {
-  if (!(await isAdminAuthed())) {
-    return NextResponse.json(
-      { error: "Non autorisé" },
-      { status: 401 }
-    );
-  }
-
   try {
-    const body = await req.json();
-
-    const name =
-      typeof body.name === "string" ? body.name.trim() : "";
-    const category =
-      typeof body.category === "string"
-        ? body.category.trim()
-        : "";
-    const productGroup =
-      typeof body.product_group === "string"
-        ? body.product_group.trim()
-        : "";
-    const variant =
-      typeof body.variant === "string"
-        ? body.variant.trim()
-        : "";
-    const unit =
-      typeof body.unit === "string" ? body.unit.trim() : "";
-
-    if (!name || !category || !productGroup || !unit) {
-      return NextResponse.json(
-        {
-          error:
-            "Le nom, la catégorie, le groupe et l'unité sont obligatoires.",
-        },
-        { status: 400 }
-      );
+    if (!(await isAdminAuthed())) {
+      return jsonError("Non autorisé.", 401);
     }
-
-    if (
-      name.length > 120 ||
-      category.length > 100 ||
-      productGroup.length > 100 ||
-      variant.length > 100 ||
-      unit.length > 30
-    ) {
-      return NextResponse.json(
-        { error: "Un des champs texte est trop long." },
-        { status: 400 }
-      );
-    }
-
-    const priceStandard = body.price_standard ?? null;
-    const priceBulk = body.price_bulk ?? null;
-    const bulkMinKg = body.bulk_min_kg ?? null;
-
-    if (
-      !isValidNumberOrNull(priceStandard) ||
-      !isValidNumberOrNull(priceBulk) ||
-      !isValidNumberOrNull(bulkMinKg)
-    ) {
-      return NextResponse.json(
-        { error: "Les prix et le seuil doivent être positifs ou vides." },
-        { status: 400 }
-      );
-    }
-
-    const stockStatus =
-      body.stock_status ?? "indisponible";
-
-    if (
-      !ALLOWED_STATUSES.includes(stockStatus)
-    ) {
-      return NextResponse.json(
-        { error: "Statut de disponibilité invalide." },
-        { status: 400 }
-      );
-    }
-
-    const stockQuantity = body.stock_quantity ?? 0;
-    const stockThreshold = body.stock_threshold ?? 0;
-    const displayOrder = body.display_order ?? 99;
-
-    if (
-      !isValidNumberOrNull(stockQuantity) ||
-      !isValidNumberOrNull(stockThreshold) ||
-      !Number.isInteger(displayOrder) ||
-      displayOrder < 0
-    ) {
-      return NextResponse.json(
-        { error: "Valeurs de stock ou d'ordre invalides." },
-        { status: 400 }
-      );
-    }
-
-    const nextAvailability =
-      typeof body.next_availability === "string"
-        ? body.next_availability.trim() || null
-        : null;
 
     const { data, error } = await supabaseAdmin()
       .from("products")
-      .insert({
-        name,
-        category,
-        product_group: productGroup,
-        variant: variant || null,
-        unit,
-        price_standard: priceStandard,
-        price_bulk: priceBulk,
-        bulk_min_kg: bulkMinKg,
-        stock_status: stockStatus,
-        next_availability: nextAvailability,
-        stock_quantity: stockQuantity,
-        stock_threshold: stockThreshold,
-        display_order: displayOrder,
-        updated_at: new Date().toISOString(),
-      })
+      .select("*")
+      .order("display_order", { ascending: true });
+
+    if (error) {
+      console.error("[GET /api/products]", error);
+      return jsonError("Impossible de récupérer les produits.", 500);
+    }
+
+    return NextResponse.json({ products: data ?? [] });
+  } catch (error) {
+    console.error("[GET /api/products] Erreur inattendue :", error);
+    return jsonError("Erreur serveur lors du chargement des produits.", 500);
+  }
+}
+
+// POST : créer un produit
+export async function POST(req: NextRequest) {
+  try {
+    if (!(await isAdminAuthed())) {
+      return jsonError("Non autorisé.", 401);
+    }
+
+    const body = await req.json();
+
+    const {
+      name,
+      category,
+      product_group,
+      variant,
+      unit,
+      price_standard,
+      price_bulk,
+      bulk_min_kg,
+      stock_status,
+      next_availability,
+      stock_quantity,
+      stock_threshold,
+      display_order,
+    } = body;
+
+    if (
+      typeof name !== "string" ||
+      !name.trim() ||
+      typeof category !== "string" ||
+      !CATEGORIES.includes(category as (typeof CATEGORIES)[number]) ||
+      typeof product_group !== "string" ||
+      !product_group.trim() ||
+      typeof unit !== "string" ||
+      !UNITS.includes(unit as (typeof UNITS)[number])
+    ) {
+      return jsonError(
+        "Informations invalides : vérifie le nom, la catégorie, le groupe et l'unité.",
+        400
+      );
+    }
+
+    if (
+      !STOCK_STATUSES.includes(
+        stock_status as (typeof STOCK_STATUSES)[number]
+      )
+    ) {
+      return jsonError("Statut de disponibilité invalide.", 400);
+    }
+
+    if (
+      price_standard !== null &&
+      price_standard !== undefined &&
+      !isNonNegativeNumber(price_standard)
+    ) {
+      return jsonError("Le prix standard doit être un nombre positif ou nul.", 400);
+    }
+
+    if (
+      price_bulk !== null &&
+      price_bulk !== undefined &&
+      !isNonNegativeNumber(price_bulk)
+    ) {
+      return jsonError("Le prix de gros est invalide.", 400);
+    }
+
+    if (
+      stock_quantity !== null &&
+      stock_quantity !== undefined &&
+      !isNonNegativeNumber(stock_quantity)
+    ) {
+      return jsonError("La quantité en stock est invalide.", 400);
+    }
+
+    if (
+      stock_threshold !== null &&
+      stock_threshold !== undefined &&
+      !isNonNegativeNumber(stock_threshold)
+    ) {
+      return jsonError("Le seuil de stock est invalide.", 400);
+    }
+
+    if (
+      display_order !== null &&
+      display_order !== undefined &&
+      !isNonNegativeNumber(display_order)
+    ) {
+      return jsonError("L'ordre d'affichage est invalide.", 400);
+    }
+
+    if (
+      bulk_min_kg !== null &&
+      bulk_min_kg !== undefined &&
+      !isNonNegativeNumber(bulk_min_kg)
+    ) {
+      return jsonError("Le minimum de commande en gros est invalide.", 400);
+    }
+
+    const product = {
+      name: name.trim(),
+      category,
+      product_group: product_group.trim().toLowerCase(),
+      variant:
+        typeof variant === "string" && variant.trim()
+          ? variant.trim()
+          : null,
+      unit,
+      price_standard:
+        price_standard === "" || price_standard === undefined
+          ? null
+          : price_standard,
+      price_bulk:
+        price_bulk === "" || price_bulk === undefined
+          ? null
+          : price_bulk,
+      bulk_min_kg:
+        bulk_min_kg === "" || bulk_min_kg === undefined
+          ? null
+          : bulk_min_kg,
+      stock_status,
+      next_availability:
+        typeof next_availability === "string" && next_availability.trim()
+          ? next_availability.trim()
+          : null,
+      stock_quantity:
+        stock_quantity === "" || stock_quantity === undefined
+          ? 0
+          : stock_quantity,
+      stock_threshold:
+        stock_threshold === "" || stock_threshold === undefined
+          ? 0
+          : stock_threshold,
+      display_order:
+        display_order === "" || display_order === undefined
+          ? 0
+          : display_order,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabaseAdmin()
+      .from("products")
+      .insert(product)
       .select("*")
       .single();
 
     if (error) {
-      console.error("Erreur création produit :", error);
+      // Le détail apparaît dans les journaux du serveur, pas dans la réponse publique.
+      console.error("[POST /api/products] Erreur Supabase :", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
 
+      // Réponse temporaire de diagnostic pour identifier la cause.
       return NextResponse.json(
-        { error: "Impossible de créer le produit." },
+        {
+          error: "Impossible de créer le produit.",
+          details: error.message,
+          code: error.code,
+        },
         { status: 500 }
       );
     }
 
+    return NextResponse.json({ ok: true, product: data }, { status: 201 });
+  } catch (error) {
+    console.error("[POST /api/products] Erreur inattendue :", error);
+
     return NextResponse.json(
-      { ok: true, product: data },
-      { status: 201 }
-    );
-  } catch {
-    return NextResponse.json(
-      { error: "Requête invalide." },
-      { status: 400 }
+      {
+        error: "Erreur serveur lors de la création du produit.",
+        details:
+          error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
     );
   }
 }
 
+// PATCH : modifier un produit existant
 export async function PATCH(req: NextRequest) {
-  if (!(await isAdminAuthed())) {
-    return NextResponse.json(
-      { error: "Non autorisé" },
-      { status: 401 }
-    );
-  }
-
   try {
+    if (!(await isAdminAuthed())) {
+      return jsonError("Non autorisé.", 401);
+    }
+
     const body = await req.json();
     const { id, ...fields } = body;
 
     if (typeof id !== "string" || !id.trim()) {
-      return NextResponse.json(
-        { error: "Identifiant produit invalide." },
-        { status: 400 }
-      );
+      return jsonError("Identifiant du produit manquant.", 400);
     }
 
     const allowedFields = [
+      "name",
       "price_standard",
       "price_bulk",
       "bulk_min_kg",
@@ -214,93 +260,95 @@ export async function PATCH(req: NextRequest) {
       "variant",
       "unit",
       "display_order",
-    ];
+    ] as const;
 
     const updates: Record<string, unknown> = {};
 
-    for (const field of allowedFields) {
-      if (field in fields) {
-        updates[field] = fields[field];
+    for (const key of allowedFields) {
+      if (Object.prototype.hasOwnProperty.call(fields, key)) {
+        updates[key] = fields[key];
       }
     }
 
     if (Object.keys(updates).length === 0) {
-      return NextResponse.json(
-        { error: "Aucune modification valide." },
-        { status: 400 }
-      );
+      return jsonError("Aucune modification valide reçue.", 400);
     }
 
     if (
-      "stock_status" in updates &&
-      !ALLOWED_STATUSES.includes(
-        updates.stock_status as (typeof ALLOWED_STATUSES)[number]
-      )
+      updates.category !== undefined &&
+      (typeof updates.category !== "string" ||
+        !CATEGORIES.includes(
+          updates.category as (typeof CATEGORIES)[number]
+        ))
     ) {
-      return NextResponse.json(
-        { error: "Statut de disponibilité invalide." },
-        { status: 400 }
-      );
+      return jsonError("Catégorie invalide.", 400);
     }
 
-    for (const field of [
+    if (
+      updates.stock_status !== undefined &&
+      (typeof updates.stock_status !== "string" ||
+        !STOCK_STATUSES.includes(
+          updates.stock_status as (typeof STOCK_STATUSES)[number]
+        ))
+    ) {
+      return jsonError("Statut de disponibilité invalide.", 400);
+    }
+
+    if (
+      updates.unit !== undefined &&
+      (typeof updates.unit !== "string" ||
+        !UNITS.includes(updates.unit as (typeof UNITS)[number]))
+    ) {
+      return jsonError("Unité de vente invalide.", 400);
+    }
+
+    for (const key of [
       "price_standard",
       "price_bulk",
       "bulk_min_kg",
       "stock_quantity",
       "stock_threshold",
+      "display_order",
     ]) {
+      const value = updates[key];
+
       if (
-        field in updates &&
-        !isValidNumberOrNull(updates[field])
+        value !== undefined &&
+        value !== null &&
+        value !== "" &&
+        !isNonNegativeNumber(value)
       ) {
-        return NextResponse.json(
-          { error: `Valeur invalide pour ${field}.` },
-          { status: 400 }
-        );
+        return jsonError(`Valeur invalide pour le champ ${key}.`, 400);
       }
     }
 
-    if (
-      "display_order" in updates &&
-      (!Number.isInteger(updates.display_order) ||
-        (updates.display_order as number) < 0)
-    ) {
-      return NextResponse.json(
-        { error: "Ordre d'affichage invalide." },
-        { status: 400 }
-      );
-    }
+    updates.updated_at = new Date().toISOString();
 
     const { data, error } = await supabaseAdmin()
       .from("products")
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updates)
       .eq("id", id)
       .select("id")
       .maybeSingle();
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
+      console.error("[PATCH /api/products] Erreur Supabase :", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
+
+      return jsonError("Impossible de modifier le produit.", 500);
     }
 
     if (!data) {
-      return NextResponse.json(
-        { error: "Produit introuvable." },
-        { status: 404 }
-      );
+      return jsonError("Produit introuvable.", 404);
     }
 
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json(
-      { error: "Requête invalide." },
-      { status: 400 }
-    );
+  } catch (error) {
+    console.error("[PATCH /api/products] Erreur inattendue :", error);
+    return jsonError("Erreur serveur lors de la modification du produit.", 500);
   }
 }
