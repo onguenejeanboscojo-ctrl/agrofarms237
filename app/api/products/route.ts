@@ -29,7 +29,17 @@ function isNonNegativeNumber(value: unknown): value is number {
   );
 }
 
-// GET : récupérer les produits du catalogue
+function optionalNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : null;
+}
+
+// GET : récupérer le catalogue
 export async function GET() {
   try {
     if (!(await isAdminAuthed())) {
@@ -89,12 +99,13 @@ export async function POST(req: NextRequest) {
       !UNITS.includes(unit as (typeof UNITS)[number])
     ) {
       return jsonError(
-        "Informations invalides : vérifie le nom, la catégorie, le groupe et l'unité.",
+        "Vérifie le nom, la catégorie, le groupe et l'unité du produit.",
         400
       );
     }
 
     if (
+      typeof stock_status !== "string" ||
       !STOCK_STATUSES.includes(
         stock_status as (typeof STOCK_STATUSES)[number]
       )
@@ -102,52 +113,40 @@ export async function POST(req: NextRequest) {
       return jsonError("Statut de disponibilité invalide.", 400);
     }
 
+    const standardPrice = optionalNumber(price_standard);
+    const bulkPrice = optionalNumber(price_bulk);
+    const minimumBulk = optionalNumber(bulk_min_kg);
+    const quantity = optionalNumber(stock_quantity);
+    const threshold = optionalNumber(stock_threshold);
+    const order = optionalNumber(display_order);
+
     if (
       price_standard !== null &&
       price_standard !== undefined &&
-      !isNonNegativeNumber(price_standard)
+      price_standard !== "" &&
+      standardPrice === null
     ) {
-      return jsonError("Le prix standard doit être un nombre positif ou nul.", 400);
+      return jsonError("Le prix standard est invalide.", 400);
     }
 
     if (
       price_bulk !== null &&
       price_bulk !== undefined &&
-      !isNonNegativeNumber(price_bulk)
+      price_bulk !== "" &&
+      bulkPrice === null
     ) {
       return jsonError("Le prix de gros est invalide.", 400);
     }
 
-    if (
-      stock_quantity !== null &&
-      stock_quantity !== undefined &&
-      !isNonNegativeNumber(stock_quantity)
-    ) {
-      return jsonError("La quantité en stock est invalide.", 400);
-    }
-
-    if (
-      stock_threshold !== null &&
-      stock_threshold !== undefined &&
-      !isNonNegativeNumber(stock_threshold)
-    ) {
-      return jsonError("Le seuil de stock est invalide.", 400);
-    }
-
-    if (
-      display_order !== null &&
-      display_order !== undefined &&
-      !isNonNegativeNumber(display_order)
-    ) {
-      return jsonError("L'ordre d'affichage est invalide.", 400);
-    }
-
-    if (
-      bulk_min_kg !== null &&
-      bulk_min_kg !== undefined &&
-      !isNonNegativeNumber(bulk_min_kg)
-    ) {
-      return jsonError("Le minimum de commande en gros est invalide.", 400);
+    for (const [field, value] of [
+      ["stock_quantity", quantity],
+      ["stock_threshold", threshold],
+      ["display_order", order],
+      ["bulk_min_kg", minimumBulk],
+    ] as const) {
+      if (value !== null && !isNonNegativeNumber(value)) {
+        return jsonError(`Valeur invalide pour ${field}.`, 400);
+      }
     }
 
     const product = {
@@ -159,35 +158,21 @@ export async function POST(req: NextRequest) {
           ? variant.trim()
           : null,
       unit,
-      price_standard:
-        price_standard === "" || price_standard === undefined
-          ? null
-          : price_standard,
-      price_bulk:
-        price_bulk === "" || price_bulk === undefined
-          ? null
-          : price_bulk,
-      bulk_min_kg:
-        bulk_min_kg === "" || bulk_min_kg === undefined
-          ? null
-          : bulk_min_kg,
+      price_standard: standardPrice,
+      price_bulk: bulkPrice,
+
+      // Cette colonne est NOT NULL dans Supabase.
+      // 0 signifie qu'aucun minimum de gros n'est défini.
+      bulk_min_kg: minimumBulk ?? 0,
+
       stock_status,
       next_availability:
         typeof next_availability === "string" && next_availability.trim()
           ? next_availability.trim()
           : null,
-      stock_quantity:
-        stock_quantity === "" || stock_quantity === undefined
-          ? 0
-          : stock_quantity,
-      stock_threshold:
-        stock_threshold === "" || stock_threshold === undefined
-          ? 0
-          : stock_threshold,
-      display_order:
-        display_order === "" || display_order === undefined
-          ? 0
-          : display_order,
+      stock_quantity: quantity ?? 0,
+      stock_threshold: threshold ?? 0,
+      display_order: order ?? 0,
       updated_at: new Date().toISOString(),
     };
 
@@ -198,7 +183,6 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) {
-      // Le détail apparaît dans les journaux du serveur, pas dans la réponse publique.
       console.error("[POST /api/products] Erreur Supabase :", {
         message: error.message,
         code: error.code,
@@ -206,7 +190,6 @@ export async function POST(req: NextRequest) {
         hint: error.hint,
       });
 
-      // Réponse temporaire de diagnostic pour identifier la cause.
       return NextResponse.json(
         {
           error: "Impossible de créer le produit.",
@@ -217,15 +200,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ ok: true, product: data }, { status: 201 });
+    return NextResponse.json(
+      { ok: true, product: data },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("[POST /api/products] Erreur inattendue :", error);
 
     return NextResponse.json(
       {
         error: "Erreur serveur lors de la création du produit.",
-        details:
-          error instanceof Error ? error.message : String(error),
+        details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
     );
@@ -318,8 +303,16 @@ export async function PATCH(req: NextRequest) {
         value !== "" &&
         !isNonNegativeNumber(value)
       ) {
-        return jsonError(`Valeur invalide pour le champ ${key}.`, 400);
+        return jsonError(`Valeur invalide pour ${key}.`, 400);
       }
+    }
+
+    // Évite aussi le même problème lors d'une modification.
+    if (
+      Object.prototype.hasOwnProperty.call(updates, "bulk_min_kg") &&
+      (updates.bulk_min_kg === null || updates.bulk_min_kg === "")
+    ) {
+      updates.bulk_min_kg = 0;
     }
 
     updates.updated_at = new Date().toISOString();
@@ -349,6 +342,9 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("[PATCH /api/products] Erreur inattendue :", error);
-    return jsonError("Erreur serveur lors de la modification du produit.", 500);
+    return jsonError(
+      "Erreur serveur lors de la modification du produit.",
+      500
+    );
   }
 }
