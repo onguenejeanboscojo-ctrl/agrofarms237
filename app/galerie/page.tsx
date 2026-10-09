@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { GALLERY_CATEGORIES } from "@/lib/mediaCategories";
+import HeroSlideshow from "./HeroSlideshow";
 
 export const revalidate = 30;
 
@@ -100,7 +101,7 @@ function MediaCard({ item, index }: { item: MediaItem; index: number }) {
 
 export default async function GaleriePage() {
   const media = await getGalleryMedia();
-  const featured = media.find((item) => item.kind === "photo") || media[0];
+  const heroSlides = media.filter((item) => item.kind === "photo");
   const populatedCategories = GALLERY_CATEGORIES
     .map((category) => ({
       ...category,
@@ -112,14 +113,7 @@ export default async function GaleriePage() {
     <main className="min-h-screen overflow-hidden bg-[#F7F5EF] text-[#19362C]">
       {/* HERO IMMERSIF */}
       <section className="relative isolate min-h-[600px] overflow-hidden bg-[#10271F] text-white sm:min-h-[690px]">
-        {featured?.kind === "photo" ? (
-          <img
-            src={featured.url}
-            alt={featured.caption || "L’univers de la ferme AgroFarms237"}
-            className="absolute inset-0 h-full w-full object-cover"
-            fetchPriority="high"
-          />
-        ) : null}
+        <HeroSlideshow slides={heroSlides.map(({ id, url, caption }) => ({ id, url, caption }))} />
         <div className="absolute inset-0 bg-gradient-to-r from-[#07150F]/90 via-[#0B2119]/65 to-[#0B2119]/25" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#07150F]/65 via-transparent to-[#07150F]/10" />
 
