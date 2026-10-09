@@ -1,7 +1,34 @@
 import Link from "next/link";
 import ProfessionalTrainingRegistrationTrigger from "@/components/ProfessionalTrainingRegistrationTrigger";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const revalidate = 30;
+
+type HeroMedia = { url: string; caption?: string | null };
+
+async function getFormationProHero(): Promise<HeroMedia | null> {
+  try {
+    const { data, error } = await supabaseAdmin()
+      .from("media")
+      .select("url,caption,site_location,published,kind,created_at")
+      .eq("site_location", "formation_pro_hero")
+      .eq("published", true)
+      .eq("kind", "photo")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Erreur récupération Hero Formation Pro :", error);
+      return null;
+    }
+
+    return data as HeroMedia | null;
+  } catch (error) {
+    console.error("Erreur inattendue Hero Formation Pro :", error);
+    return null;
+  }
+}
 
 const programme = [
   {
@@ -114,88 +141,84 @@ const avantages = [
   "Un plan d'action pour passer à la mise en œuvre",
 ];
 
-export default function FormationsProfessionnellesPage() {
+export default async function FormationsProfessionnellesPage() {
+  const heroMedia = await getFormationProHero();
+
   return (
     <main className="bg-paper text-ink">
       {/* ===================================================== */}
       {/* HERO                                                   */}
       {/* ===================================================== */}
 
-      <section className="relative isolate min-h-[680px] overflow-hidden bg-[#081815] md:min-h-[760px]">
-        <div className="absolute inset-0 -z-20">
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0">
           <img
-            src="/images/education/modules/gestion-exploitation.jpg"
-            alt="Formation professionnelle en gestion d’exploitation agricole"
-            className="h-full w-full scale-105 object-cover object-center blur-[2px]"
+            src={heroMedia?.url || "/images/education/modules/gestion-exploitation.jpg"}
+            alt={heroMedia?.caption || "Formation professionnelle AgroFarms237"}
+            className="h-full w-full scale-105 object-cover blur-[2px]"
           />
-        </div>
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(5,20,16,0.97)_0%,rgba(5,20,16,0.88)_48%,rgba(5,20,16,0.34)_100%)]" />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[#081815]/70 via-transparent to-[#081815]/25" />
-        <div className="mx-auto grid min-h-[680px] max-w-[1280px] items-center gap-12 px-5 py-20 md:min-h-[760px] md:grid-cols-[1.15fr_0.85fr] md:px-8 md:py-24">
-          <div className="max-w-[760px] text-paper">
-            <span className="mb-6 inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/[0.07] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gold backdrop-blur-md">
-              <span className="h-1.5 w-1.5 rounded-full bg-gold" />
-              AgroFarms237 · Académie agricole
-            </span>
-            <h1 className="font-serif text-[clamp(44px,6.6vw,82px)] font-semibold leading-[0.98] tracking-[-0.045em]">
-              Faites grandir
-              <br />
-              votre projet.
-              <br />
-              <span className="italic text-gold">Bâtissez une activité.</span>
-            </h1>
-            <p className="mt-7 max-w-[620px] text-[16px] leading-7 text-white/75 md:text-[18px] md:leading-8">
-              Une formation intensive pour apprendre à structurer votre exploitation, maîtriser vos coûts et préparer une activité agricole pensée pour durer.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-2.5">
-              <span className="rounded-full border border-white/15 bg-white/[0.08] px-4 py-2.5 text-xs font-semibold text-white/90 backdrop-blur">3 jours en présentiel</span>
-              <span className="rounded-full border border-white/15 bg-white/[0.08] px-4 py-2.5 text-xs font-semibold text-white/90 backdrop-blur">8 modules pratiques</span>
-              <span className="rounded-full border border-gold/40 bg-gold/10 px-4 py-2.5 text-xs font-semibold text-gold backdrop-blur">60 000 FCFA</span>
-            </div>
-            <div className="mt-9 flex flex-wrap gap-3">
-              <a href="#prochaine-session" className="inline-flex items-center justify-center rounded-full bg-gold px-7 py-4 text-[12px] font-extrabold text-[#10271f] shadow-[0_12px_35px_rgba(196,157,70,0.22)] transition duration-300 hover:-translate-y-1 hover:brightness-110">
-                Réserver ma place <span className="ml-3 text-lg">↗</span>
-              </a>
-              <a href="#programme" className="inline-flex items-center justify-center rounded-full border border-white/25 bg-white/[0.06] px-7 py-4 text-[12px] font-bold text-white backdrop-blur-md transition duration-300 hover:border-white/50 hover:bg-white/10">
-                Explorer le programme <span className="ml-3 text-lg">↓</span>
-              </a>
-            </div>
-            <p className="mt-5 text-xs tracking-wide text-white/45">Une approche technique, économique et orientée vers l’action.</p>
-          </div>
 
-          <div className="hidden md:block">
-            <div className="ml-auto max-w-[360px] rounded-[30px] border border-white/20 bg-[#10271f]/65 p-6 shadow-[0_30px_100px_rgba(0,0,0,0.25)] backdrop-blur-xl lg:p-7">
-              <div className="flex items-center justify-between border-b border-white/15 pb-5">
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/55">Le parcours</span>
-                <span className="rounded-full border border-gold/30 px-3 py-1 text-[10px] font-semibold text-gold">Formation pro</span>
-              </div>
-              <div className="py-6">
-                <p className="font-serif text-5xl font-semibold tracking-tight text-paper">3 <span className="text-xl font-normal text-white/60">jours</span></p>
-                <p className="mt-2 text-sm leading-6 text-white/60">Pour passer des idées aux premières décisions concrètes.</p>
-              </div>
-              <div className="space-y-4">
-                {[
-                  ["01", "Construire", "Clarifier votre projet et vos moyens"],
-                  ["02", "Organiser", "Préparer la production et la gestion"],
-                  ["03", "Développer", "Calculer, vendre et planifier la suite"],
-                ].map(([number, title, description]) => (
-                  <div key={number} className="flex gap-4 rounded-2xl border border-white/10 bg-white/[0.045] p-4">
-                    <span className="font-serif text-xl text-gold">{number}</span>
-                    <div>
-                      <p className="text-sm font-semibold text-white">{title}</p>
-                      <p className="mt-1 text-xs leading-5 text-white/55">{description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6 flex items-center justify-between border-t border-white/15 pt-5">
-                <span className="text-xs text-white/55">Investissement formation</span>
-                <span className="font-serif text-xl font-semibold text-gold">60 000 FCFA</span>
-              </div>
+          <div className="absolute inset-0 bg-gradient-to-r from-[#081815]/95 via-[#0e2622]/80 to-[#0e2622]/35" />
+        </div>
+
+        <div className="relative mx-auto max-w-[1280px] px-5 py-[90px] md:py-[120px]">
+          <div className="max-w-[760px] text-paper">
+            <span className="mb-5 inline-flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.2em] text-gold">
+              <span className="h-px w-8 bg-gold" />
+              Formation professionnelle AgroFarms237
+            </span>
+
+            <h1 className="font-serif text-[clamp(42px,7vw,76px)] font-semibold leading-[0.98] tracking-[-0.03em]">
+              Vous souhaitez
+              <br />
+              vous lancer
+              <br />
+              <span className="text-gold">en professionnel ?</span>
+            </h1>
+
+            <p className="mt-7 max-w-[650px] text-[16px] leading-7 text-paper/75 md:text-[18px]">
+              Alors préparez votre projet avec une formation intensive pensée
+              pour vous aider à comprendre la production, la gestion, les
+              coûts, la rentabilité et la commercialisation d'une activité
+              agricole.
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold backdrop-blur-sm">
+                3 jours
+              </span>
+
+              <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold backdrop-blur-sm">
+                Présentiel
+              </span>
+
+              <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold backdrop-blur-sm">
+                60 000 FCFA
+              </span>
+
+              <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold backdrop-blur-sm">
+                Places limitées
+              </span>
+            </div>
+
+            <div className="mt-9 flex flex-wrap gap-4">
+              <a
+                href="#programme"
+                className="inline-flex items-center justify-center rounded-full bg-gold px-7 py-3.5 text-[12px] font-bold text-ink transition hover:-translate-y-0.5 hover:brightness-105"
+              >
+                Découvrir le programme
+                <span className="ml-2 text-base">↓</span>
+              </a>
+
+              <a
+                href="#prochaine-session"
+                className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/10 px-7 py-3.5 text-[12px] font-bold text-white backdrop-blur-sm transition hover:bg-white hover:text-ink"
+              >
+                Voir la prochaine session
+              </a>
             </div>
           </div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/70 to-transparent" />
       </section>
 
       {/* ===================================================== */}
@@ -265,7 +288,7 @@ export default function FormationsProfessionnellesPage() {
 
       <section
         id="programme"
-        className="scroll-mt-20 bg-[#f2efe6] px-5 py-[88px] md:py-[112px]"
+        className="scroll-mt-20 bg-bgAlt px-5 py-[80px] md:py-[105px]"
       >
         <div className="mx-auto max-w-[1100px]">
           <div className="max-w-[720px]">
@@ -284,12 +307,12 @@ export default function FormationsProfessionnellesPage() {
             </p>
           </div>
 
-          <div className="mt-12 overflow-hidden rounded-[30px] border border-ink/10 bg-paper shadow-[0_24px_70px_rgba(8,24,21,0.06)]">
+          <div className="mt-12 overflow-hidden rounded-[28px] border border-ink/10 bg-paper">
             {programme.map((module, index) => (
               <details
                 key={module.number}
                 open={index === 0}
-                className="group border-b border-ink/10 transition-colors last:border-b-0 hover:bg-[#f8f6ef]"
+                className="group border-b border-ink/10 last:border-b-0"
               >
                 <summary className="flex cursor-pointer list-none items-center gap-5 px-5 py-6 md:px-7 md:py-7">
                   <span className="font-serif text-lg font-semibold text-goldDeep">
@@ -344,9 +367,9 @@ export default function FormationsProfessionnellesPage() {
             {jours.map((jour) => (
               <article
                 key={jour.number}
-                className="group rounded-[26px] border border-ink/10 bg-paper p-7 shadow-[0_8px_30px_rgba(8,24,21,0.025)] transition duration-300 hover:-translate-y-1 hover:border-gold/50 hover:shadow-[0_22px_55px_rgba(8,24,21,0.09)]"
+                className="rounded-[26px] border border-ink/10 bg-paper p-7 transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(8,24,21,0.07)]"
               >
-                <span className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-[#f2efe6] font-serif text-3xl font-semibold text-goldDeep transition duration-300 group-hover:bg-ink group-hover:text-gold">
+                <span className="font-serif text-5xl font-semibold text-gold/60">
                   {jour.number}
                 </span>
 
