@@ -1,35 +1,39 @@
 "use client";
+
 import { useEffect, useState } from "react";
 
-// Diaporama en fond du hero : fait défiler les photos publiées avec un fondu
-// enchaîné. S'arrête automatiquement s'il n'y a qu'une seule image, et
-// respecte la préférence "réduire les animations" de l'utilisateur.
-export default function HeroSlideshow({ images }: { images: string[] }) {
+type HeroSlideshowProps = { images: string[] };
+
+/** Diaporama en fondu enchaîné utilisé par le Hero et les sections photo. */
+export default function HeroSlideshow({ images }: HeroSlideshowProps) {
+  const validImages = Array.from(new Set(images.filter((src) => typeof src === "string" && src.trim().length > 0)));
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    if (images.length < 2) return;
-    const prefersReduced =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReduced) return;
+    setIndex(0);
+    if (validImages.length < 2) return;
 
-    const timer = setInterval(() => {
-      setIndex((i) => (i + 1) % images.length);
+    const timer = window.setInterval(() => {
+      setIndex((current) => (current + 1) % validImages.length);
     }, 5000);
-    return () => clearInterval(timer);
-  }, [images.length]);
+
+    return () => window.clearInterval(timer);
+  }, [validImages.length, validImages.join("|")]);
+
+  if (validImages.length === 0) return null;
 
   return (
-    <div className="absolute inset-0 z-0 overflow-hidden">
-      {images.map((src, i) => (
+    <div className="absolute inset-0 z-0 overflow-hidden" aria-label="Diaporama photo">
+      {validImages.map((src, i) => (
         <img
-          key={src + i}
+          key={`${src}-${i}`}
           src={src}
           alt=""
+          aria-hidden="true"
           className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1500ms] ease-in-out ${
             i === index ? "opacity-100" : "opacity-0"
           }`}
+          loading={i === 0 ? "eager" : "lazy"}
         />
       ))}
     </div>
