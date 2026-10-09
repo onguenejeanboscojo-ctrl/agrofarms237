@@ -145,29 +145,11 @@ function MediaImage({
   if (!media) {
     return (
       <div
-        role="img"
-        aria-label={`${alt} — photographie à ajouter`}
-        className={`relative flex h-full w-full items-end overflow-hidden bg-[#E8EDE5] ${className}`}
+        className={`flex h-full w-full items-center justify-center bg-[#E8EDE5] ${className}`}
       >
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_75%_15%,rgba(213,166,42,0.18),transparent_36%),linear-gradient(135deg,#E8EDE5_0%,#D6E0D5_48%,#B9CDBF_100%)]" />
-        <div className="absolute inset-0 opacity-30">
-          <svg viewBox="0 0 600 300" preserveAspectRatio="xMidYMid slice" className="h-full w-full" aria-hidden="true">
-            <path d="M0 230 C100 190 170 245 270 205 S450 175 600 210 V300 H0Z" fill="#18352B" opacity=".22" />
-            <path d="M0 260 C120 220 200 280 340 230 S480 220 600 245 V300 H0Z" fill="#18352B" opacity=".18" />
-            <path d="M60 0 V300 M120 0 V300 M180 0 V300 M240 0 V300 M300 0 V300 M360 0 V300 M420 0 V300 M480 0 V300 M540 0 V300" stroke="#18352B" strokeWidth=".5" opacity=".12" />
-          </svg>
-        </div>
-        <div className="relative m-4 border-l-2 border-[#D5A62A] pl-4 sm:m-6">
-          <span className="block text-[9px] font-bold uppercase tracking-[0.22em] text-[#A67D1A] sm:text-[10px]">
-            AgroFarms237 · Carnet de ferme
-          </span>
-          <span className="mt-2 block max-w-[22rem] font-serif text-xl leading-tight text-[#18352B]/75 sm:text-2xl">
-            La prochaine image de notre histoire.
-          </span>
-          <span className="mt-2 block text-[10px] uppercase tracking-[0.12em] text-[#18352B]/50 sm:text-[11px]">
-            Photographie à ajouter
-          </span>
-        </div>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#18352B]/30">
+          Image à venir
+        </span>
       </div>
     );
   }
@@ -320,7 +302,7 @@ export default async function LaVieDeLaFermePage() {
       {/* HERO                                                   */}
       {/* ===================================================== */}
 
-      <section className="relative min-h-[700px] overflow-hidden bg-[#18352B] text-white sm:min-h-[760px] lg:min-h-[850px]">
+      <section className="relative min-h-[720px] overflow-hidden bg-[#18352B] text-white lg:min-h-[800px]">
 
         {heroMedia ? (
           <>
@@ -331,9 +313,9 @@ export default async function LaVieDeLaFermePage() {
             />
 
             {/* Image pleine largeur + profondeur */}
-            <div className="absolute inset-0 bg-[#071D18]/35" />
+            <div className="absolute inset-0 bg-[#071D18]/45" />
 
-            <div className="absolute inset-0 bg-gradient-to-r from-[#071D18]/90 via-[#071D18]/50 to-[#071D18]/10" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#071D18]/90 via-[#071D18]/55 to-transparent" />
 
             <div className="absolute inset-0 bg-gradient-to-t from-[#071D18]/80 via-transparent to-[#071D18]/15" />
 
@@ -344,29 +326,24 @@ export default async function LaVieDeLaFermePage() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,#315F50_0%,#18352B_50%,#081B16_100%)]" />
         )}
 
-        <div className="relative mx-auto flex min-h-[700px] max-w-7xl items-end px-5 pb-14 pt-32 sm:min-h-[760px] sm:px-8 sm:pb-20 lg:min-h-[850px] lg:px-8 lg:pb-28">
+        <div className="relative mx-auto flex min-h-[720px] max-w-7xl items-end px-6 pb-20 pt-36 lg:min-h-[800px] lg:px-8 lg:pb-28">
 
           <div className="max-w-5xl">
 
-            <div className="mb-7 flex items-center gap-3">
-              <span className="h-px w-10 bg-[#D5A62A]" />
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#D5A62A] sm:text-xs sm:tracking-[0.3em]">
-                À propos d’AgroFarms237
-              </p>
-            </div>
+            <p className="mb-6 text-xs font-semibold uppercase tracking-[0.3em] text-[#D5A62A] sm:text-sm">
+              À propos d’AgroFarms237
+            </p>
 
-            <h1 className="max-w-5xl font-serif text-[2.8rem] leading-[0.98] tracking-[-0.035em] sm:text-6xl lg:text-[86px]">
-              La qualité commence
-              <span className="mt-1 block text-white/65 sm:mt-2">bien avant la récolte.</span>
+            <h1 className="font-serif text-5xl leading-[0.98] sm:text-6xl lg:text-[82px]">
+              Faire grandir une agriculture
+              <span className="block text-white/75">
+                qui nous ressemble.
+              </span>
             </h1>
 
-            <p className="mt-6 max-w-2xl text-sm leading-7 text-white/80 sm:mt-8 sm:text-lg sm:leading-8">
-              Derrière chaque production, il y a des gestes, de la patience et une histoire qui se construit jour après jour. Bienvenue dans notre univers : une ferme camerounaise qui grandit progressivement autour de la pisciculture, de l’élevage porcin et de l’aviculture.
+            <p className="mt-8 max-w-2xl text-base leading-8 text-white/80 sm:text-lg">
+              AgroFarms237 est un projet agricole camerounais né d’une conviction simple : la qualité de ce que nous mangeons commence par la manière dont nous produisons. Nous construisons progressivement une ferme autour de plusieurs filières — pisciculture, élevage porcin et aviculture — avec la volonté de produire localement, de mieux valoriser nos productions et de construire, étape après étape, une activité agricole solide et durable.
             </p>
-            <a href="#la-vie-de-la-ferme" className="mt-8 inline-flex min-h-12 items-center gap-4 border border-white/30 px-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white transition hover:border-[#D5A62A] hover:bg-[#D5A62A] hover:text-[#18352B] sm:px-6 sm:text-xs">
-              Entrer dans notre univers
-              <span aria-hidden="true" className="text-lg">↓</span>
-            </a>
 
           </div>
 
@@ -408,7 +385,7 @@ export default async function LaVieDeLaFermePage() {
             return (
               <article
                 key={item.title}
-                className="group relative min-h-[245px] overflow-hidden border-b border-black/10 last:border-b-0 md:min-h-[260px] md:border-r md:last:border-r-0 lg:min-h-[285px] lg:border-b-0"
+                className="group relative min-h-[235px] overflow-hidden border-b border-black/10 last:border-b-0 md:border-r md:last:border-r-0 lg:border-b-0"
               >
 
                 <div className="absolute inset-0">
@@ -423,16 +400,15 @@ export default async function LaVieDeLaFermePage() {
 
                 </div>
 
-                <div className="relative flex min-h-[245px] flex-col justify-end p-5 text-white sm:min-h-[260px] sm:p-7 lg:min-h-[285px]">
+                <div className="relative flex min-h-[235px] flex-col justify-end p-7 text-white">
 
                   <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#D5A62A]">
                     0{index + 1}
                   </span>
 
-                  <h2 className="mt-2 font-serif text-2xl leading-tight sm:text-3xl">
+                  <h2 className="mt-2 font-serif text-2xl">
                     {item.title}
                   </h2>
-                  <span className="mt-4 h-px w-9 bg-[#D5A62A] transition-all duration-500 group-hover:w-16" />
 
                 </div>
 
@@ -450,7 +426,7 @@ export default async function LaVieDeLaFermePage() {
 
       <section className="bg-white">
 
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-36">
+        <div className="mx-auto max-w-7xl px-6 py-28 lg:px-8 lg:py-36">
 
           <div className="grid gap-16 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
 
@@ -552,7 +528,7 @@ export default async function LaVieDeLaFermePage() {
 
       <section className="bg-[#F3EFE5]">
 
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-36">
+        <div className="mx-auto max-w-7xl px-6 py-28 lg:px-8 lg:py-36">
 
           <div className="max-w-4xl">
 
@@ -633,7 +609,7 @@ export default async function LaVieDeLaFermePage() {
 
       <section className="bg-white">
 
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-36">
+        <div className="mx-auto max-w-7xl px-6 py-28 lg:px-8 lg:py-36">
 
           <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
 
@@ -732,7 +708,7 @@ export default async function LaVieDeLaFermePage() {
 
       <section className="bg-[#18352B] text-white">
 
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-36">
+        <div className="mx-auto max-w-7xl px-6 py-28 lg:px-8 lg:py-36">
 
           <div className="grid gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
 
@@ -794,7 +770,7 @@ export default async function LaVieDeLaFermePage() {
 
       <section className="bg-[#F3EFE5]">
 
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-28">
+        <div className="mx-auto max-w-7xl px-6 py-28 lg:px-8">
 
           <div className="max-w-3xl">
 
@@ -868,23 +844,20 @@ export default async function LaVieDeLaFermePage() {
 
       <section className="bg-white">
 
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-28">
+        <div className="mx-auto max-w-7xl px-6 py-28 lg:px-8">
 
           <div className="max-w-3xl">
 
-            <div className="flex items-center gap-3">
-              <span className="h-px w-9 bg-[#D5A62A]" />
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#A67D1A] sm:text-xs sm:tracking-[0.25em]">
-                Le journal de la ferme
-              </p>
-            </div>
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#A67D1A]">
+              La vie de la ferme
+            </p>
 
-            <h2 className="mt-5 max-w-4xl font-serif text-3xl leading-[1.08] tracking-[-0.02em] sm:text-5xl lg:text-6xl">
-              Les coulisses d’une histoire qui grandit.
+            <h2 className="mt-5 font-serif text-4xl leading-tight sm:text-5xl">
+              Derrière chaque production, il y a du travail.
             </h2>
 
-            <p className="mt-5 max-w-3xl text-sm leading-7 text-black/60 sm:mt-6 sm:text-lg sm:leading-8">
-              Les bassins, les animaux, les installations, les journées de travail et les petites victoires : cet espace est destiné à accueillir les images qui racontent notre quotidien. Certaines histoires sont déjà visibles, d’autres viendront au fil de la vie de la ferme.
+            <p className="mt-6 text-base leading-8 text-black/60 sm:text-lg">
+              Une ferme ne se résume jamais à ce que l’on voit sur une étagère ou dans une assiette. Derrière chaque production, il y a des journées de travail, des soins, de l’entretien, de l’organisation, des décisions, des apprentissages et parfois des imprévus. Cette partie de notre site est une fenêtre ouverte sur cette réalité. Vous y découvrirez progressivement les coulisses d’AgroFarms237 : les productions, les installations, les animaux, les moments de travail et les étapes qui font évoluer la ferme. Parce que nous voulons aussi vous montrer ce qu’il y a derrière ce que nous produisons.
             </p>
 
           </div>
@@ -924,7 +897,7 @@ export default async function LaVieDeLaFermePage() {
 
       <section className="bg-[#F3EFE5]">
 
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-28">
+        <div className="mx-auto max-w-7xl px-6 py-28 lg:px-8">
 
           <div className="max-w-3xl">
 
@@ -1054,7 +1027,7 @@ export default async function LaVieDeLaFermePage() {
 
       <section className="bg-white">
 
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-28">
+        <div className="mx-auto max-w-7xl px-6 py-28 lg:px-8">
 
           <div className="max-w-3xl">
 
@@ -1152,22 +1125,22 @@ export default async function LaVieDeLaFermePage() {
 
       <section className="bg-[#18352B] text-white">
 
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+        <div className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
 
           <div className="grid gap-12 lg:grid-cols-[1fr_auto] lg:items-end">
 
             <div className="max-w-4xl">
 
-              <div className="flex items-center gap-3">
-                <span className="h-px w-10 bg-[#D5A62A]" />
-                <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#D5A62A] sm:text-xs">
-                  AgroFarms237
-                </p>
-              </div>
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#D5A62A]">
+                AgroFarms237
+              </p>
 
-              <h2 className="mt-5 font-serif text-3xl leading-[1.05] tracking-[-0.025em] sm:text-5xl lg:text-6xl">
-                Une ferme. Plusieurs productions.
-                <span className="mt-2 block text-white/60">Une histoire que vous pouvez suivre.</span>
+              <h2 className="mt-5 font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-6xl">
+                Une ferme.
+                Plusieurs productions.
+                <span className="block text-white/60">
+                  Une histoire qui ne fait que commencer.
+                </span>
               </h2>
 
               <p className="mt-7 max-w-2xl text-base leading-8 text-white/60">
