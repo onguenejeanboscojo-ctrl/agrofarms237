@@ -126,7 +126,7 @@ export default function FormationsProfessionnellesPage() {
           <img
             src="/images/education/modules/gestion-exploitation.jpg"
             alt="Formation professionnelle en gestion d’exploitation agricole"
-            className="h-full w-full object-cover object-center"
+            className="h-full w-full scale-105 object-cover object-center blur-[2px]"
           />
         </div>
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(5,20,16,0.97)_0%,rgba(5,20,16,0.88)_48%,rgba(5,20,16,0.34)_100%)]" />
