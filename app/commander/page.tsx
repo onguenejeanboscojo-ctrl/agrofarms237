@@ -39,7 +39,47 @@ type HomeProduct = {
   order_options?: OrderOption[] | null;
   position: number;
   published: boolean;
+  category?: string | null;
+  product_group?: string | null;
+  variant?: string | null;
+  unit?: string | null;
 };
+
+type CommanderMedia = {
+  id: string;
+  url: string;
+  kind?: string;
+  category?: string | null;
+  site_location?: string | null;
+  published?: boolean;
+  position?: number;
+};
+
+const CATEGORY_META = [
+  { key: "silure", title: "Pisciculture · Silure", subtitle: "Silure frais et silure fumé", location: "commander_silure" },
+  { key: "carpe", title: "Pisciculture · Carpe", subtitle: "Carpe fraîche et carpe fumée", location: "commander_poisson" },
+  { key: "porc", title: "Élevage porcin", subtitle: "Porc entier, frais, fumé et porcelets", location: "commander_porc" },
+  { key: "aviculture", title: "Aviculture", subtitle: "Poulets et alvéoles d’œufs", location: "commander_poulet" },
+  { key: "autres", title: "Autres produits", subtitle: "Autres produits disponibles au catalogue", location: "" },
+];
+
+function normalizeText(value: unknown): string {
+  return String(value ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+}
+
+function getProductCategory(product: HomeProduct): string {
+  const group = normalizeText(product.product_group);
+  const name = normalizeText(product.name);
+  const category = normalizeText(product.category);
+  if (group === "silure" || name.includes("silure")) return "silure";
+  if (group === "carpe" || name.includes("carpe")) return "carpe";
+  if (group === "porcelet" || name.includes("porcelet")) return "porc";
+  if (group.includes("porc") || name.includes("porc")) return "porc";
+  if (group.includes("poulet") || group.includes("aviculture") || name.includes("poulet") || name.includes("oeuf") || name.includes("poule") || category.includes("aviculture")) return "aviculture";
+  if (category.includes("pisciculture")) return name.includes("carpe") ? "carpe" : "silure";
+  if (category.includes("porcin")) return "porc";
+  return "autres";
+}
 
 const DEFAULT_OPTIONS: Record<string, OrderOption[]> = {
   silure: [
@@ -214,6 +254,7 @@ function getProductPrice(
 export default function CommanderPage() {
   const [products, setProducts] = useState<HomeProduct[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [media, setMedia] = useState<CommanderMedia[]>([]);
 
   const [productId, setProductId] = useState("");
   const [options, setOptions] = useState<Record<string, string>>({});
@@ -335,6 +376,10 @@ export default function CommanderPage() {
               position: 0,
 
               published: true,
+              category: product.category ?? null,
+              product_group: product.product_group ?? null,
+              variant: product.variant ?? null,
+              unit: product.unit ?? null,
             };
           });
 
@@ -362,7 +407,38 @@ export default function CommanderPage() {
     }
 
     loadProducts();
+
+    async function loadCommanderMedia() {
+      try {
+        const response = await fetch("/api/media", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        const items = Array.isArray(data?.items) ? data.items : Array.isArray(data?.media) ? data.media : [];
+        setMedia(items.filter((item: CommanderMedia) =>
+          item && item.published !== false && item.kind === "photo" && typeof item.url === "string"
+        ));
+      } catch {
+        // La commande reste fonctionnelle même si les médias ne chargent pas.
+      }
+    }
+
+    loadCommanderMedia();
   }, []);
+
+  const getMediaForLocation = (location: string) => {
+    if (!location) return undefined;
+    return media.find((item) => item.site_location === location && item.kind === "photo");
+  };
+
+  const heroMedia = getMediaForLocation("commander_hero");
+
+  const groupedProducts = useMemo(() => {
+    return CATEGORY_META.map((category) => ({
+      ...category,
+      products: products.filter((product) => getProductCategory(product) === category.key),
+      image: getMediaForLocation(category.location)?.url,
+    })).filter((category) => category.products.length > 0);
+  }, [products, media]);
 
   const selectedProduct = useMemo(
     () =>
@@ -633,6 +709,8 @@ export default function CommanderPage() {
       <div className="mx-auto max-w-[1280px]">
         {/* HERO */}
         <div className="relative isolate overflow-hidden rounded-[28px] bg-[#153d2d] px-6 py-9 text-white shadow-[0_24px_70px_rgba(18,54,39,0.18)] sm:px-10 sm:py-12 lg:px-14 lg:py-14">
+          {heroMedia?.url && <img src={heroMedia.url} alt="AgroFarms237 — commande" className="absolute inset-0 h-full w-full object-cover" />}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0b241a]/95 via-[#153d2d]/85 to-[#153d2d]/45" />
           <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full border border-white/10 sm:h-96 sm:w-96" />
           <div className="pointer-events-none absolute -right-4 -top-12 h-56 w-56 rounded-full border border-[#d7bd79]/20 sm:h-72 sm:w-72" />
           <div className="relative max-w-3xl">
@@ -708,94 +786,50 @@ export default function CommanderPage() {
                 disponible.
               </div>
             ) : (
-              <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {products.map((product) => {
-                  const available =
-                    product.status ===
-                      "disponible" &&
-                    product.order_enabled;
-
-                  const selected =
-                    product.id === productId;
-
-                  return (
-                    <button
-                      key={product.id}
-                      type="button"
-                      disabled={!available}
-                      onClick={() =>
-                        selectProduct(product)
-                      }
-                      className={`group relative min-h-[190px] overflow-hidden rounded-2xl border p-5 text-left transition duration-200 ${
-                        selected
-                          ? "border-[#153d2d] bg-[#153d2d] text-white shadow-xl shadow-[#153d2d]/15 ring-2 ring-[#d7bd79]/70"
-                          : available
-                          ? "border-[#e7e2d7] bg-[#fcfbf7] text-[#183c2c] hover:-translate-y-0.5 hover:border-[#b7a36d] hover:shadow-lg hover:shadow-[#263d2e]/5"
-                          : "cursor-not-allowed border-[#e7e2d7] bg-[#f1efe8] opacity-65"
-                      }` }
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p
-                            className={`text-xs font-bold uppercase tracking-[0.12em] ${
-                              selected
-                                ? "text-gold"
-                                : "text-goldDeep"
-                            }`}
-                          >
-                            Agrofarms237
-                          </p>
-
-                          <h3 className="mt-1 font-serif text-xl font-semibold">
-                            {product.name}
-                          </h3>
-                        </div>
-
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-bold ${
-                            available
-                              ? selected
-                                ? "bg-white/10 text-white"
-                                : "bg-[#e7efe7] text-[#315b42]"
-                              : "bg-gold/10 text-goldDeep"
-                          }`}
-                        >
-                          {available
-                            ? "Disponible"
-                            : product.status ===
-                              "rupture"
-                            ? "Rupture"
-                            : "Bientôt disponible"}
-                        </span>
+              <div className="mt-7 space-y-10">
+                {groupedProducts.map((category, categoryIndex) => (
+                  <section key={category.key} className="overflow-hidden rounded-2xl border border-[#e7e2d7] bg-[#fcfbf7]">
+                    <div className="relative flex min-h-[140px] items-end overflow-hidden bg-[#153d2d] px-5 py-5 text-white sm:min-h-[170px] sm:px-7">
+                      {category.image && <img src={category.image} alt={category.title} className="absolute inset-0 h-full w-full object-cover" />}
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#0b241a]/95 via-[#153d2d]/75 to-[#153d2d]/20" />
+                      <div className="relative">
+                        <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#dfc681]">Filière 0{categoryIndex + 1}</p>
+                        <h3 className="mt-2 font-serif text-2xl font-semibold sm:text-3xl">{category.title}</h3>
+                        <p className="mt-1 text-sm text-white/75">{category.subtitle}</p>
                       </div>
-
-                      {product.description && (
-                        <p
-                          className={`mt-4 text-sm leading-6 ${
-                            selected
-                              ? "text-white/75"
-                              : "text-inkSoft"
-                          }`}
-                        >
-                          {product.description}
-                        </p>
-                      )}
-
-                      {unitPrice &&
-                        selected && (
-                          <p className="mt-4 text-sm font-semibold">
-                            À partir de{" "}
-                            {formatFCFA(
-                              unitPrice
-                            )}
-                            {product.price_unit
-                              ? ` / ${product.price_unit}`
-                              : ""}
-                          </p>
-                        )}
-                    </button>
-                  );
-                })}
+                    </div>
+                    <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-3">
+                      {category.products.map((product) => {
+                        const available = product.status === "disponible" && product.order_enabled;
+                        const selected = product.id === productId;
+                        const image = getMediaForLocation(category.location)?.url;
+                        return (
+                          <button
+                            key={product.id}
+                            type="button"
+                            disabled={!available}
+                            onClick={() => selectProduct(product)}
+                            className={`group overflow-hidden rounded-xl border text-left transition duration-200 ${selected ? "border-[#153d2d] bg-[#153d2d] text-white shadow-lg ring-2 ring-[#d7bd79]/70" : available ? "border-[#e7e2d7] bg-white text-[#183c2c] hover:-translate-y-0.5 hover:border-[#b7a36d] hover:shadow-lg" : "cursor-not-allowed border-[#e7e2d7] bg-[#f1efe8] opacity-65"}`}
+                          >
+                            <div className="relative h-28 overflow-hidden bg-[#e8ede5] sm:h-32">
+                              {image ? <img src={image} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-[#315f50] to-[#0b241a] px-3 text-center font-serif text-lg text-white/90">AgroFarms237</div>}
+                              <span className={`absolute right-2 top-2 rounded-full px-2.5 py-1 text-[10px] font-bold ${available ? "bg-white/90 text-[#315b42]" : "bg-white/90 text-[#8a7139]"}`}>
+                                {available ? "Disponible" : product.status === "rupture" ? "Rupture" : "Bientôt disponible"}
+                              </span>
+                            </div>
+                            <div className="p-4">
+                              <p className={`text-[10px] font-bold uppercase tracking-[0.13em] ${selected ? "text-[#dfc681]" : "text-[#8a7139]"}`}>{product.variant || product.product_group || category.title}</p>
+                              <h4 className="mt-1 font-serif text-lg font-semibold leading-snug">{product.name}</h4>
+                              {product.description && <p className={`mt-2 line-clamp-2 text-xs leading-5 ${selected ? "text-white/70" : "text-inkSoft"}`}>{product.description}</p>}
+                              {typeof product.price === "number" && <p className="mt-3 text-sm font-bold">{formatFCFA(product.price)}{product.price_unit ? ` / ${product.price_unit}` : ""}</p>}
+                              <p className={`mt-3 text-xs font-bold ${selected ? "text-[#dfc681]" : "text-[#315b42]"}`}>{selected ? "Produit sélectionné ✓" : available ? "Choisir ce produit →" : "Non commandable actuellement"}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
               </div>
             )}
 
