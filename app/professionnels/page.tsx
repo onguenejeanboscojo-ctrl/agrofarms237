@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { getContent } from "@/lib/content";
 import ProfessionnelsForm from "@/components/ProfessionnelsForm";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const revalidate = 60;
 
@@ -93,13 +94,34 @@ const STEPS = [
 export default async function ProfessionnelsPage() {
   const intro = await getContent("professionnels_intro");
 
+  // Récupère l’image publiée depuis Galerie > Espace professionnels.
+  // L’image locale reste utilisée comme solution de secours.
+  let heroImage = "/images/education/modules/gestion-exploitation.jpg";
+
+  try {
+    const { data } = await supabaseAdmin()
+      .from("media")
+      .select("url")
+      .eq("site_location", "professionnels_hero")
+      .eq("published", true)
+      .order("position", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (data?.url) {
+      heroImage = data.url;
+    }
+  } catch (error) {
+    console.error("Erreur de récupération de l’image du hero Professionnels :", error);
+  }
+
   return (
     <main className="overflow-hidden bg-paper text-ink">
       {/* HERO */}
       <section className="relative isolate min-h-[610px] overflow-hidden bg-[#0b211b] text-paper">
         <div className="absolute inset-0 -z-20">
           <img
-            src="/images/education/modules/gestion-exploitation.jpg"
+            src={heroImage}
             alt="Activités agricoles AgroFarms237"
             className="h-full w-full scale-[1.03] object-cover"
           />
