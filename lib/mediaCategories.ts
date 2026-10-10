@@ -69,6 +69,9 @@
 
    // FORMATION PROFESSIONNELLE
    { value: "formation_pro_hero", label: "Formation professionnelle — Hero de la page" },
+
+   // ESPACE PROFESSIONNELS
+   { value: "professionnels_hero", label: "Professionnels — Hero de la page" },
  ];
 
  // ============================================================
@@ -136,6 +139,12 @@
      label: "Formation professionnelle",
      options: SITE_LOCATIONS.filter((item) =>
        item.value.startsWith("formation_pro_")
+     ),
+   },
+   {
+     label: "Espace professionnels",
+     options: SITE_LOCATIONS.filter((item) =>
+       item.value.startsWith("professionnels_")
      ),
    },
  ];
