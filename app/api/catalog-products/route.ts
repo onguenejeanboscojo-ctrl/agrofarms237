@@ -1,12 +1,28 @@
+
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
-    const { data, error } = await supabaseAdmin()
+    const supabase = supabaseAdmin();
+
+    const { data, error } = await supabase
       .from("products")
       .select(
-        "id,name,price_standard,price_bulk,bulk_min_kg,stock_status,unit,category,product_group,variant"
+        [
+          "id",
+          "name",
+          "price_standard",
+          "price_bulk",
+          "bulk_min_kg",
+          "stock_status",
+          "unit",
+          "category",
+          "product_group",
+          "variant",
+        ].join(",")
       )
       .order("display_order", { ascending: true })
       .order("name", { ascending: true });
@@ -18,16 +34,33 @@ export async function GET() {
       );
 
       return NextResponse.json(
-        {
-          error: "Impossible de charger les produits.",
-        },
+        { error: "Impossible de charger les produits." },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({
-      products: data ?? [],
+    const products = (data ?? []).map((product) => {
+      const name = (product.name ?? "").trim().toLowerCase();
+      const group = (
+        product.product_group ?? ""
+      ).trim().toLowerCase();
+
+      const isPorcelet =
+        group === "porcelet" || name.includes("porcelet");
+
+      if (isPorcelet) {
+        return {
+          ...product,
+          unit: "piece",
+          product_group: "porcelet",
+          variant: "Vente à la pièce",
+        };
+      }
+
+      return product;
     });
+
+    return NextResponse.json({ products });
   } catch (error) {
     console.error(
       "Erreur API catalogue public :",
@@ -35,9 +68,7 @@ export async function GET() {
     );
 
     return NextResponse.json(
-      {
-        error: "Une erreur est survenue.",
-      },
+      { error: "Une erreur est survenue." },
       { status: 500 }
     );
   }
