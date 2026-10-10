@@ -276,6 +276,7 @@ export default function CommanderPage() {
   const [error, setError] = useState("");
 
   const [step, setStep] = useState(1);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
 
   useEffect(() => {
     async function loadProducts() {
@@ -506,6 +507,7 @@ export default function CommanderPage() {
     setOptions({});
     setError("");
     setStep(1);
+    setIsOrderModalOpen(true);
   }
 
   function selectOption(
@@ -575,6 +577,7 @@ export default function CommanderPage() {
     }
 
     setStep(2);
+    setIsOrderModalOpen(false);
   }
 
   function goToStep3() {
@@ -833,8 +836,17 @@ export default function CommanderPage() {
               </div>
             )}
 
-            {selectedProduct && (
-              <>
+            {selectedProduct && isOrderModalOpen && (
+              <div className="fixed inset-0 z-[100] flex items-end justify-center bg-[#08170f]/70 p-0 backdrop-blur-sm sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-labelledby="commander-modal-title">
+                <div className="relative max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-t-[26px] bg-white p-5 shadow-2xl sm:rounded-[26px] sm:p-8">
+                  <div className="sticky top-0 z-10 -mx-5 -mt-5 mb-6 flex items-start justify-between gap-4 border-b border-[#e7e2d7] bg-white/95 px-5 py-4 backdrop-blur sm:-mx-8 sm:-mt-8 sm:px-8">
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#8a7139]">Votre commande</p>
+                      <h2 id="commander-modal-title" className="mt-1 font-serif text-2xl font-semibold text-[#183c2c]">{selectedProduct.name}</h2>
+                      <p className="mt-1 text-sm text-[#637166]">Précisez les options et la quantité avant de continuer.</p>
+                    </div>
+                    <button type="button" onClick={() => setIsOrderModalOpen(false)} aria-label="Fermer la fenêtre" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#e7e2d7] text-xl text-[#183c2c] transition hover:bg-[#f5f2e9]">×</button>
+                  </div>
                 {/* OPTIONS */}
 
                 {selectedOptions.length > 0 && (
@@ -946,14 +958,18 @@ export default function CommanderPage() {
                   </div>
                 )}
 
+                {error && (
+                  <p className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">{error}</p>
+                )}
                 <button
                   type="button"
                   onClick={goToStep2}
                   className="mt-8 rounded-xl bg-[#d7bd79] px-7 py-3.5 text-sm font-extrabold text-[#183c2c] transition hover:bg-[#e5cf91] focus:outline-none focus:ring-2 focus:ring-[#153d2d] focus:ring-offset-2"
                 >
-                  Continuer
+                  Continuer vers mes informations
                 </button>
-              </>
+                </div>
+              </div>
             )}
           </div>
         )}
