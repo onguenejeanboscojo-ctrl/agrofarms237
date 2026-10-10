@@ -3,13 +3,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+type StockStatus = "disponible" | "rupture" | "indisponible";
+
 type Product = {
   id: string;
   name: string;
   price_standard: number | null;
   price_bulk: number | null;
   bulk_min_kg: number | null;
-  stock_status: "disponible" | "stock_limite" | "indisponible" | string;
+  stock_status: StockStatus | string;
   next_availability: string | null;
   updated_at: string | null;
   stock_quantity: number | null;
@@ -28,7 +30,7 @@ type NewProduct = {
   variant: string;
   unit: string;
   price_standard: string;
-  stock_status: "disponible" | "stock_limite" | "indisponible";
+  stock_status: StockStatus;
   stock_quantity: string;
   display_order: string;
 };
@@ -311,15 +313,6 @@ export default function ProductEditor() {
     }
   }
 
-  function toggleAvailability(product: Product) {
-    const nextStatus =
-      product.stock_status === "disponible"
-        ? "indisponible"
-        : "disponible";
-
-    updateProduct(product.id, "stock_status", nextStatus);
-  }
-
   const groupedProducts = useMemo(() => {
     const groups = new Map<string, Product[]>();
 
@@ -568,9 +561,9 @@ export default function ProductEditor() {
                 }
                 className={inputClass}
               >
-                <option value="indisponible">Indisponible</option>
-                <option value="stock_limite">Stock limité</option>
                 <option value="disponible">Disponible</option>
+                <option value="rupture">Rupture de stock</option>
+                <option value="indisponible">Indisponible</option>
               </select>
             </div>
 
@@ -654,8 +647,13 @@ export default function ProductEditor() {
 
           <div className="grid gap-4">
             {categoryProducts.map((product) => {
-              const isAvailable =
-                product.stock_status === "disponible";
+              const isAvailable = product.stock_status === "disponible";
+              const isOutOfStock = product.stock_status === "rupture";
+              const statusLabel = isAvailable
+                ? "Disponible"
+                : isOutOfStock
+                  ? "Rupture de stock"
+                  : "Indisponible";
               const hasBulkPrice =
                 typeof product.price_bulk === "number";
 
@@ -685,22 +683,35 @@ export default function ProductEditor() {
                         </p>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => toggleAvailability(product)}
-                        className={`inline-flex items-center gap-2 self-start rounded-full border px-4 py-2 text-sm font-semibold transition lg:self-auto ${
-                          isAvailable
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                            : "border-ink/10 bg-white text-inkSoft hover:border-ink/20"
-                        }`}
-                      >
-                        <span
-                          className={`h-2 w-2 rounded-full ${
-                            isAvailable ? "bg-emerald-600" : "bg-ink/30"
-                          }`}
-                        />
-                        {isAvailable ? "Disponible" : "Indisponible"}
-                      </button>
+                      <div className="w-full lg:w-56">
+                        <label className="mb-2 block text-xs font-semibold text-inkSoft">
+                          Disponibilité du produit
+                        </label>
+                        <select
+                          value={
+                            product.stock_status === "disponible"
+                              ? "disponible"
+                              : product.stock_status === "rupture"
+                                ? "rupture"
+                                : "indisponible"
+                          }
+                          onChange={(event) =>
+                            updateProduct(
+                              product.id,
+                              "stock_status",
+                              event.target.value
+                            )
+                          }
+                          className={inputClass}
+                        >
+                          <option value="disponible">Disponible</option>
+                          <option value="rupture">Rupture de stock</option>
+                          <option value="indisponible">Indisponible</option>
+                        </select>
+                        <p className="mt-1.5 text-xs text-inkSoft">
+                          État actuel : {statusLabel}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
