@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getContent } from "@/lib/content";
 import PartenairesForm from "@/components/PartenairesForm";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const revalidate = 60;
 
@@ -108,41 +109,148 @@ const PROCESS = [
 export default async function PartenairesPage() {
   const intro = await getContent("partenaires_intro");
 
+  // Récupère l’image publiée depuis Admin > Galerie > Espace partenaires.
+  // Une image locale reste disponible si aucune image publiée n’est trouvée.
+  let heroImage = "/images/education/modules/gestion-exploitation.jpg";
+
+  try {
+    const { data } = await supabaseAdmin()
+      .from("media")
+      .select("url")
+      .eq("site_location", "partenaires_hero")
+      .eq("published", true)
+      .order("position", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (data?.url) {
+      heroImage = data.url;
+    }
+  } catch (error) {
+    console.error("Erreur de récupération de l’image du hero Partenaires :", error);
+  }
+
   return (
     <main className="bg-bgAlt">
-      {/* HERO */}
-      <section className="bg-ink px-5 py-[88px] text-paper md:py-[112px]">
-        <div className="mx-auto max-w-[1180px]">
-          <div className="max-w-[820px]">
-            <span className="mb-4 inline-block text-[13px] font-bold uppercase tracking-[0.08em] text-gold">
-              Partenaires · Investissement &amp; développement
-            </span>
+      {/* HERO INVESTISSEURS */}
+      <section className="relative isolate overflow-hidden bg-[#0b211b] text-paper">
+        <div className="absolute inset-0 -z-20">
+          <img
+            src={heroImage}
+            alt="AgroFarms237 — développement de filières agricoles"
+            className="h-full min-h-[650px] w-full object-cover object-center"
+          />
+        </div>
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#071713]/95 via-[#0b211b]/85 to-[#0b211b]/35" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[#071713]/85 via-transparent to-[#071713]/20" />
 
-            <h1 className="font-serif text-[clamp(36px,6vw,64px)] font-semibold leading-[1.04] text-paper">
-              Et si votre prochain investissement commençait à la ferme ?
+        <div className="mx-auto grid min-h-[650px] max-w-[1280px] items-center gap-12 px-5 py-20 md:grid-cols-[1.15fr_0.85fr] md:py-24">
+          <div className="max-w-[760px]">
+            <div className="mb-7 inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/5 px-4 py-2 backdrop-blur-sm">
+              <span className="h-2 w-2 rounded-full bg-[#d7b46a]" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#e7ca8b]">
+                Partenaires · Investissement &amp; développement
+              </span>
+            </div>
+
+            <h1 className="font-serif text-[clamp(42px,6vw,76px)] font-semibold leading-[0.99] tracking-[-0.035em] text-paper">
+              Investir dans
+              <br />
+              <span className="italic text-[#dfc184]">l’agriculture</span>
+              <br />
+              c’est bâtir l’avenir.
             </h1>
 
-            <p className="mt-6 max-w-[700px] text-[17px] leading-8 text-paper/70">
-              AgroFarms237 construit une entreprise agricole autour de
-              plusieurs filières : pisciculture, élevage porcin et
-              aviculture. Notre ambition est de construire, étape par étape,
-              une activité capable de créer davantage de valeur autour de la
-              production agricole locale.
+            <p className="mt-7 max-w-[650px] text-base leading-8 text-white/80 md:text-lg">
+              AgroFarms237 développe une vision agricole fondée sur la
+              production, la valorisation et la commercialisation. Nous
+              recherchons des partenaires qui souhaitent étudier avec nous
+              des projets concrets et accompagner une ambition construite
+              étape par étape.
             </p>
 
-            <p className="mt-4 max-w-[700px] text-[15px] leading-7 text-paper/55">
-              {intro}
-            </p>
+            {intro ? (
+              <p className="mt-4 max-w-[620px] text-sm leading-7 text-white/65">
+                {intro}
+              </p>
+            ) : null}
 
-            <div className="mt-8 flex flex-wrap gap-3.5">
-              <a href="#investir" className="btn btn-gold">
-                Parler d&apos;un investissement
+            <div className="mt-9 flex flex-wrap gap-3.5">
+              <a
+                href="#investir"
+                className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#d8b66f] px-7 py-3 text-sm font-bold text-[#10231c] transition duration-300 hover:-translate-y-0.5 hover:bg-[#e8ca8b]"
+              >
+                Étudier une opportunité
+                <span className="ml-3 text-lg">↗</span>
               </a>
 
-              <Link href="/notre-elevage" className="btn btn-outline">
-                Découvrir notre vision
+              <Link
+                href="/notre-elevage"
+                className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/25 bg-white/5 px-7 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white hover:text-[#10231c]"
+              >
+                Découvrir nos activités
               </Link>
             </div>
+
+            <div className="mt-10 flex flex-wrap gap-x-7 gap-y-3 border-t border-white/15 pt-6 text-xs text-white/70">
+              <span>Vision à long terme</span>
+              <span>Développement progressif</span>
+              <span>Échanges transparents</span>
+            </div>
+          </div>
+
+          <div className="hidden md:block">
+            <div className="ml-auto max-w-[360px] rounded-[28px] border border-white/15 bg-[#10251f]/80 p-7 shadow-2xl backdrop-blur-md">
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#dfc184]">
+                Notre engagement
+              </span>
+              <h2 className="mt-4 font-serif text-3xl font-semibold leading-tight text-paper">
+                Une ambition forte.
+                <br />
+                Des étapes claires.
+                <br />
+                Un dialogue sérieux.
+              </h2>
+              <p className="mt-4 text-sm leading-6 text-white/70">
+                Chaque proposition de partenariat mérite d’être comprise,
+                étudiée et encadrée. Parlons de vos objectifs, de vos attentes
+                et des conditions possibles avant toute décision.
+              </p>
+              <a
+                href="#investir"
+                className="mt-7 flex items-center justify-between border-t border-white/15 pt-5 text-sm font-semibold text-[#e6c986] transition hover:text-white"
+              >
+                Présenter mon projet
+                <span className="text-xl">→</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CONFIANCE ET MÉTHODE */}
+      <section className="bg-[#10251d] px-5 py-10 text-paper">
+        <div className="mx-auto grid max-w-[1180px] gap-6 md:grid-cols-3">
+          <div className="border-l-2 border-[#d8b66f] pl-5">
+            <h2 className="font-serif text-xl font-semibold">Une vision lisible</h2>
+            <p className="mt-2 text-sm leading-6 text-white/65">
+              Des filières identifiées et une trajectoire de développement
+              présentée par étapes.
+            </p>
+          </div>
+          <div className="border-l-2 border-[#d8b66f] pl-5">
+            <h2 className="font-serif text-xl font-semibold">Des échanges directs</h2>
+            <p className="mt-2 text-sm leading-6 text-white/65">
+              Chaque partenaire potentiel peut présenter ses attentes et
+              poser ses questions avant d’envisager une collaboration.
+            </p>
+          </div>
+          <div className="border-l-2 border-[#d8b66f] pl-5">
+            <h2 className="font-serif text-xl font-semibold">Un cadre à définir</h2>
+            <p className="mt-2 text-sm leading-6 text-white/65">
+              Les objectifs, les responsabilités et les conditions doivent
+              être discutés clairement avant tout engagement.
+            </p>
           </div>
         </div>
       </section>
