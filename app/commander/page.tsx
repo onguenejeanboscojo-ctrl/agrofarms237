@@ -610,8 +610,8 @@ export default function CommanderPage() {
 
   if (loadingProducts) {
     return (
-      <section className="px-5 py-[72px]">
-        <div className="mx-auto max-w-[1180px]">
+      <section className="min-h-screen bg-[#f6f3e9] px-5 py-10 md:py-16">
+        <div className="mx-auto max-w-[1280px]">
           <span className="mb-2.5 inline-block text-[13px] font-bold text-goldDeep">
             Commande
           </span>
@@ -620,7 +620,7 @@ export default function CommanderPage() {
             Choisir, commander, confirmer sur WhatsApp.
           </h1>
 
-          <div className="mt-10 rounded-2xl border border-ink/10 bg-paper p-8 text-sm text-inkSoft">
+          <div className="mt-10 rounded-3xl border border-[#e4dfd1] bg-white p-8 text-sm text-inkSoft shadow-sm">
             Chargement des produits…
           </div>
         </div>
@@ -629,25 +629,46 @@ export default function CommanderPage() {
   }
 
   return (
-    <section className="px-5 py-[72px]">
-      <div className="mx-auto max-w-[1180px]">
-        <span className="mb-2.5 inline-block text-[13px] font-bold text-goldDeep">
-          Commande
-        </span>
+    <section className="min-h-screen bg-[#f6f3e9] px-4 py-6 text-[#183c2c] sm:px-6 md:py-12">
+      <div className="mx-auto max-w-[1280px]">
+        {/* HERO */}
+        <div className="relative isolate overflow-hidden rounded-[28px] bg-[#153d2d] px-6 py-9 text-white shadow-[0_24px_70px_rgba(18,54,39,0.18)] sm:px-10 sm:py-12 lg:px-14 lg:py-14">
+          <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full border border-white/10 sm:h-96 sm:w-96" />
+          <div className="pointer-events-none absolute -right-4 -top-12 h-56 w-56 rounded-full border border-[#d7bd79]/20 sm:h-72 sm:w-72" />
+          <div className="relative max-w-3xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#d7bd79]/40 bg-white/5 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#e5cf91]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#d7bd79]" />
+              AgroFarms237 · Commandes
+            </span>
+            <h1 className="mt-5 max-w-3xl font-serif text-[clamp(34px,5vw,58px)] font-semibold leading-[1.05] tracking-[-0.035em]">
+              Du meilleur de la ferme <span className="text-[#dfc681]">à votre table.</span>
+            </h1>
+            <p className="mt-5 max-w-2xl text-sm leading-7 text-white/75 sm:text-base">
+              Choisissez vos produits, précisez votre commande et confirmez directement avec notre équipe sur WhatsApp.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3 text-xs font-semibold text-white/85 sm:text-sm">
+              <span className="rounded-full border border-white/15 bg-white/5 px-4 py-2.5">Produits de la ferme</span>
+              <span className="rounded-full border border-white/15 bg-white/5 px-4 py-2.5">Livraison ou retrait</span>
+              <span className="rounded-full border border-white/15 bg-white/5 px-4 py-2.5">Confirmation sur WhatsApp</span>
+            </div>
+          </div>
+        </div>
 
-        <h1 className="font-serif text-[clamp(28px,4.5vw,42px)] font-semibold">
-          Choisir, commander, confirmer sur WhatsApp.
-        </h1>
-
-        <p className="mt-2 max-w-[700px] text-inkSoft">
-          Choisis ton produit et ses options. La
-          commande sera ensuite récapitulée avant
-          confirmation sur WhatsApp.
-        </p>
+        <div className="mt-9 flex flex-col gap-2 sm:mt-12">
+          <span className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#8a7139]">
+            Votre commande en quelques étapes
+          </span>
+          <h2 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
+            Simple, clair et sans paiement en ligne
+          </h2>
+          <p className="max-w-2xl text-sm leading-6 text-[#637166]">
+            Sélectionnez vos produits. Vous pourrez vérifier les détails et le montant estimatif avant de confirmer sur WhatsApp.
+          </p>
+        </div>
 
         {/* ÉTAPES */}
 
-        <div className="mt-8 flex flex-wrap gap-2">
+        <div className="mt-7 grid grid-cols-3 gap-2 sm:gap-3">
           {[
             ["1", "Produit"],
             ["2", "Informations"],
@@ -655,10 +676,10 @@ export default function CommanderPage() {
           ].map(([number, label]) => (
             <div
               key={number}
-              className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${
+              className={`flex items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-xs font-bold transition sm:justify-start sm:px-5 sm:py-4 sm:text-sm ${
                 step === Number(number)
-                  ? "border-ink bg-ink text-white"
-                  : "border-ink/10 bg-paper text-inkSoft"
+                  ? "border-[#153d2d] bg-[#153d2d] text-white shadow-lg shadow-[#153d2d]/10"
+                  : "border-[#e2ddcf] bg-white/80 text-[#718074]"
               }`}
             >
               <span>{number}</span>
@@ -670,7 +691,7 @@ export default function CommanderPage() {
         {/* ÉTAPE 1 */}
 
         {step === 1 && (
-          <div className="mt-10 max-w-[900px] rounded-2xl border border-ink/10 bg-paper p-6 md:p-9">
+          <div className="mt-6 rounded-[26px] border border-[#e5dfd1] bg-white p-5 shadow-[0_12px_40px_rgba(36,53,39,0.05)] sm:mt-8 sm:p-8 lg:p-10">
             <div>
               <span className="text-xs font-bold uppercase tracking-[0.14em] text-goldDeep">
                 Étape 1
@@ -687,7 +708,7 @@ export default function CommanderPage() {
                 disponible.
               </div>
             ) : (
-              <div className="mt-7 grid gap-4 md:grid-cols-2">
+              <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {products.map((product) => {
                   const available =
                     product.status ===
@@ -705,13 +726,13 @@ export default function CommanderPage() {
                       onClick={() =>
                         selectProduct(product)
                       }
-                      className={`rounded-xl border p-5 text-left transition ${
+                      className={`group relative min-h-[190px] overflow-hidden rounded-2xl border p-5 text-left transition duration-200 ${
                         selected
-                          ? "border-ink bg-ink text-white"
+                          ? "border-[#153d2d] bg-[#153d2d] text-white shadow-xl shadow-[#153d2d]/15 ring-2 ring-[#d7bd79]/70"
                           : available
-                          ? "border-ink/10 bg-bg hover:border-ink/30"
-                          : "cursor-not-allowed border-ink/10 bg-bg opacity-55"
-                      }`}
+                          ? "border-[#e7e2d7] bg-[#fcfbf7] text-[#183c2c] hover:-translate-y-0.5 hover:border-[#b7a36d] hover:shadow-lg hover:shadow-[#263d2e]/5"
+                          : "cursor-not-allowed border-[#e7e2d7] bg-[#f1efe8] opacity-65"
+                      }` }
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div>
@@ -735,7 +756,7 @@ export default function CommanderPage() {
                             available
                               ? selected
                                 ? "bg-white/10 text-white"
-                                : "bg-ink/10 text-ink"
+                                : "bg-[#e7efe7] text-[#315b42]"
                               : "bg-gold/10 text-goldDeep"
                           }`}
                         >
@@ -783,9 +804,9 @@ export default function CommanderPage() {
                 {/* OPTIONS */}
 
                 {selectedOptions.length > 0 && (
-                  <div className="mt-9 border-t border-ink/10 pt-8">
+                  <div className="mt-9 border-t border-[#e9e4d9] pt-8">
                     <h3 className="font-serif text-xl font-semibold">Choisir les options</h3>
-                    <div className="mt-6 grid gap-6">
+                    <div className="mt-6 grid gap-6 rounded-2xl bg-[#f8f6ef] p-4 sm:p-6">
                       {visibleOptions.map((option) => {
                         const optionKey = option.id || option.label;
                         const values = getOptionValues(option);
@@ -818,7 +839,7 @@ export default function CommanderPage() {
                                     disabled={unavailable}
                                     onClick={() => selectOption(option, value.label)}
                                     className={`rounded-lg border px-4 py-3 text-left text-sm font-semibold transition ${
-                                      active ? "border-ink bg-ink text-white" : "border-ink/15 bg-bg hover:border-ink/40"
+                                      active ? "border-[#153d2d] bg-[#153d2d] text-white shadow-md" : "border-[#e0dbcf] bg-white text-[#183c2c] hover:border-[#b7a36d]"
                                     } ${unavailable ? "cursor-not-allowed opacity-50" : ""}`}
                                   >
                                     <span className="block">{value.label}</span>
@@ -872,7 +893,7 @@ export default function CommanderPage() {
                 </div>
 
                 {unitPrice !== null && (
-                  <div className="mt-8 rounded-xl bg-water p-5 text-paper">
+                  <div className="mt-8 rounded-2xl bg-[#153d2d] p-6 text-white shadow-lg shadow-[#153d2d]/10 sm:p-7">
                     <p className="text-sm text-paper/65">
                       Estimation
                     </p>
@@ -894,7 +915,7 @@ export default function CommanderPage() {
                 <button
                   type="button"
                   onClick={goToStep2}
-                  className="mt-8 rounded-lg bg-ink px-6 py-3 text-sm font-bold text-white transition hover:opacity-90"
+                  className="mt-8 rounded-xl bg-[#d7bd79] px-7 py-3.5 text-sm font-extrabold text-[#183c2c] transition hover:bg-[#e5cf91] focus:outline-none focus:ring-2 focus:ring-[#153d2d] focus:ring-offset-2"
                 >
                   Continuer
                 </button>
@@ -906,7 +927,7 @@ export default function CommanderPage() {
         {/* ÉTAPE 2 */}
 
         {step === 2 && (
-          <div className="mt-10 max-w-[900px] rounded-2xl border border-ink/10 bg-paper p-6 md:p-9">
+          <div className="mt-6 rounded-[26px] border border-[#e5dfd1] bg-white p-5 shadow-[0_12px_40px_rgba(36,53,39,0.05)] sm:mt-8 sm:p-8 lg:p-10">
             <span className="text-xs font-bold uppercase tracking-[0.14em] text-goldDeep">
               Étape 2
             </span>
@@ -1048,7 +1069,7 @@ export default function CommanderPage() {
               <button
                 type="button"
                 onClick={goToStep3}
-                className="rounded-lg bg-ink px-6 py-3 text-sm font-bold text-white"
+                className="rounded-xl bg-[#153d2d] px-6 py-3.5 text-sm font-extrabold text-white transition hover:bg-[#24563e]"
               >
                 Voir le récapitulatif
               </button>
@@ -1059,7 +1080,7 @@ export default function CommanderPage() {
         {/* ÉTAPE 3 */}
 
         {step === 3 && selectedProduct && (
-          <div className="mt-10 max-w-[900px] rounded-2xl border border-ink/10 bg-paper p-6 md:p-9">
+          <div className="mt-6 rounded-[26px] border border-[#e5dfd1] bg-white p-5 shadow-[0_12px_40px_rgba(36,53,39,0.05)] sm:mt-8 sm:p-8 lg:p-10">
             <span className="text-xs font-bold uppercase tracking-[0.14em] text-goldDeep">
               Étape 3
             </span>
@@ -1160,7 +1181,7 @@ export default function CommanderPage() {
                 </div>
               )}
 
-              <div className="flex justify-between gap-5 bg-water p-5 text-paper">
+              <div className="flex justify-between gap-5 bg-[#153d2d] p-5 text-white">
                 <span className="font-semibold">Total estimatif</span>
                 <strong className="font-serif text-2xl">
                   {estimatedTotal !== null ? formatFCFA(estimatedTotal) : "À confirmer"}
@@ -1199,7 +1220,7 @@ export default function CommanderPage() {
         )}
 
         {error && (
-          <p className="mt-4 max-w-[900px] text-sm font-semibold text-alert">
+          <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">
             {error}
           </p>
         )}
