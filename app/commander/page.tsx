@@ -85,10 +85,17 @@ const DEFAULT_OPTIONS: Record<string, OrderOption[]> = {
 function getDefaultOptions(name: string): OrderOption[] {
   const normalized = name.trim().toLowerCase();
 
+  // Un porcelet est vendu exclusivement à la pièce :
+  // ne pas lui afficher les options du porc (entier, au kg, frais, fumé).
+  if (normalized.includes("porcelet")) {
+    return [];
+  }
+
   if (normalized.includes("silure")) {
     return DEFAULT_OPTIONS.silure;
   }
 
+  // Ces options restent réservées aux produits porcins autres que le porcelet.
   if (normalized.includes("porc")) {
     return DEFAULT_OPTIONS.porc;
   }
@@ -550,12 +557,11 @@ export default function CommanderPage() {
 
           quantity,
           quantity_kg:
-            selectedProduct.name
-              .toLowerCase()
-              .includes("silure") ||
-            selectedProduct.name
-              .toLowerCase()
-              .includes("porc")
+            !selectedProduct.name.toLowerCase().includes("porcelet") &&
+            (
+              selectedProduct.name.toLowerCase().includes("silure") ||
+              selectedProduct.name.toLowerCase().includes("porc")
+            )
               ? quantity
               : null,
 
