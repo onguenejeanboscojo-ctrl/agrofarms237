@@ -48,10 +48,11 @@ function errorResponse(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
 }
 
-async function checkAdmin() {
+async function checkAdmin(): Promise<boolean> {
   try {
     return Boolean(await isAdminAuthed());
-  } catch {
+  } catch (error) {
+    console.error("Vérification administrateur:", error);
     return false;
   }
 }
@@ -59,20 +60,22 @@ async function checkAdmin() {
 function normalizeText(value: unknown): string | null {
   if (typeof value !== "string") return null;
 
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : null;
+  const result = value.trim();
+  return result.length > 0 ? result : null;
 }
 
-function normalizeNullableNumber(
+function normalizeNumber(
   value: unknown
 ): number | null | undefined {
   if (value === null || value === "") return null;
 
-  if (typeof value !== "number" || !Number.isFinite(value)) {
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value < 0
+  ) {
     return undefined;
   }
-
-  if (value < 0) return undefined;
 
   return value;
 }
@@ -85,39 +88,42 @@ function isValidUnit(value: unknown): value is Unit {
   return UNITS.includes(value as Unit);
 }
 
-function isValidStockStatus(value: unknown): value is StockStatus {
+function isValidStockStatus(
+  value: unknown
+): value is StockStatus {
   return STOCK_STATUSES.includes(value as StockStatus);
 }
 
 /**
- * Règles métier :
- * - Un porcelet se vend uniquement à la pièce.
- * - Un porcelet ne peut pas être configuré comme produit fumé.
- * - Les autres produits conservent leurs unités respectives.
+ * Règles spécifiques aux porcelets :
+ * - Vente exclusivement à la pièce.
+ * - Aucune variante fumée.
+ * - Les autres produits gardent leurs propres unités.
  */
 function validateProductRules(
   product: ProductPayload
 ): string | null {
-  const group = normalizeText(product.product_group)?.toLowerCase() ?? "";
   const name = normalizeText(product.name)?.toLowerCase() ?? "";
-  const variant = normalizeText(product.variant)?.toLowerCase() ?? "";
+  const group =
+    normalizeText(product.product_group)?.toLowerCase() ?? "";
+  const variant =
+    normalizeText(product.variant)?.toLowerCase() ?? "";
 
   const isPorcelet =
-    group === "porcelet" ||
-    name.includes("porcelet");
+    group === "porcelet" || name.includes("porcelet");
 
-  if (isPorcelet) {
-    if (product.unit !== "piece") {
-      return "Le porcelet doit obligatoirement être vendu à la pièce.";
-    }
+  if (!isPorcelet) return null;
 
-    if (variant.includes("fum")) {
-      return "Le porcelet ne peut pas être configuré comme produit fumé.";
-    }
+  if (product.unit !== "piece") {
+    return "Le porcelet doit obligatoirement être vendu à la pièce.";
+  }
 
-    if (group && group !== "porcelet") {
-      return "Le groupe du produit doit être « porcelet ».";
-    }
+  if (variant.includes("fum")) {
+    return "Le porcelet ne peut pas être configuré comme produit fumé.";
+  }
+
+  if (group && group !== "porcelet") {
+    return "Le groupe du produit doit être « porcelet ».";
   }
 
   return null;
@@ -154,15 +160,15 @@ function validateProductPayload(
     return "Le statut du stock est invalide.";
   }
 
-  for (const field of [
+  const numericFields = [
     "price_standard",
     "price_bulk",
     "bulk_min_kg",
-  ] as const) {
-    if (payload[field] !== undefined) {
-      const value = normalizeNullableNumber(payload[field]);
+  ] as const;
 
-      if (value === undefined) {
+  for (const field of numericFields) {
+    if (payload[field] !== undefined) {
+      if (normalizeNumber(payload[field]) === undefined) {
         return `La valeur du champ ${field} est invalide.`;
       }
     }
@@ -192,19 +198,17 @@ function validateProductPayload(
     return "La date de disponibilité est invalide.";
   }
 
-  const ruleError = validateProductRules(payload);
-
-  if (ruleError) {
-    return ruleError;
+  // Pour une modification partielle, les règles métier seront
+  // vérifiées après fusion avec le produit déjà enregistré.
+  if (!partial) {
+    const ruleError = validateProductRules(payload);
+    if (ruleError) return ruleError;
   }
 
   return null;
 }
 
-function sanitizeProductPayload(
-  payload: ProductPayload,
-  partial = false
-) {
+function sanitizeProductPayload(payload: ProductPayload) {
   const clean: Record<string, unknown> = {};
 
   const fields = [
@@ -226,20 +230,16 @@ function sanitizeProductPayload(
     if (
       field === "name" ||
       field === "product_group" ||
-      field === "variant"
+      field === "variant" ||
+      field === "next_availability"
     ) {
-      clean[field] =
-        field === "name"
-          ? normalizeText(payload[field])
-          : normalizeText(payload[field]);
+      clean[field] = normalizeText(payload[field]);
     } else if (
       field === "price_standard" ||
       field === "price_bulk" ||
       field === "bulk_min_kg"
     ) {
-      clean[field] = normalizeNullableNumber(payload[field]);
-    } else if (field === "next_availability") {
-      clean[field] = normalizeText(payload[field]);
+      clean[field] = normalizeNumber(payload[field]);
     } else {
       clean[field] = payload[field];
     }
@@ -250,7 +250,7 @@ function sanitizeProductPayload(
 
 /**
  * GET /api/products
- * Récupère le catalogue destiné à l'administration.
+ * Récupère les produits pour l'administration.
  */
 export async function GET() {
   if (!(await checkAdmin())) {
@@ -258,7 +258,9 @@ export async function GET() {
   }
 
   try {
-    const { data, error } = await supabaseAdmin
+    const supabase = supabaseAdmin();
+
+    const { data, error } = await supabase
       .from("products")
       .select("*")
       .order("name", { ascending: true });
@@ -268,7 +270,9 @@ export async function GET() {
       return errorResponse(ERROR_MESSAGES.server, 500);
     }
 
-    return NextResponse.json({ products: data ?? [] });
+    return NextResponse.json({
+      products: data ?? [],
+    });
   } catch (error) {
     console.error("GET /api/products exception:", error);
     return errorResponse(ERROR_MESSAGES.server, 500);
@@ -277,7 +281,7 @@ export async function GET() {
 
 /**
  * POST /api/products
- * Crée un produit.
+ * Crée un nouveau produit.
  */
 export async function POST(request: NextRequest) {
   if (!(await checkAdmin())) {
@@ -294,8 +298,9 @@ export async function POST(request: NextRequest) {
     }
 
     const product = sanitizeProductPayload(payload);
+    const supabase = supabaseAdmin();
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("products")
       .insert(product)
       .select("*")
@@ -306,7 +311,10 @@ export async function POST(request: NextRequest) {
       return errorResponse(ERROR_MESSAGES.server, 500);
     }
 
-    return NextResponse.json({ product: data }, { status: 201 });
+    return NextResponse.json(
+      { product: data },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("POST /api/products exception:", error);
     return errorResponse(ERROR_MESSAGES.invalidData, 400);
@@ -316,7 +324,7 @@ export async function POST(request: NextRequest) {
 /**
  * PATCH /api/products
  * Modifie un produit existant.
- * L'identifiant doit être envoyé dans le corps JSON.
+ * L'identifiant est envoyé dans le corps JSON.
  */
 export async function PATCH(request: NextRequest) {
   if (!(await checkAdmin())) {
@@ -326,14 +334,21 @@ export async function PATCH(request: NextRequest) {
   try {
     const payload = (await request.json()) as ProductPayload;
 
-    if (!payload.id || typeof payload.id !== "string") {
-      return errorResponse("L'identifiant du produit est obligatoire.");
+    if (
+      typeof payload.id !== "string" ||
+      payload.id.trim().length === 0
+    ) {
+      return errorResponse(
+        "L'identifiant du produit est obligatoire."
+      );
     }
 
     const { id, ...updates } = payload;
 
     if (Object.keys(updates).length === 0) {
-      return errorResponse("Aucune modification à enregistrer.");
+      return errorResponse(
+        "Aucune modification à enregistrer."
+      );
     }
 
     const validationError = validateProductPayload(
@@ -345,17 +360,22 @@ export async function PATCH(request: NextRequest) {
       return errorResponse(validationError, 400);
     }
 
-    // Récupérer le produit existant pour valider les règles
-    // métier même lorsque tous les champs ne sont pas envoyés.
+    const supabase = supabaseAdmin();
+
+    // Charger la fiche existante pour préserver les champs
+    // qui ne sont pas envoyés dans la requête PATCH.
     const { data: existingProduct, error: lookupError } =
-      await supabaseAdmin
+      await supabase
         .from("products")
         .select("*")
         .eq("id", id)
         .maybeSingle();
 
     if (lookupError) {
-      console.error("PATCH /api/products lookup:", lookupError);
+      console.error(
+        "PATCH /api/products lookup:",
+        lookupError
+      );
       return errorResponse(ERROR_MESSAGES.server, 500);
     }
 
@@ -374,9 +394,9 @@ export async function PATCH(request: NextRequest) {
       return errorResponse(ruleError, 400);
     }
 
-    const cleanUpdates = sanitizeProductPayload(updates, true);
+    const cleanUpdates = sanitizeProductPayload(updates);
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("products")
       .update(cleanUpdates)
       .eq("id", id)
@@ -384,7 +404,10 @@ export async function PATCH(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error("PATCH /api/products update:", error);
+      console.error(
+        "PATCH /api/products update:",
+        error
+      );
       return errorResponse(ERROR_MESSAGES.server, 500);
     }
 
