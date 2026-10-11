@@ -1,19 +1,45 @@
 import Link from "next/link";
 import HomeProductsSection from "@/components/HomeProductsSection";
+import HomeHeroSlideshow from "@/components/HomeHeroSlideshow";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 
-async function getHeroImage(): Promise<string | null> {
+async function getHeroImages(): Promise<string[]> {
   try {
-    const { data } = await supabaseAdmin()
+    const { data, error } = await supabaseAdmin()
       .from("media")
       .select("url")
       .eq("published", true)
       .eq("kind", "photo")
       .eq("site_location", "hero")
+      .not("url", "is", null)
       .order("position", { ascending: true })
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Erreur chargement du diaporama d’accueil :", error);
+      return [];
+    }
+
+    return (data ?? [])
+      .map((item) => item.url)
+      .filter((url): url is string => typeof url === "string" && url.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+async function getLocationImage(location: string): Promise<string | null> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from("media")
+      .select("url")
+      .eq("published", true)
+      .eq("site_location", location)
+      .not("url", "is", null)
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
 
@@ -95,12 +121,14 @@ const commitments = [
 ];
 
 export default async function Home() {
-  const [heroImage, farmImage] = await Promise.all([
-    getHeroImage(),
+  const [heroImages, farmImage, professionalsImage, partnersImage] = await Promise.all([
+    getHeroImages(),
     getFarmImage(),
+    getLocationImage("professionnels_hero"),
+    getLocationImage("partenaires_hero"),
   ]);
 
-  const heroBackgroundImage = heroImage || fallbackImage;
+  const heroSlides = heroImages.length > 0 ? heroImages : [fallbackImage];
   const farmBackgroundImage = farmImage || fallbackImage;
 
   return (
@@ -114,19 +142,12 @@ export default async function Home() {
         <div
           id="accueil"
           className="relative mx-auto min-h-[680px] max-w-[1500px] overflow-hidden rounded-[30px] bg-[#173D2D] bg-cover bg-center sm:min-h-[750px] lg:min-h-[820px]"
-          style={{
-            backgroundImage: `
-              linear-gradient(
-                90deg,
-                rgba(7,31,22,0.92) 0%,
-                rgba(7,31,22,0.76) 35%,
-                rgba(7,31,22,0.35) 68%,
-                rgba(7,31,22,0.12) 100%
-              ),
-              url("${heroBackgroundImage}")
-            `,
-          }}
         >
+          <HomeHeroSlideshow images={heroSlides} />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-r from-[rgba(7,31,22,0.92)] via-[rgba(7,31,22,0.76)] via-[35%] to-[rgba(7,31,22,0.12)]"
+          />
           {/* ligne supérieure */}
 
           <div className="absolute inset-x-0 top-0 h-px bg-white/15" />
@@ -516,7 +537,15 @@ export default async function Home() {
             href="/professionnels"
             className="group relative min-h-[350px] overflow-hidden rounded-[26px] bg-[#173D2D] p-8 text-white sm:p-10"
           >
-
+            {professionalsImage && (
+              <img
+                src={professionalsImage}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+              />
+            )}
+            <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-[#071F16]/95 via-[#173D2D]/80 to-[#173D2D]/35" />
             <div className="absolute right-8 top-8 h-20 w-20 rounded-full border border-[#E8C98A]/20 transition duration-500 group-hover:scale-125" />
 
             <div className="relative z-10 flex h-full flex-col justify-between">
@@ -552,7 +581,17 @@ export default async function Home() {
             href="/partenaires"
             className="group relative min-h-[350px] overflow-hidden rounded-[26px] bg-[#E9E4D8] p-8 text-[#173D2D] sm:p-10"
           >
-
+            {partnersImage && (
+              <img
+                src={partnersImage}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+              />
+            )}
+            {partnersImage && (
+              <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-[#F5F2E9]/95 via-[#F5F2E9]/85 to-[#F5F2E9]/45" />
+            )}
             <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full border border-[#173D2D]/10 transition duration-500 group-hover:scale-125" />
 
             <div className="relative z-10 flex h-full flex-col justify-between">
