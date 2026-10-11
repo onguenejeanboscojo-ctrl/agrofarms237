@@ -56,12 +56,68 @@ type CommanderMedia = {
 };
 
 const CATEGORY_META = [
-  { key: "silure", title: "Pisciculture · Silure", subtitle: "Silure frais et silure fumé", location: "commander_silure" },
-  { key: "carpe", title: "Pisciculture · Carpe", subtitle: "Carpe fraîche et carpe fumée", location: "commander_poisson" },
-  { key: "porc", title: "Élevage porcin", subtitle: "Porc entier, frais, fumé et porcelets", location: "commander_porc" },
-  { key: "aviculture", title: "Aviculture", subtitle: "Poulets et alvéoles d’œufs", location: "commander_poulet" },
-  { key: "autres", title: "Autres produits", subtitle: "Autres produits disponibles au catalogue", location: "" },
+  { key: "silure", title: "Pisciculture · Silure", subtitle: "Silure frais et silure fumé", location: "commander_silure", heroLocation: "commander_hero_filiere_1" },
+  { key: "carpe", title: "Pisciculture · Carpe", subtitle: "Carpe fraîche et carpe fumée", location: "commander_poisson", heroLocation: "commander_hero_filiere_2" },
+  { key: "porc", title: "Élevage porcin", subtitle: "Porc entier, frais, fumé et porcelets", location: "commander_porc", heroLocation: "commander_hero_filiere_3" },
+  { key: "aviculture", title: "Aviculture", subtitle: "Poulets et alvéoles d’œufs", location: "commander_poulet", heroLocation: "commander_hero_filiere_4" },
+  { key: "autres", title: "Autres produits", subtitle: "Autres produits disponibles au catalogue", location: "", heroLocation: "" },
 ];
+
+function getProductMediaLocation(product: HomeProduct): string {
+  const name = normalizeText(product.name);
+  const group = normalizeText(product.product_group);
+  const text = `${name} ${group}`;
+
+  if (text.includes("silure")) {
+    return text.includes("fum") ? "commander_produit_silure_fume" : "commander_produit_silure_frais";
+  }
+  if (text.includes("carpe")) {
+    return text.includes("fum") ? "commander_produit_carpe_fumee" : "commander_produit_carpe_fraiche";
+  }
+  if (text.includes("porcelet")) return "commander_produit_porcelet";
+  if (text.includes("porc")) {
+    if (text.includes("entier") || text.includes("vivant")) return "commander_produit_porc_entier";
+    if (text.includes("fum")) return "commander_produit_porc_fume";
+    return "commander_produit_porc_frais";
+  }
+  if (text.includes("oeuf") || text.includes("œuf") || text.includes("alveole")) return "commander_produit_oeufs";
+  if (text.includes("poulet")) {
+    if (text.includes("fum")) return "commander_produit_poulet_fume";
+    if (text.includes("frais") || text.includes("nettoy")) return "commander_produit_poulet_frais";
+    return "commander_produit_poulet_vivant";
+  }
+  return "";
+}
+
+function CommanderMediaVisual({
+  media,
+  alt,
+  className,
+}: {
+  media?: CommanderMedia;
+  alt: string;
+  className: string;
+}) {
+  if (!media?.url) return null;
+
+  if (media.kind === "video") {
+    return (
+      <video
+        className={className}
+        autoPlay
+        muted
+        loop
+        playsInline
+        aria-label={alt}
+        preload="metadata"
+      >
+        <source src={media.url} />
+      </video>
+    );
+  }
+
+  return <img src={media.url} alt={alt} className={className} />;
+}
 
 function normalizeText(value: unknown): string {
   return String(value ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -416,8 +472,12 @@ export default function CommanderPage() {
         const data = await response.json();
         const items = Array.isArray(data?.items) ? data.items : Array.isArray(data?.media) ? data.media : [];
         setMedia(items.filter((item: CommanderMedia) =>
-          item && item.published !== false && item.kind === "photo" && typeof item.url === "string"
-        ));
+          item &&
+          item.published !== false &&
+          (item.kind === "photo" || item.kind === "video") &&
+          typeof item.url === "string" &&
+          typeof item.site_location === "string"
+        ).sort((a: CommanderMedia, b: CommanderMedia) => (a.position ?? 0) - (b.position ?? 0)));
       } catch {
         // La commande reste fonctionnelle même si les médias ne chargent pas.
       }
@@ -428,7 +488,7 @@ export default function CommanderPage() {
 
   const getMediaForLocation = (location: string) => {
     if (!location) return undefined;
-    return media.find((item) => item.site_location === location && item.kind === "photo");
+    return media.find((item) => item.site_location === location);
   };
 
   const heroMedia = getMediaForLocation("commander_hero");
@@ -437,7 +497,8 @@ export default function CommanderPage() {
     return CATEGORY_META.map((category) => ({
       ...category,
       products: products.filter((product) => getProductCategory(product) === category.key),
-      image: getMediaForLocation(category.location)?.url,
+      image: getMediaForLocation(category.location),
+      heroImage: getMediaForLocation(category.heroLocation),
     })).filter((category) => category.products.length > 0);
   }, [products, media]);
 
@@ -712,7 +773,7 @@ export default function CommanderPage() {
       <div className="mx-auto max-w-[1280px]">
         {/* HERO */}
         <div className="relative isolate overflow-hidden rounded-[28px] bg-[#153d2d] px-6 py-9 text-white shadow-[0_24px_70px_rgba(18,54,39,0.18)] sm:px-10 sm:py-12 lg:px-14 lg:py-14">
-          {heroMedia?.url && <img src={heroMedia.url} alt="AgroFarms237 — commande" className="absolute inset-0 h-full w-full object-cover" />}
+          {heroMedia && <CommanderMediaVisual media={heroMedia} alt="AgroFarms237 — commande" className="absolute inset-0 h-full w-full object-cover" />}
           <div className="absolute inset-0 bg-gradient-to-r from-[#0b241a]/95 via-[#153d2d]/85 to-[#153d2d]/45" />
           <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full border border-white/10 sm:h-96 sm:w-96" />
           <div className="pointer-events-none absolute -right-4 -top-12 h-56 w-56 rounded-full border border-[#d7bd79]/20 sm:h-72 sm:w-72" />
@@ -793,7 +854,7 @@ export default function CommanderPage() {
                 {groupedProducts.map((category, categoryIndex) => (
                   <section key={category.key} className="overflow-hidden rounded-2xl border border-[#e7e2d7] bg-[#fcfbf7]">
                     <div className="relative flex min-h-[140px] items-end overflow-hidden bg-[#153d2d] px-5 py-5 text-white sm:min-h-[170px] sm:px-7">
-                      {category.image && <img src={category.image} alt={category.title} className="absolute inset-0 h-full w-full object-cover" />}
+                      {(category.heroImage || category.image) && <CommanderMediaVisual media={category.heroImage || category.image} alt={category.title} className="absolute inset-0 h-full w-full object-cover" />}
                       <div className="absolute inset-0 bg-gradient-to-r from-[#0b241a]/95 via-[#153d2d]/75 to-[#153d2d]/20" />
                       <div className="relative">
                         <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#dfc681]">Filière 0{categoryIndex + 1}</p>
@@ -805,7 +866,8 @@ export default function CommanderPage() {
                       {category.products.map((product) => {
                         const available = product.status === "disponible" && product.order_enabled;
                         const selected = product.id === productId;
-                        const image = getMediaForLocation(category.location)?.url;
+                        const productMediaLocation = getProductMediaLocation(product);
+                        const image = getMediaForLocation(productMediaLocation) || category.image;
                         return (
                           <button
                             key={product.id}
@@ -815,7 +877,7 @@ export default function CommanderPage() {
                             className={`group overflow-hidden rounded-xl border text-left transition duration-200 ${selected ? "border-[#153d2d] bg-[#153d2d] text-white shadow-lg ring-2 ring-[#d7bd79]/70" : available ? "border-[#e7e2d7] bg-white text-[#183c2c] hover:-translate-y-0.5 hover:border-[#b7a36d] hover:shadow-lg" : "cursor-not-allowed border-[#e7e2d7] bg-[#f1efe8] opacity-65"}`}
                           >
                             <div className="relative h-28 overflow-hidden bg-[#e8ede5] sm:h-32">
-                              {image ? <img src={image} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-[#315f50] to-[#0b241a] px-3 text-center font-serif text-lg text-white/90">AgroFarms237</div>}
+                              {image ? <CommanderMediaVisual media={image} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-[#315f50] to-[#0b241a] px-3 text-center font-serif text-lg text-white/90">AgroFarms237</div>}
                               <span className={`absolute right-2 top-2 rounded-full px-2.5 py-1 text-[10px] font-bold ${available ? "bg-white/90 text-[#315b42]" : "bg-white/90 text-[#8a7139]"}`}>
                                 {available ? "Disponible" : product.status === "rupture" ? "Rupture" : "Bientôt disponible"}
                               </span>
