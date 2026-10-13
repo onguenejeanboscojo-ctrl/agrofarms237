@@ -1,6 +1,23 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  CheckCircle2,
+  Clock3,
+  Handshake,
+  House,
+  Images,
+  Newspaper,
+  Package,
+  ShoppingCart,
+  Sprout,
+  Users,
+  Fish,
+  XCircle,
+} from "lucide-react";
+
 import { isAdminAuthed } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import AdminNav from "@/components/AdminNav";
@@ -12,55 +29,55 @@ const ADMIN_MODULES = [
     href: "/admin/commandes",
     title: "Commandes",
     description: "Consulter et suivre les commandes reçues.",
-    icon: "🛒",
+    icon: ShoppingCart,
   },
   {
     href: "/admin/produits",
     title: "Produits",
     description: "Gérer les prix, disponibilités et options.",
-    icon: "📦",
+    icon: Package,
   },
   {
     href: "/admin/stocks",
     title: "Stocks",
     description: "Gérer les quantités disponibles et les seuils.",
-    icon: "🌱",
+    icon: Sprout,
   },
   {
     href: "/admin/accueil",
     title: "Accueil",
     description: "Modifier les contenus de la page d'accueil.",
-    icon: "🏡",
+    icon: House,
   },
   {
     href: "/admin/notre-elevage",
     title: "Notre élevage",
     description: "Gérer les informations relatives à l'élevage.",
-    icon: "🐟",
+    icon: Fish,
   },
   {
     href: "/admin/partenaires",
     title: "Partenaires",
     description: "Gérer les partenaires présentés sur le site.",
-    icon: "🤝",
+    icon: Handshake,
   },
   {
     href: "/admin/actus",
     title: "Actualités",
     description: "Gérer les actualités et publications.",
-    icon: "📰",
+    icon: Newspaper,
   },
   {
     href: "/admin/galerie",
     title: "Galerie",
     description: "Gérer les images de la galerie.",
-    icon: "🖼️",
+    icon: Images,
   },
   {
     href: "/admin/equipe",
     title: "Équipe",
     description: "Gérer les membres de l'équipe.",
-    icon: "👥",
+    icon: Users,
   },
 ];
 
@@ -73,11 +90,11 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_STYLE: Record<string, string> = {
-  nouveau: "bg-amber-100 text-amber-800",
-  contacte: "bg-blue-100 text-blue-800",
-  confirme: "bg-emerald-100 text-emerald-800",
-  livre: "bg-green-100 text-green-800",
-  annule: "bg-red-100 text-red-800",
+  nouveau: "bg-amber-50 text-amber-800 ring-amber-200",
+  contacte: "bg-blue-50 text-blue-800 ring-blue-200",
+  confirme: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  livre: "bg-green-50 text-green-800 ring-green-200",
+  annule: "bg-red-50 text-red-800 ring-red-200",
 };
 
 type Order = {
@@ -125,7 +142,9 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("fr-FR").format(value);
 }
 
-function getActivityDays(rows: { created_at: string }[]): ActivityDay[] {
+function getActivityDays(
+  rows: { created_at: string }[]
+): ActivityDay[] {
   const now = new Date();
   const days: ActivityDay[] = [];
 
@@ -138,13 +157,16 @@ function getActivityDays(rows: { created_at: string }[]): ActivityDay[] {
       timeZone: "Africa/Douala",
       weekday: "short",
       day: "2-digit",
-    }).format(date);
+    })
+      .format(date)
+      .replace(".", "");
 
     days.push({
       key,
-      label: label.replace(".", ""),
-      count: rows.filter((row) => dateKey(new Date(row.created_at)) === key)
-        .length,
+      label,
+      count: rows.filter(
+        (row) => dateKey(new Date(row.created_at)) === key
+      ).length,
     });
   }
 
@@ -184,18 +206,22 @@ export default async function AdminDashboardPage() {
         count: "exact",
         head: true,
       }),
+
       supabase
         .from("orders")
         .select("id", { count: "exact", head: true })
         .in("status", ["nouveau", "contacte", "confirme"]),
+
       supabase
         .from("orders")
         .select("id", { count: "exact", head: true })
         .eq("status", "livre"),
+
       supabase
         .from("orders")
         .select("id", { count: "exact", head: true })
         .eq("status", "annule"),
+
       supabase
         .from("orders")
         .select(
@@ -203,6 +229,7 @@ export default async function AdminDashboardPage() {
         )
         .order("created_at", { ascending: false })
         .limit(5),
+
       supabase
         .from("orders")
         .select("created_at")
@@ -230,7 +257,10 @@ export default async function AdminDashboardPage() {
     recentOrders = (recentResult.data ?? []) as Order[];
     activityDays = getActivityDays(activityResult.data ?? []);
   } catch (error) {
-    console.error("Erreur du tableau de bord AgroFarms237 :", error);
+    console.error(
+      "Erreur du tableau de bord AgroFarms237 :",
+      error
+    );
     loadError = true;
   }
 
@@ -244,28 +274,28 @@ export default async function AdminDashboardPage() {
       title: "Commandes totales",
       value: totalOrders,
       description: "Depuis le lancement",
-      icon: "🛒",
-      accent: "border-l-emerald-700",
+      icon: ShoppingCart,
+      accent: "border-l-emerald-800",
     },
     {
       title: "À traiter",
       value: pendingOrders,
       description: "Nouvelles, contactées ou confirmées",
-      icon: "⏳",
+      icon: Clock3,
       accent: "border-l-amber-500",
     },
     {
       title: "Commandes livrées",
       value: deliveredOrders,
       description: "Statut livré",
-      icon: "✓",
+      icon: CheckCircle2,
       accent: "border-l-green-600",
     },
     {
       title: "Commandes annulées",
       value: cancelledOrders,
       description: "Statut annulé",
-      icon: "↗",
+      icon: XCircle,
       accent: "border-l-red-500",
     },
   ];
@@ -276,25 +306,28 @@ export default async function AdminDashboardPage() {
 
       <main className="mx-auto max-w-[1400px] px-4 py-7 sm:px-6 lg:px-8 lg:py-10">
         {/* En-tête */}
-        <header className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <header className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-emerald-800">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-800">
               AGROFARMS237 · ADMINISTRATION
             </p>
+
             <h1 className="font-serif text-3xl font-semibold text-ink sm:text-4xl">
               Tableau de bord
             </h1>
+
             <p className="mt-2 max-w-2xl text-sm leading-6 text-inkSoft sm:text-base">
-              Retrouvez ici les principaux indicateurs et accédez rapidement
-              à la gestion de votre exploitation.
+              Pilotez votre activité et retrouvez les informations
+              essentielles de votre exploitation.
             </p>
           </div>
 
           <Link
             href="/admin/commandes"
-            className="inline-flex w-fit items-center justify-center gap-2 rounded-lg bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+            className="inline-flex w-fit items-center gap-2 rounded-lg bg-[#173F2A] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#24583B]"
           >
-            Voir les commandes <span aria-hidden="true">→</span>
+            Voir les commandes
+            <ArrowRight size={16} strokeWidth={1.8} />
           </Link>
         </header>
 
@@ -303,15 +336,18 @@ export default async function AdminDashboardPage() {
             role="alert"
             className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
           >
-            Les indicateurs n’ont pas pu être chargés. Vérifie la connexion
-            Supabase et la table orders, puis actualise la page.
+            Les indicateurs n’ont pas pu être chargés. Vérifie la
+            connexion Supabase et la table orders, puis actualise la page.
           </div>
         )}
 
-        {/* Indicateurs clés */}
-        <section aria-labelledby="kpi-heading" className="mb-9">
+        {/* KPI */}
+        <section aria-labelledby="kpi-heading" className="mb-10">
           <div className="mb-4">
-            <h2 id="kpi-heading" className="font-serif text-xl font-semibold">
+            <h2
+              id="kpi-heading"
+              className="font-serif text-xl font-semibold text-ink"
+            >
               Vue d’ensemble
             </h2>
             <p className="mt-1 text-sm text-inkSoft">
@@ -320,43 +356,46 @@ export default async function AdminDashboardPage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {kpis.map((kpi) => (
-              <article
-                key={kpi.title}
-                className={`rounded-xl border border-ink/10 border-l-4 ${kpi.accent} bg-paper p-5 shadow-sm`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-medium text-inkSoft">
-                    {kpi.title}
-                  </p>
-                  <span
-                    aria-hidden="true"
-                    className="flex h-10 w-10 items-center justify-center rounded-lg bg-bgAlt text-lg"
-                  >
-                    {kpi.icon}
-                  </span>
-                </div>
+            {kpis.map((kpi) => {
+              const Icon = kpi.icon;
 
-                <p className="mt-4 text-3xl font-semibold tabular-nums text-ink">
-                  {loadError ? "—" : formatNumber(kpi.value)}
-                </p>
-                <p className="mt-2 text-xs leading-5 text-inkSoft">
-                  {kpi.description}
-                </p>
-              </article>
-            ))}
+              return (
+                <article
+                  key={kpi.title}
+                  className={`rounded-xl border border-ink/10 border-l-4 ${kpi.accent} bg-paper p-5 shadow-sm transition hover:shadow-md`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-medium text-inkSoft">
+                      {kpi.title}
+                    </p>
+
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#F2EFE5] text-[#24583B]">
+                      <Icon size={20} strokeWidth={1.7} />
+                    </span>
+                  </div>
+
+                  <p className="mt-4 text-3xl font-semibold tabular-nums text-ink">
+                    {loadError ? "—" : formatNumber(kpi.value)}
+                  </p>
+
+                  <p className="mt-2 text-xs leading-5 text-inkSoft">
+                    {kpi.description}
+                  </p>
+                </article>
+              );
+            })}
           </div>
         </section>
 
-        {/* Activité et commandes récentes */}
+        {/* Graphique et commandes récentes */}
         <div className="mb-10 grid gap-6 xl:grid-cols-[1.05fr_1.4fr]">
           <section className="rounded-xl border border-ink/10 bg-paper p-5 shadow-sm sm:p-6">
             <div className="mb-6">
-              <h2 className="font-serif text-xl font-semibold">
+              <h2 className="font-serif text-xl font-semibold text-ink">
                 Activité des commandes
               </h2>
               <p className="mt-1 text-sm text-inkSoft">
-                Nombre de commandes créées sur les sept derniers jours.
+                Commandes créées au cours des sept derniers jours.
               </p>
             </div>
 
@@ -371,7 +410,10 @@ export default async function AdminDashboardPage() {
                     const height =
                       day.count === 0
                         ? 0
-                        : Math.max(6, (day.count / maxActivity) * 100);
+                        : Math.max(
+                            6,
+                            (day.count / maxActivity) * 100
+                          );
 
                     return (
                       <div
@@ -381,10 +423,11 @@ export default async function AdminDashboardPage() {
                         <span className="text-xs font-semibold tabular-nums text-inkSoft">
                           {day.count}
                         </span>
+
                         <div className="flex h-full w-full items-end justify-center">
                           <div
                             title={`${day.label} : ${day.count} commande(s)`}
-                            className="w-full max-w-10 rounded-t-md bg-emerald-800 transition-all"
+                            className="w-full max-w-10 rounded-t-md bg-[#24583B] transition-all"
                             style={{ height: `${height}%` }}
                           />
                         </div>
@@ -404,15 +447,18 @@ export default async function AdminDashboardPage() {
                   ))}
                 </div>
 
-                <div className="mt-5 rounded-lg bg-bgAlt p-3">
+                <div className="mt-5 rounded-lg bg-[#F5F0E5] p-4">
                   <p className="text-sm text-inkSoft">
                     Total sur la période
                   </p>
-                  <p className="mt-1 text-2xl font-semibold text-ink">
+                  <p className="mt-1 text-2xl font-semibold text-[#173F2A]">
                     {formatNumber(
-                      activityDays.reduce((sum, day) => sum + day.count, 0)
-                    )}{" "}
-                    <span className="text-sm font-normal text-inkSoft">
+                      activityDays.reduce(
+                        (sum, day) => sum + day.count,
+                        0
+                      )
+                    )}
+                    <span className="ml-2 text-sm font-normal text-inkSoft">
                       commande(s)
                     </span>
                   </p>
@@ -424,7 +470,7 @@ export default async function AdminDashboardPage() {
           <section className="min-w-0 rounded-xl border border-ink/10 bg-paper p-5 shadow-sm sm:p-6">
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
-                <h2 className="font-serif text-xl font-semibold">
+                <h2 className="font-serif text-xl font-semibold text-ink">
                   Dernières commandes
                 </h2>
                 <p className="mt-1 text-sm text-inkSoft">
@@ -436,7 +482,12 @@ export default async function AdminDashboardPage() {
                 href="/admin/commandes"
                 className="shrink-0 text-sm font-semibold text-emerald-800 hover:underline"
               >
-                Tout voir →
+                Tout voir
+                <ArrowUpRight
+                  className="ml-1 inline-block"
+                  size={15}
+                  strokeWidth={1.8}
+                />
               </Link>
             </div>
 
@@ -445,7 +496,12 @@ export default async function AdminDashboardPage() {
                 Les commandes sont indisponibles.
               </p>
             ) : recentOrders.length === 0 ? (
-              <div className="rounded-lg bg-bgAlt px-4 py-10 text-center">
+              <div className="rounded-lg bg-[#F5F0E5] px-4 py-10 text-center">
+                <ShoppingCart
+                  className="mx-auto mb-3 text-[#24583B]"
+                  size={28}
+                  strokeWidth={1.5}
+                />
                 <p className="font-medium text-ink">
                   Aucune commande pour le moment
                 </p>
@@ -464,12 +520,14 @@ export default async function AdminDashboardPage() {
                       <p className="truncate font-semibold text-ink">
                         {order.client_name || "Client sans nom"}
                       </p>
+
                       <p className="mt-1 truncate text-sm text-inkSoft">
                         {order.product_name || "Produit non précisé"}
                         {order.quantity_kg != null
                           ? ` · ${order.quantity_kg} kg`
                           : ""}
                       </p>
+
                       <p className="mt-1 text-xs text-inkSoft">
                         {formatDate(order.created_at)}
                       </p>
@@ -477,9 +535,9 @@ export default async function AdminDashboardPage() {
 
                     <div className="flex shrink-0 items-center justify-between gap-3 sm:flex-col sm:items-end">
                       <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
                           STATUS_STYLE[order.status ?? ""] ??
-                          "bg-gray-100 text-gray-700"
+                          "bg-gray-50 text-gray-700 ring-gray-200"
                         }`}
                       >
                         {STATUS_LABEL[order.status ?? ""] ??
@@ -490,7 +548,9 @@ export default async function AdminDashboardPage() {
                       <span className="text-sm font-semibold tabular-nums text-ink">
                         {order.total_price == null
                           ? "—"
-                          : `${formatNumber(Number(order.total_price))} FCFA`}
+                          : `${formatNumber(
+                              Number(order.total_price)
+                            )} FCFA`}
                       </span>
                     </div>
                   </article>
@@ -499,18 +559,18 @@ export default async function AdminDashboardPage() {
             )}
 
             <p className="mt-5 border-t border-ink/10 pt-4 text-xs leading-5 text-inkSoft">
-              Les montants affichés correspondent au montant enregistré de
-              chaque commande, pas nécessairement à un paiement encaissé.
+              Les montants affichés correspondent aux montants enregistrés
+              des commandes, pas nécessairement à des paiements encaissés.
             </p>
           </section>
         </div>
 
-        {/* Gestion rapide */}
+        {/* Raccourcis des modules */}
         <section aria-labelledby="modules-heading">
           <div className="mb-4">
             <h2
               id="modules-heading"
-              className="font-serif text-xl font-semibold"
+              className="font-serif text-xl font-semibold text-ink"
             >
               Gestion rapide
             </h2>
@@ -520,35 +580,37 @@ export default async function AdminDashboardPage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {ADMIN_MODULES.map((module) => (
-              <Link
-                key={module.href}
-                href={module.href}
-                className="group rounded-xl border border-ink/10 bg-paper p-5 transition hover:-translate-y-0.5 hover:border-emerald-800/30 hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span
-                    aria-hidden="true"
-                    className="flex h-11 w-11 items-center justify-center rounded-lg bg-bgAlt text-xl"
-                  >
-                    {module.icon}
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className="text-lg text-inkSoft transition group-hover:translate-x-1"
-                  >
-                    →
-                  </span>
-                </div>
+            {ADMIN_MODULES.map((module) => {
+              const Icon = module.icon;
 
-                <h3 className="mt-4 font-serif text-lg font-semibold text-ink">
-                  {module.title}
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-inkSoft">
-                  {module.description}
-                </p>
-              </Link>
-            ))}
+              return (
+                <Link
+                  key={module.href}
+                  href={module.href}
+                  className="group rounded-xl border border-ink/10 bg-paper p-5 transition hover:-translate-y-0.5 hover:border-emerald-800/30 hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#F5F0E5] text-[#24583B] transition group-hover:bg-[#173F2A] group-hover:text-[#E8D8AC]">
+                      <Icon size={21} strokeWidth={1.6} />
+                    </span>
+
+                    <ArrowUpRight
+                      className="text-inkSoft transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-emerald-800"
+                      size={18}
+                      strokeWidth={1.6}
+                    />
+                  </div>
+
+                  <h3 className="mt-4 font-serif text-lg font-semibold text-ink">
+                    {module.title}
+                  </h3>
+
+                  <p className="mt-2 text-sm leading-6 text-inkSoft">
+                    {module.description}
+                  </p>
+                </Link>
+              );
+            })}
           </div>
         </section>
       </main>
