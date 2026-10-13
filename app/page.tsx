@@ -447,6 +447,7 @@ export default async function Home() {
         </div>
 
         <div className="mt-12 grid gap-5 md:grid-cols-2">
+          {/* CARTE PROFESSIONNELS */}
           <Link
             href="/professionnels"
             className="group relative min-h-[350px] overflow-hidden rounded-[26px] bg-[#173D2D] p-8 text-white sm:p-10"
@@ -477,22 +478,23 @@ export default async function Home() {
                   Approvisionner votre activité avec une ferme locale.
                 </h3>
 
-                <p className="mt-5 max-w-[500px] text-sm leading-7 text-white/60">
+                <p className="mt-5 max-w-[500px] text-sm leading-7 text-white/90">
                   Restaurants, commerces, distributeurs et autres acteurs de
                   l’alimentation peuvent échanger directement avec
                   Agrofarms237.
                 </p>
               </div>
 
-              <span className="mt-8 text-sm font-semibold text-[#E8C98A]">
-                Espace professionnel
+              <span className="mt-8 inline-flex w-fit items-center rounded-full bg-[#E8C98A] px-5 py-3 text-sm font-bold text-[#173D2D] transition group-hover:bg-white">
+                Espace professionnel →
               </span>
             </div>
           </Link>
 
+          {/* CARTE PARTENAIRES — CONTRASTE RENFORCÉ */}
           <Link
             href="/partenaires"
-            className="group relative min-h-[350px] overflow-hidden rounded-[26px] bg-[#E9E4D8] p-8 text-[#173D2D] sm:p-10"
+            className="group relative min-h-[350px] overflow-hidden rounded-[26px] bg-[#173D2D] p-8 text-white sm:p-10"
           >
             {partnersImage && (
               <img
@@ -503,34 +505,32 @@ export default async function Home() {
               />
             )}
 
-            {partnersImage && (
-              <div
-                aria-hidden="true"
-                className="absolute inset-0 bg-gradient-to-r from-[#F5F2E9]/95 via-[#F5F2E9]/85 to-[#F5F2E9]/45"
-              />
-            )}
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-gradient-to-r from-[#071F16]/95 via-[#173D2D]/85 to-[#173D2D]/60"
+            />
 
-            <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full border border-[#173D2D]/10 transition duration-500 group-hover:scale-125" />
+            <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full border border-[#E8C98A]/25 transition duration-500 group-hover:scale-125" />
 
             <div className="relative z-10 flex h-full flex-col justify-between">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#B7863D]">
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#E8C98A]">
                   Partenaires
                 </p>
 
-                <h3 className="mt-6 max-w-[500px] text-3xl font-semibold leading-tight tracking-[-0.03em] sm:text-4xl">
+                <h3 className="mt-6 max-w-[500px] text-3xl font-semibold leading-tight tracking-[-0.03em] text-white sm:text-4xl">
                   Construire l’agriculture de demain ensemble.
                 </h3>
 
-                <p className="mt-5 max-w-[500px] text-sm leading-7 text-[#66756B]">
+                <p className="mt-5 max-w-[500px] text-sm leading-7 text-white/90">
                   Découvrez notre trajectoire de développement et les
                   différentes manières de contribuer à la croissance de la
                   ferme.
                 </p>
               </div>
 
-              <span className="mt-8 text-sm font-semibold text-[#173D2D]">
-                Espace partenaires
+              <span className="mt-8 inline-flex w-fit items-center rounded-full bg-[#E8C98A] px-5 py-3 text-sm font-bold text-[#173D2D] transition group-hover:bg-white">
+                Espace partenaires →
               </span>
             </div>
           </Link>
