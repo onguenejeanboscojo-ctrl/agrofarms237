@@ -299,7 +299,9 @@ export default async function AdminDashboardPage() {
     <>
       <AdminNav />
 
-      <main className="mx-auto max-w-[1400px] px-4 py-7 sm:px-6 lg:ml-[250px] lg:px-8 lg:py-10 xl:ml-[270px]">
+      <main
+        className="mx-auto max-w-[1400px] px-4 py-7 transition-[margin] duration-200 sm:px-6 lg:ml-[var(--admin-sidebar-width,240px)] lg:px-8 lg:py-10"
+      >
         <header className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-800">
