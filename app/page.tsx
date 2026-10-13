@@ -450,7 +450,7 @@ export default async function Home() {
           {/* CARTE PROFESSIONNELS */}
           <Link
             href="/professionnels"
-            className="group relative min-h-[380px] overflow-hidden rounded-[26px] bg-[#173D2D] p-8 text-white sm:p-10"
+            className="group relative min-h-[350px] overflow-hidden rounded-[26px] bg-[#173D2D] p-8 text-white sm:p-10"
           >
             {professionalsImage && (
               <img
@@ -463,35 +463,35 @@ export default async function Home() {
 
             <div
               aria-hidden="true"
-              className="absolute inset-0 bg-gradient-to-r from-[#071F16]/95 via-[#173D2D]/90 to-[#173D2D]/65"
+              className="absolute inset-0 bg-gradient-to-r from-[#071F16]/95 via-[#173D2D]/80 to-[#173D2D]/35"
             />
 
-            <div className="absolute right-8 top-8 h-20 w-20 rounded-full border border-[#E8C98A]/25 transition duration-500 group-hover:scale-125" />
+            <div className="absolute right-8 top-8 h-20 w-20 rounded-full border border-[#E8C98A]/20 transition duration-500 group-hover:scale-125" />
 
-            <div className="relative z-10 flex h-full flex-col justify-between gap-10">
+            <div className="relative z-10 flex h-full flex-col justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#E8C98A]">
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#E8C98A]">
                   Professionnels
                 </p>
 
-                <h3 className="mt-6 max-w-[500px] text-3xl font-bold leading-tight tracking-[-0.03em] text-white sm:text-4xl">
+                <h3 className="mt-6 max-w-[500px] text-3xl font-semibold leading-tight tracking-[-0.03em] sm:text-4xl">
                   Approvisionner votre activité avec une ferme locale.
                 </h3>
 
-                <p className="mt-5 max-w-[500px] text-sm leading-7 text-white sm:text-base sm:leading-8">
+                <p className="mt-5 max-w-[500px] text-sm leading-7 text-white/60">
                   Restaurants, commerces, distributeurs et autres acteurs de
                   l’alimentation peuvent échanger directement avec
                   Agrofarms237.
                 </p>
               </div>
 
-              <span className="inline-flex min-h-[48px] w-fit items-center justify-center rounded-full bg-[#E8C98A] px-6 py-3 text-sm font-bold text-[#173D2D] transition group-hover:bg-white">
-                Espace professionnel →
+              <span className="mt-8 text-sm font-semibold text-[#E8C98A]">
+                Espace professionnel
               </span>
             </div>
           </Link>
 
-          {/* CARTE PARTENAIRES : LISIBILITÉ RENFORCÉE */}
+          {/* CARTE PARTENAIRES — PHOTO ET TEXTE LISIBLE */}
           <Link
             href="/partenaires"
             className="group relative isolate flex min-h-[380px] flex-col overflow-hidden rounded-[26px] bg-[#102F24] p-8 text-white sm:p-10"
@@ -501,23 +501,27 @@ export default async function Home() {
                 src={partnersImage}
                 alt=""
                 aria-hidden="true"
-                className="absolute inset-0 -z-20 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                className="absolute inset-0 z-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
               />
             )}
 
+            {/* Voile sombre au-dessus de la photo */}
             <div
               aria-hidden="true"
-              className="absolute inset-0 -z-10 bg-[#102F24]/90"
+              className="absolute inset-0 z-[1] bg-[#102F24]/75"
             />
 
             <div
               aria-hidden="true"
-              className="absolute inset-0 -z-10 bg-gradient-to-r from-[#071F16]/95 via-[#102F24]/90 to-[#102F24]/75"
+              className="absolute inset-0 z-[1] bg-gradient-to-r from-[#071F16]/80 via-[#102F24]/55 to-transparent"
             />
 
-            <div className="absolute -right-10 -top-10 -z-10 h-40 w-40 rounded-full border border-[#E8C98A]/30 transition duration-500 group-hover:scale-110" />
+            <div
+              aria-hidden="true"
+              className="absolute -right-10 -top-10 z-[2] h-40 w-40 rounded-full border border-[#E8C98A]/30 transition duration-500 group-hover:scale-110"
+            />
 
-            <div className="flex flex-1 flex-col justify-between gap-10">
+            <div className="relative z-10 flex flex-1 flex-col justify-between gap-10">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#E8C98A]">
                   Partenaires
