@@ -4,231 +4,217 @@ import HomeProductOrderModal, {
   type HomeOrderProduct,
 } from "@/components/HomeProductOrderModal";
 
-type HomeProduct = HomeOrderProduct & {
-  position: number;
-  published: boolean;
+export const revalidate = 30;
+
+type CatalogProduct = {
+  id: string;
+  name: string;
+  price_standard: number | null;
+  price_bulk: number | null;
+  bulk_min_kg: number | null;
+  stock_status: string;
+  stock_quantity: number | null;
+  stock_threshold: number | null;
+  category: string | null;
+  product_group: string | null;
+  variant: string | null;
+  unit: string | null;
+  display_order: number;
 };
 
 type MediaItem = {
+  id: string;
   url: string;
   kind: string;
   category?: string | null;
   site_location?: string | null;
-  published?: boolean;
-  position?: number | null;
-  created_at?: string | null;
+  caption?: string | null;
 };
 
 function normalize(value: string | null | undefined) {
-  return (value || "")
-    .toLowerCase()
+  return (value ?? "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
     .trim();
 }
 
-function getProductImageLocations(name: string): string[] {
-  const productName = normalize(name);
+function getProductLocation(product: CatalogProduct): string | null {
+  const name = normalize(
+    `${product.name} ${product.variant ?? ""} ${product.product_group ?? ""}`
+  );
 
-  if (productName.includes("silure")) {
-    return productName.includes("fum")
-      ? ["produit_silure_fume"]
-      : ["produit_silure_frais"];
+  if (name.includes("silure")) {
+    return name.includes("fum")
+      ? "produit_silure_fume"
+      : "produit_silure_frais";
   }
 
-  if (productName.includes("carpe")) {
-    return productName.includes("fum")
-      ? ["produit_carpe_fumee"]
-      : ["produit_carpe_fraiche"];
+  if (name.includes("carpe")) {
+    return name.includes("fum")
+      ? "produit_carpe_fumee"
+      : "produit_carpe_fraiche";
   }
 
-  if (productName.includes("porcelet")) {
-    return ["produit_porcelet"];
+  if (name.includes("porcelet")) {
+    return "produit_porcelet";
   }
 
-  if (productName.includes("porc")) {
-    if (productName.includes("fum")) {
-      return ["produit_porc_fume"];
-    }
-
-    if (productName.includes("entier")) {
-      return ["produit_porc_entier"];
-    }
-
-    return ["produit_porc_frais"];
+  if (name.includes("porc")) {
+    if (name.includes("fum")) return "produit_porc_fume";
+    if (name.includes("entier")) return "produit_porc_entier";
+    return "produit_porc_frais";
   }
 
-  if (productName.includes("poulet")) {
-    if (productName.includes("fum")) {
-      return ["produit_poulet_fume"];
-    }
-
-    if (productName.includes("vivant")) {
-      return ["produit_poulet_vivant"];
-    }
-
-    return ["produit_poulet_frais_nettoye"];
+  if (name.includes("poulet")) {
+    if (name.includes("fum")) return "produit_poulet_fume";
+    if (name.includes("vivant")) return "produit_poulet_vivant";
+    return "produit_poulet_frais_nettoye";
   }
 
-  if (
-    productName.includes("oeuf") ||
-    productName.includes("alveole")
-  ) {
-    return ["produit_alveoles_oeufs"];
+  if (name.includes("oeuf") || name.includes("alveole")) {
+    return "produit_alveoles_oeufs";
   }
 
-  if (productName.includes("poussin")) {
-    return ["produit_poussins"];
-  }
+  if (name.includes("poussin")) return "produit_poussins";
+  if (name.includes("alevin")) return "produit_alevins";
 
-  if (productName.includes("alevin")) {
-    return ["produit_alevins"];
-  }
-
-  return [];
+  return null;
 }
 
-function getLegacyCategories(name: string): string[] {
-  const productName = normalize(name);
+function getLegacyCategories(product: CatalogProduct): string[] {
+  const name = normalize(
+    `${product.name} ${product.variant ?? ""} ${product.product_group ?? ""}`
+  );
 
-  if (productName.includes("silure")) {
-    return productName.includes("fum")
+  if (name.includes("silure")) {
+    return name.includes("fum")
       ? ["produit_silure_fume"]
       : ["produit_silure_frais", "elevage_silure"];
   }
 
-  if (productName.includes("carpe")) {
-    return ["carpe", "produit_carpe"];
+  if (name.includes("carpe")) {
+    return name.includes("fum")
+      ? ["carpe", "produit_carpe", "produit_carpe_fumee"]
+      : ["carpe", "produit_carpe", "produit_carpe_fraiche"];
   }
 
-  if (productName.includes("porcelet")) {
-    return ["produit_porcelet"];
-  }
+  if (name.includes("porcelet")) return ["produit_porcelet"];
 
-  if (productName.includes("porc")) {
-    return productName.includes("fum")
+  if (name.includes("porc")) {
+    return name.includes("fum")
       ? ["produit_porc_fume"]
       : ["porc", "elevage_porc"];
   }
 
-  if (productName.includes("poulet")) {
-    return productName.includes("fum")
+  if (name.includes("poulet")) {
+    return name.includes("fum")
       ? ["produit_poulet_fume"]
       : ["produit_poulet_frais", "poulet"];
   }
 
-  if (
-    productName.includes("oeuf") ||
-    productName.includes("alveole")
-  ) {
-    return ["oeufs", "œufs"];
-  }
-
-  if (productName.includes("poussin")) {
-    return ["produit_poussins"];
-  }
-
-  if (productName.includes("alevin")) {
-    return ["produit_alevins"];
-  }
+  if (name.includes("oeuf")) return ["oeufs", "œufs"];
+  if (name.includes("poussin")) return ["produit_poussins"];
+  if (name.includes("alevin")) return ["produit_alevins"];
 
   return [];
 }
 
 function getProductImages(
-  productName: string,
-  media: MediaItem[],
+  product: CatalogProduct,
+  media: MediaItem[]
 ): string[] {
-  const locations = getProductImageLocations(productName);
-  const categories = getLegacyCategories(productName);
+  const location = getProductLocation(product);
+  const legacyCategories = getLegacyCategories(product);
 
-  // Priorité 1 : photos liées à l'emplacement exact du produit.
-  const exactImages = media
-    .filter(
-      (item) =>
-        item.site_location &&
-        locations.includes(item.site_location),
-    )
-    .map((item) => item.url);
+  return media
+    .filter((item) => {
+      if (item.site_location && location) {
+        return item.site_location === location;
+      }
 
-  if (exactImages.length > 0) {
-    return Array.from(new Set(exactImages));
-  }
+      if (!item.site_location && item.category) {
+        return legacyCategories.includes(item.category);
+      }
 
-  // Priorité 2 : anciennes photos du catalogue.
-  const legacyImages = media
-    .filter(
-      (item) =>
-        !item.site_location &&
-        item.category &&
-        categories.includes(normalize(item.category)),
-    )
-    .map((item) => item.url);
-
-  return Array.from(new Set(legacyImages));
+      return false;
+    })
+    .map((item) => item.url)
+    .filter(Boolean);
 }
 
-function formatPrice(
-  price: number,
-  unit: string | null,
-) {
+function formatPrice(price: number, unit: string | null) {
   const formatted = new Intl.NumberFormat("fr-FR").format(price);
   return `${formatted} FCFA${unit ? `/${unit}` : ""}`;
 }
 
-function getStatusLabel(status: string) {
-  if (status === "disponible") return "Disponible";
-  if (status === "rupture") return "En rupture";
-  return "Bientôt disponible";
+function toOrderProduct(product: CatalogProduct): HomeOrderProduct {
+  const available = product.stock_status === "disponible";
+
+  return {
+    id: product.id,
+    name: product.name,
+    description: null,
+    status: product.stock_status,
+    price: product.price_standard,
+    price_unit: product.unit,
+    price_1_label: null,
+    price_1: product.price_standard,
+    price_2_label:
+      typeof product.bulk_min_kg === "number"
+        ? `À partir de ${product.bulk_min_kg} kg`
+        : null,
+    price_2: product.price_bulk,
+    order_enabled: available && typeof product.price_standard === "number",
+    order_options: [],
+  };
 }
 
 export default async function HomeProductsSection() {
-  let products: HomeProduct[] = [];
+  let products: CatalogProduct[] = [];
   let media: MediaItem[] = [];
 
   try {
-    const { data, error } = await supabaseAdmin()
-      .from("home_products")
-      .select(
-        "id, name, description, status, price, price_unit, price_1_label, price_1, price_2_label, price_2, order_enabled, order_options, position, published",
-      )
-      .eq("published", true)
-      .order("position", { ascending: true });
+    const supabase = supabaseAdmin();
 
-    if (error) {
+    const [productsResult, mediaResult] = await Promise.all([
+      supabase
+        .from("products")
+        .select(
+          "id,name,price_standard,price_bulk,bulk_min_kg,stock_status,stock_quantity,stock_threshold,category,product_group,variant,unit,display_order"
+        )
+        .eq("stock_status", "disponible")
+        .order("display_order", { ascending: true })
+        .order("name", { ascending: true }),
+
+      supabase
+        .from("media")
+        .select("id,url,kind,category,site_location,caption")
+        .eq("published", true)
+        .eq("kind", "photo")
+        .order("position", { ascending: true })
+        .order("created_at", { ascending: false }),
+    ]);
+
+    if (productsResult.error) {
       console.error(
-        "Erreur chargement des produits accueil :",
-        error,
+        "Erreur chargement du catalogue sur l’accueil :",
+        productsResult.error
       );
     } else {
-      products = (data ?? []) as HomeProduct[];
+      products = (productsResult.data ?? []) as CatalogProduct[];
     }
-  } catch (error) {
-    console.error("Erreur Supabase produits accueil :", error);
-  }
 
-  try {
-    const { data, error } = await supabaseAdmin()
-      .from("media")
-      .select(
-        "url,kind,category,site_location,published,position,created_at",
-      )
-      .eq("published", true)
-      .eq("kind", "photo")
-      .not("url", "is", null)
-      .order("position", { ascending: true })
-      .order("created_at", { ascending: false });
-
-    if (error) {
+    if (mediaResult.error) {
       console.error(
-        "Erreur chargement des photos du catalogue :",
-        error,
+        "Erreur chargement des photos des produits :",
+        mediaResult.error
       );
     } else {
-      media = (data ?? []) as MediaItem[];
+      media = (mediaResult.data ?? []) as MediaItem[];
     }
   } catch (error) {
-    console.error("Erreur Supabase photos catalogue :", error);
+    console.error("Erreur Supabase sur les produits de l’accueil :", error);
   }
 
   return (
@@ -248,29 +234,29 @@ export default async function HomeProductsSection() {
             </h2>
 
             <p className="mt-4 max-w-xl leading-7 text-[#627166]">
-              Découvrez notre catalogue. Les produits affichés sont
-              ceux publiés par Agrofarms237.
+              Découvrez les produits actuellement disponibles chez
+              AgroFarms237.
             </p>
           </div>
 
-          <span className="rounded-full border border-[#173D2D]/15 px-4 py-2 text-xs font-semibold text-[#40594A]">
-            Catalogue Agrofarms237
-          </span>
+          <a
+            href="/produits"
+            className="rounded-full border border-[#173D2D]/15 px-4 py-2 text-xs font-semibold text-[#40594A] transition hover:bg-[#FBFAF6]"
+          >
+            Voir tout le catalogue
+          </a>
         </div>
 
         {products.length === 0 ? (
           <p className="rounded-2xl bg-[#FBFAF6] p-6 text-sm text-[#627166]">
-            Nos produits seront bientôt présentés ici.
+            Aucun produit n’est actuellement marqué comme disponible.
           </p>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => {
-              const available =
-                product.status === "disponible" &&
-                product.order_enabled;
-
-              const mainPrice = product.price_1 ?? product.price;
-              const images = getProductImages(product.name, media);
+              const images = getProductImages(product, media);
+              const mainImage = images[0];
+              const orderProduct = toOrderProduct(product);
 
               return (
                 <article
@@ -278,46 +264,44 @@ export default async function HomeProductsSection() {
                   className="group overflow-hidden rounded-[22px] border border-[#173D2D]/8 bg-[#FBFAF6]"
                 >
                   <div className="relative h-64 overflow-hidden bg-[#D8DCCF]">
-                    {images.length > 0 ? (
+                    {mainImage ? (
                       <img
-                        src={images[0]}
+                        src={mainImage}
                         alt={product.name}
-                        className={`h-full w-full object-cover transition duration-700 group-hover:scale-105 ${
-                          available ? "" : "grayscale-[35%]"
-                        }`}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center bg-[#173D2D] px-6 text-center">
-                        <span className="font-serif text-2xl text-[#E8C98A]">
-                          {product.name}
-                        </span>
+                      <div className="flex h-full items-center justify-center px-6 text-center text-sm text-[#627166]">
+                        Photo à ajouter dans la galerie du produit
                       </div>
                     )}
 
-                    <span
-                      className={`absolute left-4 top-4 rounded-full px-3 py-2 text-[11px] font-bold ${
-                        available
-                          ? "bg-[#E4F0DF] text-[#28563F]"
-                          : "bg-white/90 text-[#69746A]"
-                      }`}
-                    >
-                      {getStatusLabel(product.status)}
+                    <span className="absolute left-4 top-4 rounded-full bg-[#E4F0DF] px-3 py-2 text-[11px] font-bold text-[#28563F]">
+                      Disponible
                     </span>
                   </div>
 
                   <div className="p-6">
-                    <h3 className="text-xl font-semibold">
+                    <h3 className="text-xl font-semibold text-[#173D2D]">
                       {product.name}
                     </h3>
 
-                    <p className="mt-2 min-h-[48px] text-sm leading-6 text-[#718074]">
-                      {product.description}
-                    </p>
+                    {(product.variant || product.product_group) && (
+                      <p className="mt-2 text-sm leading-6 text-[#718074]">
+                        {[product.product_group, product.variant]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
 
                     <div className="mt-5 border-t border-[#173D2D]/10 pt-4">
-                      {mainPrice !== null ? (
+                      {product.price_standard !== null ? (
                         <p className="text-lg font-bold text-[#173D2D]">
-                          {formatPrice(mainPrice, product.price_unit)}
+                          {formatPrice(
+                            product.price_standard,
+                            product.unit
+                          )}
                         </p>
                       ) : (
                         <p className="text-lg font-bold text-[#173D2D]">
@@ -325,23 +309,20 @@ export default async function HomeProductsSection() {
                         </p>
                       )}
 
-                      {product.price_2 !== null &&
-                        product.price_2_label && (
+                      {product.price_bulk !== null &&
+                        product.bulk_min_kg !== null && (
                           <p className="mt-1 text-xs text-[#718074]">
-                            {product.price_2_label} :{" "}
-                            {formatPrice(
-                              product.price_2,
-                              product.price_unit,
-                            )}
+                            À partir de {product.bulk_min_kg} kg :{" "}
+                            {formatPrice(product.price_bulk, product.unit)}
                           </p>
                         )}
                     </div>
 
-                    {available ? (
-                      <HomeProductOrderModal product={product} />
+                    {orderProduct.order_enabled ? (
+                      <HomeProductOrderModal product={orderProduct} />
                     ) : (
-                      <div className="mt-5 flex w-full cursor-not-allowed items-center justify-center rounded-full bg-[#E8E7E0] px-5 py-3.5 text-sm font-semibold text-[#858B81]">
-                        {getStatusLabel(product.status)}
+                      <div className="mt-5 flex w-full items-center justify-center rounded-full bg-[#E8E7E0] px-5 py-3.5 text-sm font-semibold text-[#858B81]">
+                        Prix à confirmer
                       </div>
                     )}
                   </div>
@@ -352,8 +333,7 @@ export default async function HomeProductsSection() {
         )}
 
         <p className="mt-7 text-xs leading-5 text-[#718074]">
-          Les prix et disponibilités affichés sont à confirmer avant
-          commande.
+          Les prix affichés proviennent du catalogue AgroFarms237.
         </p>
       </div>
     </section>
