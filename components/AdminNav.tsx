@@ -64,7 +64,7 @@ const navigation = [
   {
     label: "Formation pro",
     href: "/admin/formations",
-    publicHref: "/formation-pro",
+    publicHref: "/formations",
     icon: BookOpen,
   },
   {
@@ -98,47 +98,50 @@ export default function AdminNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   function isActive(href: string) {
-    return pathname === href || pathname.startsWith(`${href}/`);
+    return (
+      pathname === href ||
+      (href !== "/admin/contenu" && pathname.startsWith(`${href}/`))
+    );
   }
 
   const sidebar = (
-    <div className="flex h-full flex-col bg-[#123D2B] text-white">
-      <div className="flex items-center gap-3 border-b border-white/10 px-5 py-5">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#D5B56D] text-[#123D2B]">
-          <Leaf size={25} strokeWidth={2.2} />
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#123D2B] text-white">
+      <div className="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#D5B56D] text-[#123D2B]">
+          <Leaf size={23} strokeWidth={2.2} />
         </div>
 
-        <div>
-          <p className="font-serif text-lg font-semibold tracking-wide">
+        <div className="min-w-0">
+          <p className="font-serif text-base font-semibold tracking-wide">
             AgroFarms237
           </p>
           <p className="text-xs text-white/60">Administration</p>
         </div>
       </div>
 
-      <div className="px-4 pt-5">
+      <div className="shrink-0 px-3 pt-4">
         <Link
           href="/admin"
           onClick={() => setMobileOpen(false)}
-          className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition ${
+          className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition ${
             pathname === "/admin"
               ? "bg-[#D5B56D] font-semibold text-[#123D2B]"
               : "text-white/80 hover:bg-white/10 hover:text-white"
           }`}
         >
-          <LayoutDashboard size={19} />
+          <LayoutDashboard size={18} />
           <span>Tableau de bord</span>
-          <ChevronRight size={16} className="ml-auto opacity-60" />
+          <ChevronRight size={15} className="ml-auto opacity-60" />
         </Link>
       </div>
 
-      <div className="px-5 pb-2 pt-7">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+      <div className="shrink-0 px-4 pb-2 pt-6">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
           Pages du site
         </p>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-5">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-2 pb-4">
         {navigation.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
@@ -146,7 +149,7 @@ export default function AdminNav() {
           return (
             <div
               key={item.label}
-              className={`flex items-center rounded-xl transition ${
+              className={`flex min-w-0 items-center rounded-xl transition ${
                 active
                   ? "bg-[#D5B56D] font-semibold text-[#123D2B]"
                   : "text-white/80 hover:bg-white/10 hover:text-white"
@@ -155,16 +158,22 @@ export default function AdminNav() {
               <Link
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
-                className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-sm"
+                className="flex min-w-0 flex-1 items-center gap-2.5 px-3 py-3 text-sm"
               >
                 <Icon
-                  size={19}
+                  size={18}
+                  className={`shrink-0 ${
+                    active ? "" : "text-white/65"
+                  }`}
                   strokeWidth={active ? 2.3 : 1.8}
-                  className={active ? "" : "text-white/65"}
                 />
-                <span>{item.label}</span>
+
+                <span className="min-w-0 flex-1 truncate">
+                  {item.label}
+                </span>
+
                 {active && (
-                  <ChevronRight size={16} className="ml-auto opacity-70" />
+                  <ChevronRight size={15} className="shrink-0 opacity-70" />
                 )}
               </Link>
 
@@ -172,20 +181,20 @@ export default function AdminNav() {
                 href={item.publicHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`Voir la page publique : ${item.label}`}
-                title={`Voir la page publique : ${item.label}`}
-                className="mr-2 rounded-lg p-2 opacity-70 transition hover:bg-black/10 hover:opacity-100"
+                aria-label={`Ouvrir la page publique : ${item.label}`}
+                title={`Voir ${item.label} sur le site`}
+                className="mr-1.5 shrink-0 rounded-lg p-2 opacity-70 transition hover:bg-black/10 hover:opacity-100"
               >
-                <ExternalLink size={15} />
+                <ExternalLink size={14} />
               </a>
             </div>
           );
         })}
       </nav>
 
-      <div className="border-t border-white/10 px-5 py-4">
-        <p className="text-xs text-white/50">
-          AgroFarms237 · Gestion du site
+      <div className="shrink-0 border-t border-white/10 px-4 py-3">
+        <p className="text-[11px] text-white/50">
+          AgroFarms237 · Administration
         </p>
       </div>
     </div>
@@ -193,28 +202,32 @@ export default function AdminNav() {
 
   return (
     <>
+      {/* Bouton d'ouverture du menu mobile */}
       <button
         type="button"
         aria-label={mobileOpen ? "Fermer le menu" : "Ouvrir le menu"}
-        onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed left-4 top-4 z-[70] flex h-11 w-11 items-center justify-center rounded-xl border border-black/10 bg-white text-[#123D2B] shadow-md lg:hidden"
+        aria-expanded={mobileOpen}
+        onClick={() => setMobileOpen((open) => !open)}
+        className="fixed left-3 top-3 z-[80] flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white text-[#123D2B] shadow-md lg:hidden"
       >
-        {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+        {mobileOpen ? <X size={21} /> : <Menu size={21} />}
       </button>
 
+      {/* Fond de fermeture sur mobile */}
       {mobileOpen && (
         <button
           type="button"
           aria-label="Fermer le menu"
           onClick={() => setMobileOpen(false)}
-          className="fixed inset-0 z-[50] bg-black/40 lg:hidden"
+          className="fixed inset-0 z-[60] bg-black/40 lg:hidden"
         />
       )}
 
+      {/* Barre latérale */}
       <aside
-        className={`fixed inset-y-0 left-0 z-[60] w-[260px] transform transition-transform duration-200 lg:top-0 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-[70] w-[240px] max-w-[85vw] transform transition-transform duration-200 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        } lg:translate-x-0`}
       >
         {sidebar}
       </aside>
