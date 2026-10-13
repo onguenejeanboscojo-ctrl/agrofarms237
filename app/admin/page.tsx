@@ -206,22 +206,18 @@ export default async function AdminDashboardPage() {
         count: "exact",
         head: true,
       }),
-
       supabase
         .from("orders")
         .select("id", { count: "exact", head: true })
         .in("status", ["nouveau", "contacte", "confirme"]),
-
       supabase
         .from("orders")
         .select("id", { count: "exact", head: true })
         .eq("status", "livre"),
-
       supabase
         .from("orders")
         .select("id", { count: "exact", head: true })
         .eq("status", "annule"),
-
       supabase
         .from("orders")
         .select(
@@ -229,7 +225,6 @@ export default async function AdminDashboardPage() {
         )
         .order("created_at", { ascending: false })
         .limit(5),
-
       supabase
         .from("orders")
         .select("created_at")
@@ -304,18 +299,15 @@ export default async function AdminDashboardPage() {
     <>
       <AdminNav />
 
-      <main className="mx-auto max-w-[1400px] px-4 py-7 sm:px-6 lg:px-8 lg:py-10">
-        {/* En-tête */}
+      <main className="mx-auto max-w-[1400px] px-4 py-7 sm:px-6 lg:ml-[250px] lg:px-8 lg:py-10 xl:ml-[270px]">
         <header className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-800">
               AGROFARMS237 · ADMINISTRATION
             </p>
-
             <h1 className="font-serif text-3xl font-semibold text-ink sm:text-4xl">
               Tableau de bord
             </h1>
-
             <p className="mt-2 max-w-2xl text-sm leading-6 text-inkSoft sm:text-base">
               Pilotez votre activité et retrouvez les informations
               essentielles de votre exploitation.
@@ -341,7 +333,6 @@ export default async function AdminDashboardPage() {
           </div>
         )}
 
-        {/* KPI */}
         <section aria-labelledby="kpi-heading" className="mb-10">
           <div className="mb-4">
             <h2
@@ -368,16 +359,13 @@ export default async function AdminDashboardPage() {
                     <p className="text-sm font-medium text-inkSoft">
                       {kpi.title}
                     </p>
-
                     <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#F2EFE5] text-[#24583B]">
                       <Icon size={20} strokeWidth={1.7} />
                     </span>
                   </div>
-
                   <p className="mt-4 text-3xl font-semibold tabular-nums text-ink">
                     {loadError ? "—" : formatNumber(kpi.value)}
                   </p>
-
                   <p className="mt-2 text-xs leading-5 text-inkSoft">
                     {kpi.description}
                   </p>
@@ -387,7 +375,6 @@ export default async function AdminDashboardPage() {
           </div>
         </section>
 
-        {/* Graphique et commandes récentes */}
         <div className="mb-10 grid gap-6 xl:grid-cols-[1.05fr_1.4fr]">
           <section className="rounded-xl border border-ink/10 bg-paper p-5 shadow-sm sm:p-6">
             <div className="mb-6">
@@ -423,7 +410,6 @@ export default async function AdminDashboardPage() {
                         <span className="text-xs font-semibold tabular-nums text-inkSoft">
                           {day.count}
                         </span>
-
                         <div className="flex h-full w-full items-end justify-center">
                           <div
                             title={`${day.label} : ${day.count} commande(s)`}
@@ -477,7 +463,6 @@ export default async function AdminDashboardPage() {
                   Les cinq commandes les plus récentes.
                 </p>
               </div>
-
               <Link
                 href="/admin/commandes"
                 className="shrink-0 text-sm font-semibold text-emerald-800 hover:underline"
@@ -520,14 +505,12 @@ export default async function AdminDashboardPage() {
                       <p className="truncate font-semibold text-ink">
                         {order.client_name || "Client sans nom"}
                       </p>
-
                       <p className="mt-1 truncate text-sm text-inkSoft">
                         {order.product_name || "Produit non précisé"}
                         {order.quantity_kg != null
                           ? ` · ${order.quantity_kg} kg`
                           : ""}
                       </p>
-
                       <p className="mt-1 text-xs text-inkSoft">
                         {formatDate(order.created_at)}
                       </p>
@@ -544,7 +527,6 @@ export default async function AdminDashboardPage() {
                           order.status ??
                           "Sans statut"}
                       </span>
-
                       <span className="text-sm font-semibold tabular-nums text-ink">
                         {order.total_price == null
                           ? "—"
@@ -565,7 +547,6 @@ export default async function AdminDashboardPage() {
           </section>
         </div>
 
-        {/* Raccourcis des modules */}
         <section aria-labelledby="modules-heading">
           <div className="mb-4">
             <h2
@@ -593,18 +574,15 @@ export default async function AdminDashboardPage() {
                     <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#F5F0E5] text-[#24583B] transition group-hover:bg-[#173F2A] group-hover:text-[#E8D8AC]">
                       <Icon size={21} strokeWidth={1.6} />
                     </span>
-
                     <ArrowUpRight
                       className="text-inkSoft transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-emerald-800"
                       size={18}
                       strokeWidth={1.6}
                     />
                   </div>
-
                   <h3 className="mt-4 font-serif text-lg font-semibold text-ink">
                     {module.title}
                   </h3>
-
                   <p className="mt-2 text-sm leading-6 text-inkSoft">
                     {module.description}
                   </p>
