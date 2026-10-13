@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -20,24 +21,76 @@ import {
   X,
   ChevronRight,
   Leaf,
+  ExternalLink,
 } from "lucide-react";
 
 const navigation = [
-  { label: "Accueil", href: "/admin/accueil", icon: House },
-  { label: "À propos", href: "/admin/a-propos", icon: Info },
-  { label: "Produits", href: "/admin/produits", icon: Package },
-  { label: "Notre ferme", href: "/admin/notre-elevage", icon: Sprout },
-  { label: "Galerie", href: "/admin/galerie", icon: Images },
-  { label: "Éducation", href: "/admin/education", icon: GraduationCap },
-  { label: "Formation pro", href: "/admin/formations", icon: BookOpen },
+  {
+    label: "Accueil",
+    href: "/admin/accueil",
+    publicHref: "/",
+    icon: House,
+  },
+  {
+    label: "À propos",
+    href: "/admin/contenu",
+    publicHref: "/la-vie-de-la-ferme",
+    icon: Info,
+  },
+  {
+    label: "Produits",
+    href: "/admin/produits",
+    publicHref: "/produits",
+    icon: Package,
+  },
+  {
+    label: "Notre ferme",
+    href: "/admin/notre-elevage",
+    publicHref: "/notre-elevage",
+    icon: Sprout,
+  },
+  {
+    label: "Galerie",
+    href: "/admin/galerie",
+    publicHref: "/galerie",
+    icon: Images,
+  },
+  {
+    label: "Éducation",
+    href: "/admin/education",
+    publicHref: "/espace-education",
+    icon: GraduationCap,
+  },
+  {
+    label: "Formation pro",
+    href: "/admin/formations",
+    publicHref: "/formation-pro",
+    icon: BookOpen,
+  },
   {
     label: "Professionnels",
-    href: "/admin/professionnels",
+    href: "/admin/contenu",
+    publicHref: "/professionnels",
     icon: BriefcaseBusiness,
   },
-  { label: "Partenaires", href: "/admin/partenaires", icon: Handshake },
-  { label: "Contact", href: "/admin/contact", icon: Mail },
-  { label: "Commander", href: "/admin/commandes", icon: ShoppingCart },
+  {
+    label: "Partenaires",
+    href: "/admin/partenaires",
+    publicHref: "/partenaires",
+    icon: Handshake,
+  },
+  {
+    label: "Contact",
+    href: "/admin/contenu",
+    publicHref: "/contact",
+    icon: Mail,
+  },
+  {
+    label: "Commander",
+    href: "/admin/commandes",
+    publicHref: "/commander",
+    icon: ShoppingCart,
+  },
 ];
 
 export default function AdminNav() {
@@ -91,26 +144,41 @@ export default function AdminNav() {
           const active = isActive(item.href);
 
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              className={`group flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition ${
+            <div
+              key={item.label}
+              className={`flex items-center rounded-xl transition ${
                 active
                   ? "bg-[#D5B56D] font-semibold text-[#123D2B]"
                   : "text-white/80 hover:bg-white/10 hover:text-white"
               }`}
             >
-              <Icon
-                size={19}
-                strokeWidth={active ? 2.3 : 1.8}
-                className={active ? "" : "text-white/65"}
-              />
-              <span>{item.label}</span>
-              {active && (
-                <ChevronRight size={16} className="ml-auto opacity-70" />
-              )}
-            </Link>
+              <Link
+                href={item.href}
+                onClick={() => setMobileOpen(false)}
+                className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-sm"
+              >
+                <Icon
+                  size={19}
+                  strokeWidth={active ? 2.3 : 1.8}
+                  className={active ? "" : "text-white/65"}
+                />
+                <span>{item.label}</span>
+                {active && (
+                  <ChevronRight size={16} className="ml-auto opacity-70" />
+                )}
+              </Link>
+
+              <a
+                href={item.publicHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Voir la page publique : ${item.label}`}
+                title={`Voir la page publique : ${item.label}`}
+                className="mr-2 rounded-lg p-2 opacity-70 transition hover:bg-black/10 hover:opacity-100"
+              >
+                <ExternalLink size={15} />
+              </a>
+            </div>
           );
         })}
       </nav>
@@ -125,7 +193,6 @@ export default function AdminNav() {
 
   return (
     <>
-      {/* Bouton mobile */}
       <button
         type="button"
         aria-label={mobileOpen ? "Fermer le menu" : "Ouvrir le menu"}
@@ -135,7 +202,6 @@ export default function AdminNav() {
         {mobileOpen ? <X size={22} /> : <Menu size={22} />}
       </button>
 
-      {/* Menu mobile */}
       {mobileOpen && (
         <button
           type="button"
