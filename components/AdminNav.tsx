@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -7,19 +6,12 @@ import { useState } from "react";
 import {
   LayoutDashboard,
   House,
-  ShoppingCart,
   Package,
-  Boxes,
-  Truck,
+  Fish,
+  Images,
   GraduationCap,
   BookOpen,
-  Fish,
   Handshake,
-  Newspaper,
-  FileText,
-  Images,
-  Users,
-  MessageSquare,
   ChevronRight,
   Menu,
   X,
@@ -28,42 +20,7 @@ import {
 
 const GROUPS = [
   {
-    title: "Pilotage",
-    links: [
-      {
-        href: "/admin",
-        label: "Tableau de bord",
-        icon: LayoutDashboard,
-      },
-    ],
-  },
-  {
-    title: "Activité commerciale",
-    links: [
-      {
-        href: "/admin/commandes",
-        label: "Commandes",
-        icon: ShoppingCart,
-      },
-      {
-        href: "/admin/produits",
-        label: "Produits",
-        icon: Package,
-      },
-      {
-        href: "/admin/stocks",
-        label: "Stocks",
-        icon: Boxes,
-      },
-      {
-        href: "/admin/livraisons",
-        label: "Livraisons",
-        icon: Truck,
-      },
-    ],
-  },
-  {
-    title: "Contenus du site",
+    title: "Pages du site",
     links: [
       {
         href: "/admin/accueil",
@@ -71,19 +28,14 @@ const GROUPS = [
         icon: House,
       },
       {
+        href: "/admin/produits",
+        label: "Produits",
+        icon: Package,
+      },
+      {
         href: "/admin/notre-elevage",
-        label: "Notre élevage",
+        label: "Notre ferme",
         icon: Fish,
-      },
-      {
-        href: "/admin/actus",
-        label: "Actualités",
-        icon: Newspaper,
-      },
-      {
-        href: "/admin/contenu",
-        label: "Textes du site",
-        icon: FileText,
       },
       {
         href: "/admin/galerie",
@@ -91,62 +43,36 @@ const GROUPS = [
         icon: Images,
       },
       {
-        href: "/admin/galerie-textes",
-        label: "Textes galerie",
-        icon: BookOpen,
-      },
-    ],
-  },
-  {
-    title: "Relations",
-    links: [
-      {
-        href: "/admin/equipe",
-        label: "Équipe",
-        icon: Users,
-      },
-      {
-        href: "/admin/partenaires",
-        label: "Partenaires",
-        icon: Handshake,
-      },
-      {
-        href: "/admin/avis",
-        label: "Avis",
-        icon: MessageSquare,
-      },
-    ],
-  },
-  {
-    title: "Formations",
-    links: [
-      {
         href: "/admin/education",
         label: "Éducation",
         icon: GraduationCap,
       },
       {
         href: "/admin/formations",
-        label: "Formations professionnelles",
+        label: "Formation pro",
         icon: BookOpen,
+      },
+      {
+        href: "/admin/partenaires",
+        label: "Partenaires",
+        icon: Handshake,
       },
     ],
   },
 ];
 
 function isLinkActive(pathname: string, href: string) {
-  return href === "/admin"
-    ? pathname === "/admin"
-    : pathname === href || pathname.startsWith(`${href}/`);
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export default function AdminNav() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const dashboardActive = pathname === "/admin";
+
   return (
     <>
-      {/* Barre supérieure */}
       <header className="sticky top-0 z-40 border-b border-ink/10 bg-paper/95 backdrop-blur">
         <div className="flex h-[68px] items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/admin" className="flex items-center gap-3">
@@ -187,6 +113,36 @@ export default function AdminNav() {
         </p>
 
         <nav aria-label="Navigation administration" className="space-y-5">
+          <div>
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-inkSoft/80">
+              Pilotage
+            </p>
+
+            <Link
+              href="/admin"
+              aria-current={dashboardActive ? "page" : undefined}
+              className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition ${
+                dashboardActive
+                  ? "bg-[#173F2A] text-white shadow-sm"
+                  : "text-inkSoft hover:bg-bgAlt hover:text-ink"
+              }`}
+            >
+              <LayoutDashboard
+                size={18}
+                strokeWidth={1.7}
+                className={
+                  dashboardActive
+                    ? "shrink-0 text-[#E8D8AC]"
+                    : "shrink-0 text-inkSoft group-hover:text-[#24583B]"
+                }
+              />
+              <span className="min-w-0 flex-1">Tableau de bord</span>
+              {dashboardActive && (
+                <ChevronRight size={15} className="shrink-0 text-[#E8D8AC]" />
+              )}
+            </Link>
+          </div>
+
           {GROUPS.map((group) => (
             <div key={group.title}>
               <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-inkSoft/80">
@@ -219,9 +175,7 @@ export default function AdminNav() {
                         }
                       />
 
-                      <span className="min-w-0 flex-1">
-                        {link.label}
-                      </span>
+                      <span className="min-w-0 flex-1">{link.label}</span>
 
                       {active && (
                         <ChevronRight
@@ -242,7 +196,7 @@ export default function AdminNav() {
             AgroFarms237
           </p>
           <p className="mt-1 text-[11px] leading-5 text-[#756C59]">
-            Gestion de votre exploitation et de vos contenus.
+            Gestion des pages et contenus de votre site.
           </p>
         </div>
       </aside>
@@ -279,6 +233,35 @@ export default function AdminNav() {
             </div>
 
             <nav aria-label="Navigation mobile" className="space-y-5">
+              <div>
+                <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-inkSoft">
+                  Pilotage
+                </p>
+
+                <Link
+                  href="/admin"
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${
+                    dashboardActive
+                      ? "bg-[#173F2A] text-white"
+                      : "text-inkSoft hover:bg-bgAlt hover:text-ink"
+                  }`}
+                >
+                  <LayoutDashboard
+                    size={19}
+                    className={
+                      dashboardActive
+                        ? "shrink-0 text-[#E8D8AC]"
+                        : "shrink-0 text-inkSoft"
+                    }
+                  />
+                  <span className="flex-1">Tableau de bord</span>
+                  {dashboardActive && (
+                    <ChevronRight size={16} className="text-[#E8D8AC]" />
+                  )}
+                </Link>
+              </div>
+
               {GROUPS.map((group) => (
                 <div key={group.title}>
                   <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-inkSoft">
