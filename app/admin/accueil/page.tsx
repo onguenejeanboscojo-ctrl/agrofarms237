@@ -166,6 +166,8 @@ export default function AccueilAdminPage() {
   const [message, setMessage] = useState("");
   const [showHeroModal, setShowHeroModal] = useState(false);
   const [showCommitmentsModal, setShowCommitmentsModal] = useState(false);
+  const [showProductsIntroModal, setShowProductsIntroModal] = useState(false);
+  const [showStoryModal, setShowStoryModal] = useState(false);
 
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] =
@@ -1485,48 +1487,64 @@ export default function AccueilAdminPage() {
           </div>
         )}
 
+        {showProductsIntroModal && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setShowProductsIntroModal(false);
+            }}
+            role="presentation"
+          >
+            <section role="dialog" aria-modal="true" aria-labelledby="products-intro-modal-title" className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-7">
+              <div className="flex items-start justify-between gap-4 border-b border-black/10 pb-5">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1D4B44]">Section 03</p>
+                  <h2 id="products-intro-modal-title" className="mt-1 text-xl font-semibold text-[#0E2622]">Modifier la présentation des produits</h2>
+                  <p className="mt-1 text-sm text-black/50">Ces champs décrivent la section. Les produits eux-mêmes se gèrent séparément ci-dessous.</p>
+                </div>
+                <button type="button" aria-label="Fermer la fenêtre" onClick={() => setShowProductsIntroModal(false)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/10 text-xl text-black/60 transition hover:bg-black/5">×</button>
+              </div>
+              <div className="mt-6 grid gap-5">
+                <Field label="Petit label" value={content.products_label} onChange={(value) => updateContent("products_label", value)} />
+                <Field label="Titre" value={content.products_title} onChange={(value) => updateContent("products_title", value)} />
+                <TextArea label="Description" value={content.products_description} onChange={(value) => updateContent("products_description", value)} />
+              </div>
+              <div className="mt-7 flex flex-col-reverse gap-3 border-t border-black/10 pt-5 sm:flex-row sm:justify-end">
+                <button type="button" onClick={() => setShowProductsIntroModal(false)} className="rounded-xl border border-black/15 px-5 py-3 text-sm font-semibold text-black/70 transition hover:bg-black/5">Annuler</button>
+                <button type="button" disabled={savingContent} onClick={async () => { const saved = await saveContent(); if (saved) setShowProductsIntroModal(false); }} className="rounded-xl bg-[#1D4B44] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#153a35] disabled:cursor-not-allowed disabled:opacity-50">{savingContent ? "Enregistrement…" : "Enregistrer les modifications"}</button>
+              </div>
+            </section>
+          </div>
+        )}
+
         {/* PRODUITS */}
 
         <section className={sectionClass}>
-          <SectionTitle
-            number="03"
-            title="De la ferme à votre table"
-            description="Produits commercialisés, prix, disponibilité, options et photos."
-          />
-
-          <div className="mt-6 grid gap-5">
-            <Field
-              label="Petit label"
-              value={content.products_label}
-              onChange={(value) =>
-                updateContent(
-                  "products_label",
-                  value
-                )
-              }
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <SectionTitle
+              number="03"
+              title="De la ferme à votre table"
+              description="Présentation des produits, gestion des tarifs, options de commande et photos."
             />
+            <button
+              type="button"
+              onClick={() => setShowProductsIntroModal(true)}
+              className="shrink-0 rounded-xl bg-[#1D4B44] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#153a35]"
+            >
+              Modifier la présentation
+            </button>
+          </div>
 
-            <Field
-              label="Titre"
-              value={content.products_title}
-              onChange={(value) =>
-                updateContent(
-                  "products_title",
-                  value
-                )
-              }
-            />
-
-            <TextArea
-              label="Description"
-              value={content.products_description}
-              onChange={(value) =>
-                updateContent(
-                  "products_description",
-                  value
-                )
-              }
-            />
+          <div className="mt-6 rounded-xl border border-black/10 bg-[#F7F5EF] p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#1D4B44]">
+              {content.products_label || "Petit label non renseigné"}
+            </p>
+            <h3 className="mt-2 text-xl font-semibold text-[#0E2622]">
+              {content.products_title || "Titre non renseigné"}
+            </h3>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-black/60">
+              {content.products_description || "Aucune description renseignée."}
+            </p>
           </div>
 
           <div className="mt-8 border-t border-black/10 pt-8">
@@ -1556,15 +1574,25 @@ export default function AccueilAdminPage() {
             {/* FORMULAIRE PRODUIT */}
 
             {showProductForm && (
-              <div className="mt-6 rounded-2xl border border-[#1D4B44]/20 bg-[#F7F5EF] p-5">
+              <div
+                className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-3 sm:p-5"
+                onMouseDown={(event) => {
+                  if (event.target === event.currentTarget) resetProductForm();
+                }}
+                role="presentation"
+              >
+                <section role="dialog" aria-modal="true" aria-labelledby="product-form-modal-title" className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-[#1D4B44]/20 bg-[#F7F5EF] p-5 shadow-2xl sm:p-7">
+                  <div className="mb-5 flex items-start justify-between gap-4 border-b border-black/10 pb-5">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1D4B44]">Gestion des produits</p>
+                      <h3 id="product-form-modal-title" className="mt-1 text-lg font-semibold text-[#0E2622]">
+                        {editingProduct ? "Modifier le produit" : "Nouveau produit"}
+                      </h3>
+                    </div>
+                    <button type="button" aria-label="Fermer la fenêtre" onClick={resetProductForm} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/10 text-xl text-black/60 transition hover:bg-black/5">×</button>
+                  </div>
 
-                <h3 className="text-lg font-semibold text-[#0E2622]">
-                  {editingProduct
-                    ? "Modifier le produit"
-                    : "Nouveau produit"}
-                </h3>
-
-                <div className="mt-5 grid gap-5">
+                  <div className="mt-5 grid gap-5">
 
                   <Field
                     label="Nom du produit"
@@ -3089,7 +3117,8 @@ export default function AccueilAdminPage() {
 
                   </div>
 
-                </div>
+                  </div>
+                </section>
               </div>
             )}
 
@@ -3395,77 +3424,103 @@ export default function AccueilAdminPage() {
             description="Le bloc éditorial consacré à l'histoire de la ferme."
           />
 
-          <div className="mt-6 grid gap-5">
-
-            <Field
-              label="Petit label"
-              value={content.story_label}
-              onChange={(value) =>
-                updateContent(
-                  "story_label",
-                  value
-                )
-              }
-            />
-
-            <Field
-              label="Titre"
-              value={content.story_title}
-              onChange={(value) =>
-                updateContent(
-                  "story_title",
-                  value
-                )
-              }
-            />
-
-            <TextArea
-              label="Texte"
-              value={content.story_text}
-              onChange={(value) =>
-                updateContent(
-                  "story_text",
-                  value
-                )
-              }
-            />
-
-            <div className="grid gap-5 md:grid-cols-2">
-
-              <Field
-                label="Texte du bouton"
-                value={
-                  content.story_button_label
-                }
-                onChange={(value) =>
-                  updateContent(
-                    "story_button_label",
-                    value
-                  )
-                }
-              />
-
-              <Field
-                label="URL du bouton"
-                value={
-                  content.story_button_url
-                }
-                onChange={(value) =>
-                  updateContent(
-                    "story_button_url",
-                    value
-                  )
-                }
-              />
-
+          <div className="mt-6 rounded-2xl border border-black/10 bg-[#F7F5EF] p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1D4B44]">
+              {content.story_label || "Notre histoire"}
+            </p>
+            <h3 className="mt-2 text-xl font-semibold text-[#0E2622]">
+              {content.story_title || "Titre de la section à renseigner"}
+            </h3>
+            <p className="mt-3 whitespace-pre-line text-sm leading-6 text-black/60">
+              {content.story_text || "Le texte de présentation de l'histoire de la ferme apparaîtra ici."}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowStoryModal(true)}
+                className="rounded-xl bg-[#1D4B44] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#153a35]"
+              >
+                Modifier notre histoire
+              </button>
+              {content.story_button_label && (
+                <span className="rounded-lg border border-black/10 bg-white px-3 py-2 text-xs font-medium text-black/60">
+                  Bouton du site : {content.story_button_label}
+                </span>
+              )}
             </div>
+          </div>
 
-            <div className="mt-8 border-t border-black/10 pt-8">
-              <HomeStoryMediaManager />
-            </div>
-
+          <div className="mt-8 border-t border-black/10 pt-8">
+            <HomeStoryMediaManager />
           </div>
         </section>
+
+        {showStoryModal && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setShowStoryModal(false);
+            }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="story-modal-title"
+              className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-7"
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-black/10 pb-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1D4B44]">Section 04</p>
+                  <h2 id="story-modal-title" className="mt-1 text-xl font-semibold text-[#0E2622]">Modifier notre histoire</h2>
+                  <p className="mt-1 text-sm text-black/50">Les changements seront enregistrés dans le contenu de l'accueil.</p>
+                </div>
+                <button type="button" aria-label="Fermer la fenêtre" onClick={() => setShowStoryModal(false)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/10 text-xl text-black/60 transition hover:bg-black/5">×</button>
+              </div>
+
+              <div className="mt-6 grid gap-5">
+                <Field
+                  label="Petit label"
+                  value={content.story_label}
+                  onChange={(value) => updateContent("story_label", value)}
+                />
+                <Field
+                  label="Titre"
+                  value={content.story_title}
+                  onChange={(value) => updateContent("story_title", value)}
+                />
+                <TextArea
+                  label="Texte"
+                  value={content.story_text}
+                  onChange={(value) => updateContent("story_text", value)}
+                />
+                <div className="grid gap-5 md:grid-cols-2">
+                  <Field
+                    label="Texte du bouton"
+                    value={content.story_button_label}
+                    onChange={(value) => updateContent("story_button_label", value)}
+                  />
+                  <Field
+                    label="URL du bouton"
+                    value={content.story_button_url}
+                    onChange={(value) => updateContent("story_button_url", value)}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-7 flex flex-col-reverse justify-end gap-3 border-t border-black/10 pt-5 sm:flex-row">
+                <button type="button" onClick={() => setShowStoryModal(false)} className="rounded-xl border border-black/15 px-5 py-3 text-sm font-semibold text-black/70 transition hover:bg-black/5">Annuler</button>
+                <button
+                  type="button"
+                  disabled={savingContent}
+                  onClick={async () => { const saved = await saveContent(); if (saved) setShowStoryModal(false); }}
+                  className="rounded-xl bg-[#1D4B44] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#153a35] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {savingContent ? "Enregistrement…" : "Enregistrer les modifications"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* AVENIR */}
 
