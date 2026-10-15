@@ -164,6 +164,7 @@ export default function AccueilAdminPage() {
   const [loading, setLoading] = useState(true);
   const [savingContent, setSavingContent] = useState(false);
   const [message, setMessage] = useState("");
+  const [showHeroModal, setShowHeroModal] = useState(false);
 
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] =
@@ -283,6 +284,7 @@ export default function AccueilAdminPage() {
       setMessage(
         "✓ Contenu de l'accueil enregistré."
       );
+      return true;
     } catch (error) {
       console.error(error);
 
@@ -291,6 +293,7 @@ export default function AccueilAdminPage() {
           ? error.message
           : "Erreur lors de l'enregistrement."
       );
+      return false;
     } finally {
       setSavingContent(false);
     }
@@ -1258,103 +1261,144 @@ export default function AccueilAdminPage() {
         </header>
 
         {/* HERO */}
-
         <section className={sectionClass}>
-          <SectionTitle
-            number="01"
-            title="Hero"
-            description="Le premier écran de la page d’accueil."
-          />
-
-          <div className="mt-6 grid gap-5">
-            <Field
-              label="Petit label"
-              value={content.hero_label}
-              onChange={(value) =>
-                updateContent(
-                  "hero_label",
-                  value
-                )
-              }
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <SectionTitle
+              number="01"
+              title="Bannière principale"
+              description="Le premier écran visible sur la page d’accueil."
             />
+            <button
+              type="button"
+              onClick={() => setShowHeroModal(true)}
+              className="shrink-0 rounded-xl bg-[#1D4B44] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#153a35]"
+            >
+              Modifier la bannière
+            </button>
+          </div>
 
-            <Field
-              label="Titre principal"
-              value={content.hero_title}
-              onChange={(value) =>
-                updateContent(
-                  "hero_title",
-                  value
-                )
-              }
-            />
-
-            <TextArea
-              label="Description"
-              value={content.hero_description}
-              onChange={(value) =>
-                updateContent(
-                  "hero_description",
-                  value
-                )
-              }
-            />
-
-            <div className="grid gap-5 md:grid-cols-2">
-              <Field
-                label="Bouton principal"
-                value={
-                  content.hero_button_primary_label
-                }
-                onChange={(value) =>
-                  updateContent(
-                    "hero_button_primary_label",
-                    value
-                  )
-                }
-              />
-
-              <Field
-                label="URL bouton principal"
-                value={
-                  content.hero_button_primary_url
-                }
-                onChange={(value) =>
-                  updateContent(
-                    "hero_button_primary_url",
-                    value
-                  )
-                }
-              />
-
-              <Field
-                label="Bouton secondaire"
-                value={
-                  content.hero_button_secondary_label
-                }
-                onChange={(value) =>
-                  updateContent(
-                    "hero_button_secondary_label",
-                    value
-                  )
-                }
-              />
-
-              <Field
-                label="URL bouton secondaire"
-                value={
-                  content.hero_button_secondary_url
-                }
-                onChange={(value) =>
-                  updateContent(
-                    "hero_button_secondary_url",
-                    value
-                  )
-                }
-              />
+          <div className="mt-6 rounded-xl border border-black/10 bg-[#F7F5EF] p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#1D4B44]">
+              {content.hero_label || "Petit label non renseigné"}
+            </p>
+            <h3 className="mt-2 text-xl font-semibold text-[#0E2622]">
+              {content.hero_title || "Titre principal non renseigné"}
+            </h3>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-black/60">
+              {content.hero_description || "Aucune description renseignée."}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-[#1D4B44]">
+                Bouton principal : {content.hero_button_primary_label || "Non renseigné"}
+              </span>
+              <span className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-black/60">
+                Bouton secondaire : {content.hero_button_secondary_label || "Non renseigné"}
+              </span>
             </div>
           </div>
         </section>
+
+        {showHeroModal && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setShowHeroModal(false);
+              }
+            }}
+            role="presentation"
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="hero-modal-title"
+              className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-7"
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-black/10 pb-5">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1D4B44]">
+                    Section 01
+                  </p>
+                  <h2 id="hero-modal-title" className="mt-1 text-xl font-semibold text-[#0E2622]">
+                    Modifier la bannière principale
+                  </h2>
+                  <p className="mt-1 text-sm text-black/50">
+                    Modifie les textes et les liens affichés en haut de la page d’accueil.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Fermer la fenêtre"
+                  onClick={() => setShowHeroModal(false)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/10 text-xl text-black/60 transition hover:bg-black/5"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="mt-6 grid gap-5">
+                <Field
+                  label="Petit label"
+                  value={content.hero_label}
+                  onChange={(value) => updateContent("hero_label", value)}
+                />
+                <Field
+                  label="Titre principal"
+                  value={content.hero_title}
+                  onChange={(value) => updateContent("hero_title", value)}
+                />
+                <TextArea
+                  label="Description"
+                  value={content.hero_description}
+                  onChange={(value) => updateContent("hero_description", value)}
+                />
+                <div className="grid gap-5 md:grid-cols-2">
+                  <Field
+                    label="Texte du bouton principal"
+                    value={content.hero_button_primary_label}
+                    onChange={(value) => updateContent("hero_button_primary_label", value)}
+                  />
+                  <Field
+                    label="URL du bouton principal"
+                    value={content.hero_button_primary_url}
+                    onChange={(value) => updateContent("hero_button_primary_url", value)}
+                  />
+                  <Field
+                    label="Texte du bouton secondaire"
+                    value={content.hero_button_secondary_label}
+                    onChange={(value) => updateContent("hero_button_secondary_label", value)}
+                  />
+                  <Field
+                    label="URL du bouton secondaire"
+                    value={content.hero_button_secondary_url}
+                    onChange={(value) => updateContent("hero_button_secondary_url", value)}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-7 flex flex-col-reverse gap-3 border-t border-black/10 pt-5 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowHeroModal(false)}
+                  className="rounded-xl border border-black/15 px-5 py-3 text-sm font-semibold text-black/70 transition hover:bg-black/5"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  disabled={savingContent}
+                  onClick={async () => {
+                    const saved = await saveContent();
+                    if (saved) setShowHeroModal(false);
+                  }}
+                  className="rounded-xl bg-[#1D4B44] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#153a35] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {savingContent ? "Enregistrement…" : "Enregistrer les modifications"}
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
 
         {/* ENGAGEMENTS */}
 
