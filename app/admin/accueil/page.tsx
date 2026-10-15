@@ -165,6 +165,7 @@ export default function AccueilAdminPage() {
   const [savingContent, setSavingContent] = useState(false);
   const [message, setMessage] = useState("");
   const [showHeroModal, setShowHeroModal] = useState(false);
+  const [showCommitmentsModal, setShowCommitmentsModal] = useState(false);
 
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] =
@@ -1401,101 +1402,88 @@ export default function AccueilAdminPage() {
         )}
 
         {/* ENGAGEMENTS */}
-
         <section className={sectionClass}>
-          <SectionTitle
-            number="02"
-            title="Pourquoi Agrofarms237"
-            description="Les quatre engagements présentés sur l'accueil."
-          />
-
-          <div className="mt-6 grid gap-5 md:grid-cols-2">
-            <CommitmentEditor
-              number="01"
-              title={content.commitment1_title}
-              text={content.commitment1_text}
-              onTitleChange={(value) =>
-                updateContent(
-                  "commitment1_title",
-                  value
-                )
-              }
-              onTextChange={(value) =>
-                updateContent(
-                  "commitment1_text",
-                  value
-                )
-              }
-            />
-
-            <CommitmentEditor
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <SectionTitle
               number="02"
-              title={content.commitment2_title}
-              text={content.commitment2_text}
-              onTitleChange={(value) =>
-                updateContent(
-                  "commitment2_title",
-                  value
-                )
-              }
-              onTextChange={(value) =>
-                updateContent(
-                  "commitment2_text",
-                  value
-                )
-              }
+              title="Pourquoi Agrofarms237"
+              description="Le titre de la section et les quatre engagements présentés sur l’accueil."
             />
-
-            <CommitmentEditor
-              number="03"
-              title={content.commitment3_title}
-              text={content.commitment3_text}
-              onTitleChange={(value) =>
-                updateContent(
-                  "commitment3_title",
-                  value
-                )
-              }
-              onTextChange={(value) =>
-                updateContent(
-                  "commitment3_text",
-                  value
-                )
-              }
-            />
-
-            <CommitmentEditor
-              number="04"
-              title={content.commitment4_title}
-              text={content.commitment4_text}
-              onTitleChange={(value) =>
-                updateContent(
-                  "commitment4_title",
-                  value
-                )
-              }
-              onTextChange={(value) =>
-                updateContent(
-                  "commitment4_text",
-                  value
-                )
-              }
-            />
+            <button
+              type="button"
+              onClick={() => setShowCommitmentsModal(true)}
+              className="shrink-0 rounded-xl bg-[#1D4B44] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#153a35]"
+            >
+              Modifier les engagements
+            </button>
           </div>
 
-          <div className="mt-5">
-            <Field
-              label="Titre de la section"
-              value={content.commitments_title}
-              onChange={(value) =>
-                updateContent(
-                  "commitments_title",
-                  value
-                )
-              }
-            />
+          <div className="mt-6 rounded-xl border border-black/10 bg-[#F7F5EF] p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#1D4B44]">Titre de la section</p>
+            <h3 className="mt-2 text-xl font-semibold text-[#0E2622]">
+              {content.commitments_title || "Titre non renseigné"}
+            </h3>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              {[
+                { number: "01", title: content.commitment1_title, text: content.commitment1_text },
+                { number: "02", title: content.commitment2_title, text: content.commitment2_text },
+                { number: "03", title: content.commitment3_title, text: content.commitment3_text },
+                { number: "04", title: content.commitment4_title, text: content.commitment4_text },
+              ].map((item) => (
+                <div key={item.number} className="rounded-xl border border-black/10 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#1D4B44]">Engagement {item.number}</p>
+                  <h4 className="mt-2 font-semibold text-[#0E2622]">{item.title || "Titre non renseigné"}</h4>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-black/60">{item.text || "Texte non renseigné"}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
+
+        {showCommitmentsModal && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setShowCommitmentsModal(false);
+            }}
+            role="presentation"
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="commitments-modal-title"
+              className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-7"
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-black/10 pb-5">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1D4B44]">Section 02</p>
+                  <h2 id="commitments-modal-title" className="mt-1 text-xl font-semibold text-[#0E2622]">Modifier les engagements</h2>
+                  <p className="mt-1 text-sm text-black/50">Modifie le titre et les textes des quatre engagements.</p>
+                </div>
+                <button type="button" aria-label="Fermer la fenêtre" onClick={() => setShowCommitmentsModal(false)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/10 text-xl text-black/60 transition hover:bg-black/5">×</button>
+              </div>
+
+              <div className="mt-6">
+                <Field
+                  label="Titre de la section"
+                  value={content.commitments_title}
+                  onChange={(value) => updateContent("commitments_title", value)}
+                />
+              </div>
+              <div className="mt-5 grid gap-5 md:grid-cols-2">
+                <CommitmentEditor number="01" title={content.commitment1_title} text={content.commitment1_text} onTitleChange={(value) => updateContent("commitment1_title", value)} onTextChange={(value) => updateContent("commitment1_text", value)} />
+                <CommitmentEditor number="02" title={content.commitment2_title} text={content.commitment2_text} onTitleChange={(value) => updateContent("commitment2_title", value)} onTextChange={(value) => updateContent("commitment2_text", value)} />
+                <CommitmentEditor number="03" title={content.commitment3_title} text={content.commitment3_text} onTitleChange={(value) => updateContent("commitment3_title", value)} onTextChange={(value) => updateContent("commitment3_text", value)} />
+                <CommitmentEditor number="04" title={content.commitment4_title} text={content.commitment4_text} onTitleChange={(value) => updateContent("commitment4_title", value)} onTextChange={(value) => updateContent("commitment4_text", value)} />
+              </div>
+
+              <div className="mt-7 flex flex-col-reverse gap-3 border-t border-black/10 pt-5 sm:flex-row sm:justify-end">
+                <button type="button" onClick={() => setShowCommitmentsModal(false)} className="rounded-xl border border-black/15 px-5 py-3 text-sm font-semibold text-black/70 transition hover:bg-black/5">Annuler</button>
+                <button type="button" disabled={savingContent} onClick={async () => { const saved = await saveContent(); if (saved) setShowCommitmentsModal(false); }} className="rounded-xl bg-[#1D4B44] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#153a35] disabled:cursor-not-allowed disabled:opacity-50">{savingContent ? "Enregistrement…" : "Enregistrer les modifications"}</button>
+              </div>
+            </section>
+          </div>
+        )}
 
         {/* PRODUITS */}
 
