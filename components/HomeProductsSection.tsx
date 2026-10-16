@@ -165,7 +165,8 @@ function toOrderProduct(product: CatalogProduct): HomeOrderProduct {
         ? `À partir de ${product.bulk_min_kg} kg`
         : null,
     price_2: product.price_bulk,
-    order_enabled: available && typeof product.price_standard === "number",
+    order_enabled:
+      available && typeof product.price_standard === "number",
     order_options: [],
   };
 }
