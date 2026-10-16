@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -26,12 +27,17 @@ export default function Header() {
     <header className="fixed inset-x-0 top-0 z-[100] border-b border-ink/10 bg-bg/90 backdrop-blur-md">
       <div className="mx-auto flex min-h-[68px] max-w-[1280px] items-center justify-between px-5">
 
-        {/* LOGO */}
+        {/* LOGO OFFICIEL */}
         <Link
           href="/"
-          className="shrink-0 font-serif text-xl font-bold text-ink"
+          aria-label="AgroFarms237 - Accueil"
+          className="flex shrink-0 items-center"
         >
-          Agrofarms<span className="text-goldDeep">237</span>
+          <img
+            src="/images/Logo%20agricole%20AGROFARMS237%20_%20nature%20et%20%C3%A9levage.png"
+            alt="AgroFarms237 - La qualité commence à la ferme"
+            className="h-12 w-auto object-contain md:h-14"
+          />
         </Link>
 
         {/* MENU DESKTOP */}
@@ -58,7 +64,7 @@ export default function Header() {
         {/* BOUTON MENU MOBILE */}
         <button
           type="button"
-          aria-label="Ouvrir le menu"
+          aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
           className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-s border border-ink/15 bg-paper md:hidden"
