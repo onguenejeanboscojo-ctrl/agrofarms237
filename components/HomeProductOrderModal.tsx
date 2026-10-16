@@ -69,6 +69,12 @@ const DEFAULT_OPTIONS: Record<string, OrderOption[]> = {
 
 function defaultOptions(name: string): OrderOption[] {
   const normalized = name.trim().toLowerCase();
+
+  // Le porcelet se vend à la pièce et ne doit pas hériter
+  // des options « Format » et « État » du porc.
+  // Cette condition doit précéder celle du mot « porc ».
+  if (normalized.includes("porcelet")) return [];
+
   if (normalized.includes("silure")) return DEFAULT_OPTIONS.silure;
   if (normalized.includes("porc")) return DEFAULT_OPTIONS.porc;
   if (normalized.includes("poulet") && normalized.includes("chair")) {
@@ -244,6 +250,13 @@ export default function HomeProductOrderModal({
 
   const options = useMemo(() => {
     if (!useDefaultOptions) return [];
+
+    const normalized = product.name.trim().toLowerCase();
+
+    // Exception prioritaire : le porcelet est vendu à la pièce.
+    // Même si d'anciennes options sont enregistrées dans le catalogue,
+    // ne pas afficher « Format » ou « État » pour ce produit.
+    if (normalized.includes("porcelet")) return [];
 
     return Array.isArray(product.order_options) && product.order_options.length > 0
       ? product.order_options
