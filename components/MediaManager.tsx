@@ -1,11 +1,42 @@
+
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   SITE_LOCATION_GROUPS,
   SITE_LOCATION_LABELS,
   GALLERY_CATEGORIES,
 } from "@/lib/mediaCategories";
+import {
+  Search,
+  Upload,
+  Images,
+  House,
+  Sprout,
+  Fish,
+  ShoppingBasket,
+  BookOpen,
+  GraduationCap,
+  BriefcaseBusiness,
+  Handshake,
+  ShoppingCart,
+  ImagePlus,
+  Film,
+  Eye,
+  EyeOff,
+  Pencil,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  X,
+  Check,
+  Filter,
+  LayoutGrid,
+  FolderOpen,
+  RefreshCw,
+  ExternalLink,
+  Image as ImageIcon,
+} from "lucide-react";
 
 type CatalogProduct = {
   id: string;
@@ -21,579 +52,432 @@ type MediaItem = {
   url: string;
   storage_path?: string | null;
   kind: "photo" | "video";
-
-  // Compatibilité avec les anciens médias
   category?: string | null;
-
-  // Nouveau système
   site_location?: string | null;
   gallery_enabled?: boolean;
   gallery_category?: string | null;
-
   caption?: string | null;
   published: boolean;
   position?: number | null;
   created_at?: string;
 };
 
+type LocationGroup = {
+  label: string;
+  options: { value: string; label: string }[];
+};
+
+type EditForm = {
+  caption: string;
+  site_location: string;
+  gallery_enabled: boolean;
+  gallery_category: string;
+};
+
+const sectionIcons: Record<string, typeof House> = {
+  Accueil: House,
+  "Notre ferme — Carnet de ferme": Sprout,
+  "Notre élevage": Fish,
+  "Nos produits": ShoppingBasket,
+  "Espace Éducation": BookOpen,
+  "Formation professionnelle": GraduationCap,
+  "Espace professionnels": BriefcaseBusiness,
+  "Partenaires & investisseurs": Handshake,
+  "Page Commander": ShoppingCart,
+};
+
+const panelClass =
+  "rounded-2xl border border-[#173D2D]/10 bg-white shadow-sm";
+
+const buttonClass =
+  "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
+
+function normalize(value?: string | null) {
+  return (value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function getProductLocation(product: CatalogProduct): string | null {
+  const text = normalize(
+    `${product.name} ${product.variant ?? ""} ${product.product_group ?? ""}`
+  );
+
+  if (text.includes("silure"))
+    return text.includes("fum")
+      ? "produit_silure_fume"
+      : "produit_silure_frais";
+
+  if (text.includes("carpe"))
+    return text.includes("fum")
+      ? "produit_carpe_fumee"
+      : "produit_carpe_fraiche";
+
+  if (text.includes("porcelet")) return "produit_porcelet";
+
+  if (text.includes("porc")) {
+    if (text.includes("fum")) return "produit_porc_fume";
+    if (text.includes("entier")) return "produit_porc_entier";
+    return "produit_porc_frais";
+  }
+
+  if (text.includes("poulet")) {
+    if (text.includes("fum")) return "produit_poulet_fume";
+    if (text.includes("vivant")) return "produit_poulet_vivant";
+    return "produit_poulet_frais_nettoye";
+  }
+
+  if (text.includes("oeuf") || text.includes("alveole"))
+    return "produit_alveoles_oeufs";
+
+  if (text.includes("poussin")) return "produit_poussins";
+  if (text.includes("alevin")) return "produit_alevins";
+
+  return null;
+}
+
+function getMediaLocation(item: MediaItem) {
+  return item.site_location || item.category || "";
+}
+
+function getLocationLabel(location: string) {
+  return SITE_LOCATION_LABELS[location] || location || "Sans emplacement";
+}
+
 export default function MediaManager() {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [productsLoading, setProductsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
+  const [activeGroup, setActiveGroup] = useState("Accueil");
+  const [activeLocation, setActiveLocation] = useState("");
+  const [view, setView] = useState<"locations" | "all" | "public" | "unassigned">(
+    "locations"
+  );
+  const [search, setSearch] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | "photo" | "video">("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "published" | "hidden"
+  >("all");
+
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [kind, setKind] = useState<"photo" | "video">("photo");
+  const [uploadKind, setUploadKind] = useState<"photo" | "video">("photo");
+  const [uploadLocation, setUploadLocation] = useState("");
+  const [uploadCaption, setUploadCaption] = useState("");
+  const [uploadGallery, setUploadGallery] = useState(false);
+  const [uploadGalleryCategory, setUploadGalleryCategory] = useState("");
 
-  // Emplacement principal du média sur le site
-  const [siteLocation, setSiteLocation] = useState("");
-
-  // Galerie publique
-  const [galleryEnabled, setGalleryEnabled] = useState(false);
-  const [galleryCategory, setGalleryCategory] = useState("");
-
-  const [caption, setCaption] = useState("");
-
-  // Modification d'un média existant
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingCaption, setEditingCaption] = useState("");
-  const [editingSiteLocation, setEditingSiteLocation] = useState("");
-  const [editingGalleryEnabled, setEditingGalleryEnabled] =
-    useState(false);
-  const [editingGalleryCategory, setEditingGalleryCategory] =
-    useState("");
+  const [editForm, setEditForm] = useState<EditForm>({
+    caption: "",
+    site_location: "",
+    gallery_enabled: false,
+    gallery_category: "",
+  });
+  const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // ==========================================================
-  // TRI
-  // ==========================================================
+  const load = useCallback(async (showRefresh = false) => {
+    if (showRefresh) setRefreshing(true);
+    else setLoading(true);
 
-  const sortedItems = useMemo(() => {
-    return [...items].sort((a, b) => {
-      const pa = a.position ?? 0;
-      const pb = b.position ?? 0;
+    setError("");
 
-      if (pa !== pb) {
-        return pa - pb;
-      }
-
-      return (
-        new Date(a.created_at || 0).getTime() -
-        new Date(b.created_at || 0).getTime()
-      );
-    });
-  }, [items]);
-
-  // ==========================================================
-  // PRODUITS — SOURCE DE VÉRITÉ POUR LES EMPLACEMENTS PRODUITS
-  // ==========================================================
-
-  function normalize(value?: string | null) {
-    return (value || "")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim();
-  }
-
-  function getProductSiteLocation(product: CatalogProduct) {
-    const group = normalize(product.product_group);
-    const variant = normalize(product.variant);
-    const name = normalize(product.name);
-    const haystack = `${group} ${variant} ${name}`;
-
-    // On s'appuie d'abord sur le nom réel du produit du catalogue,
-    // puis sur le groupe/variant. Cela évite qu'une différence de
-    // libellé dans Supabase empêche le produit d'apparaître ici.
-    if (haystack.includes("silure")) {
-      return haystack.includes("fum")
-        ? "produit_silure_fume"
-        : "produit_silure_frais";
-    }
-
-    if (haystack.includes("carpe")) {
-      return haystack.includes("fum")
-        ? "produit_carpe_fumee"
-        : "produit_carpe_fraiche";
-    }
-
-    // Vérifier porcelet avant porc, car le mot « porcelet » contient « porc ».
-    if (haystack.includes("porcelet")) {
-      return "produit_porcelet";
-    }
-
-    if (haystack.includes("porc")) {
-      if (haystack.includes("fum")) {
-        return "produit_porc_fume";
-      }
-
-      if (haystack.includes("entier")) {
-        return "produit_porc_entier";
-      }
-
-      return "produit_porc_frais";
-    }
-
-    if (haystack.includes("poulet")) {
-      if (haystack.includes("fum")) {
-        return "produit_poulet_fume";
-      }
-
-      if (haystack.includes("vivant")) {
-        return "produit_poulet_vivant";
-      }
-
-      return "produit_poulet_frais_nettoye";
-    }
-
-    if (
-      haystack.includes("oeuf") ||
-      haystack.includes("œuf") ||
-      haystack.includes("alveole")
-    ) {
-      return "produit_alveoles_oeufs";
-    }
-
-    if (haystack.includes("poussin")) {
-      return "produit_poussins";
-    }
-
-    if (haystack.includes("alevin")) {
-      return "produit_alevins";
-    }
-
-    return null;
-  }
-
-  const productSiteOptions = useMemo(() => {
-    const seen = new Set<string>();
-
-    return products
-      .map((product) => {
-        const value = getProductSiteLocation(product);
-
-        if (!value || !product.name || seen.has(value)) {
-          return null;
-        }
-
-        seen.add(value);
-
-        return {
-          value,
-          label: product.name,
-        };
-      })
-      .filter(
-        (
-          item
-        ): item is {
-          value: string;
-          label: string;
-        } => Boolean(item)
-      );
-  }, [products]);
-
-  const productSiteLocationLabels = useMemo(() => {
-    return Object.fromEntries(
-      productSiteOptions.map((item) => [
-        item.value,
-        item.label,
-      ])
-    );
-  }, [productSiteOptions]);
-
-  const siteLocationGroups = useMemo(() => {
-    return SITE_LOCATION_GROUPS.map((group) => {
-      if (group.label !== "Nos produits") {
-        return group;
-      }
-
-      return {
-        ...group,
-        // Keep the dedicated visual slots for the Products page,
-        // then append the dynamic product-photo slots from the catalogue.
-        options: Array.from(
-          new Map(
-            [...group.options, ...productSiteOptions].map((item) => [
-              item.value,
-              item,
-            ])
-          ).values()
-        ),
-      };
-    });
-  }, [productSiteOptions]);
-
-  async function loadProducts() {
     try {
-      setProductsLoading(true);
+      const response = await fetch("/api/media", { cache: "no-store" });
+      const data = await response.json();
 
-      // Interroger les deux endpoints : selon le déploiement,
-      // l'un peut contenir des produits absents de l'autre.
-      const endpoints = ["/api/catalog-products", "/api/products"];
-      const productsById = new Map<string, CatalogProduct>();
-      let lastError = "";
+      if (!response.ok) {
+        throw new Error(data?.error || "Impossible de charger les médias.");
+      }
 
-      for (const endpoint of endpoints) {
+      setItems(Array.isArray(data.items) ? data.items : []);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Erreur de chargement des médias."
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  const loadProducts = useCallback(async () => {
+    setProductsLoading(true);
+    const byId = new Map<string, CatalogProduct>();
+
+    try {
+      for (const endpoint of ["/api/catalog-products", "/api/products"]) {
         try {
-          const res = await fetch(endpoint, { cache: "no-store" });
-          const data = await res.json();
+          const response = await fetch(endpoint, { cache: "no-store" });
+          const data = await response.json();
+          if (!response.ok) continue;
 
-          if (!res.ok) {
-            lastError =
-              data?.error ||
-              `Impossible de charger les produits (${res.status}).`;
-            continue;
-          }
-
-          const candidates: unknown = Array.isArray(data)
+          const candidates = Array.isArray(data)
             ? data
-            : Array.isArray(data?.items)
-              ? data.items
-              : Array.isArray(data?.products)
-                ? data.products
-                : Array.isArray(data?.data)
-                  ? data.data
-                  : [];
+            : data?.items ?? data?.products ?? data?.data ?? [];
 
-          if (Array.isArray(candidates)) {
-            for (const candidate of candidates) {
-              if (
-                candidate &&
-                typeof candidate === "object" &&
-                "id" in candidate &&
-                "name" in candidate &&
-                typeof candidate.id === "string" &&
-                typeof candidate.name === "string"
-              ) {
-                const product = candidate as CatalogProduct;
-                // Fusion par ID pour éviter les doublons. Les champs
-                // disponibles du dernier endpoint complètent les précédents.
-                productsById.set(product.id, {
-                  ...productsById.get(product.id),
-                  ...product,
-                });
-              }
+          if (!Array.isArray(candidates)) continue;
+
+          for (const candidate of candidates) {
+            if (
+              candidate &&
+              typeof candidate.id === "string" &&
+              typeof candidate.name === "string"
+            ) {
+              byId.set(candidate.id, {
+                ...byId.get(candidate.id),
+                ...candidate,
+              });
             }
           }
-        } catch (err: unknown) {
-          lastError =
-            err instanceof Error
-              ? err.message
-              : "Impossible de charger les produits.";
+        } catch {
+          // L'autre endpoint peut encore fournir les produits.
         }
       }
 
-      const loadedProducts = Array.from(productsById.values());
-
-      if (loadedProducts.length === 0) {
-        throw new Error(
-          lastError || "Aucun produit n'a été récupéré du catalogue."
-        );
-      }
-
-      setProducts(loadedProducts);
-    } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Impossible de charger les produits."
-      );
+      setProducts(Array.from(byId.values()));
     } finally {
       setProductsLoading(false);
     }
-  }
-
-  // ==========================================================
-  // CHARGEMENT
-  // ==========================================================
-
-  async function load() {
-    try {
-      setLoading(true);
-      setError("");
-
-      const res = await fetch("/api/media", {
-        cache: "no-store",
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(
-          data.error || "Impossible de charger les médias."
-        );
-      }
-
-      setItems(data.items || []);
-    } catch (err: any) {
-      setError(err.message || "Erreur de chargement.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    load();
-    loadProducts();
   }, []);
 
-  // ==========================================================
-  // MESSAGES
-  // ==========================================================
+  useEffect(() => {
+    void load();
+    void loadProducts();
+  }, [load, loadProducts]);
 
-  function resetMessages() {
+  const locationGroups = useMemo<LocationGroup[]>(() => {
+    return SITE_LOCATION_GROUPS.map((group) => {
+      if (group.label !== "Nos produits") return group;
+
+      const extra = products
+        .map((product) => {
+          const value = getProductLocation(product);
+          return value ? { value, label: product.name } : null;
+        })
+        .filter(
+          (item): item is { value: string; label: string } => item !== null
+        );
+
+      const unique = new Map<string, { value: string; label: string }>();
+      [...group.options, ...extra].forEach((option) => {
+        if (!unique.has(option.value)) unique.set(option.value, option);
+      });
+
+      return { ...group, options: Array.from(unique.values()) };
+    });
+  }, [products]);
+
+  const activeGroupData = locationGroups.find(
+    (group) => group.label === activeGroup
+  );
+
+  const groupLocations = activeGroupData?.options ?? [];
+
+  const sortedItems = useMemo(
+    () =>
+      [...items].sort(
+        (a, b) =>
+          (a.position ?? 0) - (b.position ?? 0) ||
+          (a.created_at ?? "").localeCompare(b.created_at ?? "")
+      ),
+    [items]
+  );
+
+  const countsByLocation = useMemo(() => {
+    const counts: Record<string, number> = {};
+    items.forEach((item) => {
+      const location = getMediaLocation(item);
+      if (location) counts[location] = (counts[location] ?? 0) + 1;
+    });
+    return counts;
+  }, [items]);
+
+  const groupCount = useMemo(() => {
+    const locations = new Set(groupLocations.map((item) => item.value));
+    return items.filter((item) => locations.has(getMediaLocation(item))).length;
+  }, [items, groupLocations]);
+
+  const filteredItems = useMemo(() => {
+    return sortedItems.filter((item) => {
+      const location = getMediaLocation(item);
+      const text = normalize(
+        `${item.caption ?? ""} ${getLocationLabel(location)} ${item.id}`
+      );
+
+      if (search && !text.includes(normalize(search))) return false;
+      if (kindFilter !== "all" && item.kind !== kindFilter) return false;
+
+      if (statusFilter === "published" && !item.published) return false;
+      if (statusFilter === "hidden" && item.published) return false;
+
+      if (view === "public" && !item.gallery_enabled) return false;
+      if (view === "unassigned" && location) return false;
+
+      if (view === "locations") {
+        if (activeLocation) return location === activeLocation;
+        const locations = new Set(groupLocations.map((entry) => entry.value));
+        return locations.has(location);
+      }
+
+      return true;
+    });
+  }, [
+    sortedItems,
+    search,
+    kindFilter,
+    statusFilter,
+    view,
+    activeLocation,
+    groupLocations,
+  ]);
+
+  const publicCount = items.filter((item) => item.gallery_enabled).length;
+  const publishedCount = items.filter((item) => item.published).length;
+  const unassignedCount = items.filter(
+    (item) => !getMediaLocation(item)
+  ).length;
+
+  function clearMessages() {
     setError("");
     setSuccess("");
   }
 
-  // ==========================================================
-  // AJOUT
-  // ==========================================================
+  function selectGroup(label: string) {
+    setActiveGroup(label);
+    setActiveLocation("");
+    setView("locations");
+    setSearch("");
+  }
 
-  async function handleUpload(
-    e: React.ChangeEvent<HTMLInputElement>
-  ) {
-    const file = e.target.files?.[0];
+  function openUpload(location = activeLocation) {
+    clearMessages();
+    setUploadLocation(location);
+    setUploadCaption("");
+    setUploadGallery(false);
+    setUploadGalleryCategory("");
+    setUploadKind("photo");
+    setUploadOpen(true);
+  }
 
-    if (!file) {
+  async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    clearMessages();
+
+    if (!uploadLocation) {
+      setError("Choisis d'abord l'emplacement du média.");
+      event.target.value = "";
       return;
     }
 
-    resetMessages();
+    if (uploadGallery && !uploadGalleryCategory) {
+      setError("Choisis une rubrique pour la galerie publique.");
+      event.target.value = "";
+      return;
+    }
+
     setUploading(true);
 
     try {
-      if (!siteLocation) {
-        throw new Error(
-          "Choisis d'abord l'emplacement du média sur le site."
-        );
-      }
-
-      if (galleryEnabled && !galleryCategory) {
-        throw new Error(
-          "Choisis une rubrique pour la Galerie publique."
-        );
-      }
-
       const form = new FormData();
-
       form.append("file", file);
-      form.append("kind", kind);
+      form.append("kind", uploadKind);
+      form.append("site_location", uploadLocation);
+      form.append("category", uploadLocation);
+      form.append("gallery_enabled", String(uploadGallery));
+      form.append("caption", uploadCaption);
 
-      // Nouveau système
-      form.append("site_location", siteLocation);
-
-      form.append(
-        "gallery_enabled",
-        galleryEnabled ? "true" : "false"
-      );
-
-      if (galleryEnabled && galleryCategory) {
-        form.append(
-          "gallery_category",
-          galleryCategory
-        );
+      if (uploadGallery) {
+        form.append("gallery_category", uploadGalleryCategory);
       }
 
-      form.append("caption", caption);
-
-      // Compatibilité avec l'ancien système
-      form.append("category", siteLocation);
-
-      const res = await fetch("/api/media", {
+      const response = await fetch("/api/media", {
         method: "POST",
         body: form,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(
-          data.error || "Échec de l'envoi."
-        );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Échec de l'envoi du fichier.");
       }
 
-      setCaption("");
-      setSiteLocation("");
-      setGalleryEnabled(false);
-      setGalleryCategory("");
-
-      setSuccess("Le média a été ajouté.");
-
-      await load();
-    } catch (err: any) {
-      setError(
-        err.message || "Échec de l'envoi."
-      );
+      setSuccess("Le média a été ajouté avec succès.");
+      setUploadOpen(false);
+      await load(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de l'envoi.");
     } finally {
       setUploading(false);
-      e.target.value = "";
+      event.target.value = "";
     }
   }
-
-  // ==========================================================
-  // PUBLIER / MASQUER
-  // ==========================================================
-
-  async function togglePublished(
-    id: string,
-    published: boolean
-  ) {
-    resetMessages();
-
-    const previous = items;
-
-    setItems((current) =>
-      current.map((item) =>
-        item.id === id
-          ? { ...item, published }
-          : item
-      )
-    );
-
-    try {
-      const res = await fetch(
-        `/api/media/${id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            published,
-          }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(
-          data.error ||
-            "Impossible de modifier le statut."
-        );
-      }
-
-      setSuccess(
-        published
-          ? "Média publié."
-          : "Média masqué."
-      );
-    } catch (err: any) {
-      setItems(previous);
-
-      setError(
-        err.message ||
-          "Impossible de modifier le statut."
-      );
-    }
-  }
-
-  // ==========================================================
-  // MODIFICATION
-  // ==========================================================
 
   function startEditing(item: MediaItem) {
-    resetMessages();
-
+    clearMessages();
     setEditingId(item.id);
-
-    setEditingCaption(
-      item.caption || ""
-    );
-
-    // Nouveau système prioritaire
-    // Fallback vers category pour les anciens médias
-    setEditingSiteLocation(
-      item.site_location ||
-        item.category ||
-        ""
-    );
-
-    setEditingGalleryEnabled(
-      Boolean(item.gallery_enabled)
-    );
-
-    setEditingGalleryCategory(
-      item.gallery_category || ""
-    );
+    setEditForm({
+      caption: item.caption ?? "",
+      site_location: getMediaLocation(item),
+      gallery_enabled: Boolean(item.gallery_enabled),
+      gallery_category: item.gallery_category ?? "",
+    });
   }
 
   function cancelEditing() {
     setEditingId(null);
-    setEditingCaption("");
-    setEditingSiteLocation("");
-    setEditingGalleryEnabled(false);
-    setEditingGalleryCategory("");
+    setEditForm({
+      caption: "",
+      site_location: "",
+      gallery_enabled: false,
+      gallery_category: "",
+    });
   }
 
   async function saveEditing() {
-    if (!editingId) {
+    if (!editingId) return;
+
+    clearMessages();
+
+    if (!editForm.site_location) {
+      setError("Choisis un emplacement pour ce média.");
       return;
     }
 
-    resetMessages();
-
-    if (!editingSiteLocation) {
-      setError(
-        "Choisis un emplacement pour ce média."
-      );
+    if (editForm.gallery_enabled && !editForm.gallery_category) {
+      setError("Choisis une rubrique pour la galerie publique.");
       return;
     }
 
-    if (
-      editingGalleryEnabled &&
-      !editingGalleryCategory
-    ) {
-      setError(
-        "Choisis une rubrique pour la Galerie publique."
-      );
-      return;
-    }
-
-    const finalGalleryCategory =
-      editingGalleryEnabled
-        ? editingGalleryCategory || null
-        : null;
+    setSaving(true);
 
     try {
-      const res = await fetch(
-        `/api/media/${editingId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            site_location:
-              editingSiteLocation || null,
+      const response = await fetch(`/api/media/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          site_location: editForm.site_location,
+          category: editForm.site_location,
+          caption: editForm.caption || null,
+          gallery_enabled: editForm.gallery_enabled,
+          gallery_category: editForm.gallery_enabled
+            ? editForm.gallery_category
+            : null,
+        }),
+      });
 
-            gallery_enabled:
-              editingGalleryEnabled,
-
-            gallery_category:
-              finalGalleryCategory,
-
-            // Compatibilité ancien système
-            category:
-              editingSiteLocation || null,
-
-            caption:
-              editingCaption || null,
-          }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(
-          data.error ||
-            "Impossible de modifier le média."
-        );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Impossible de modifier le média.");
       }
 
       setItems((current) =>
@@ -601,890 +485,979 @@ export default function MediaManager() {
           item.id === editingId
             ? {
                 ...item,
-
-                category:
-                  editingSiteLocation || null,
-
-                site_location:
-                  editingSiteLocation || null,
-
-                gallery_enabled:
-                  editingGalleryEnabled,
-
-                gallery_category:
-                  finalGalleryCategory,
-
-                caption:
-                  editingCaption || null,
+                site_location: editForm.site_location,
+                category: editForm.site_location,
+                caption: editForm.caption || null,
+                gallery_enabled: editForm.gallery_enabled,
+                gallery_category: editForm.gallery_enabled
+                  ? editForm.gallery_category
+                  : null,
               }
             : item
         )
       );
 
-      setSuccess("Média modifié.");
-
+      setSuccess("Modifications enregistrées.");
       cancelEditing();
-    } catch (err: any) {
+    } catch (err) {
       setError(
-        err.message ||
-          "Impossible de modifier le média."
+        err instanceof Error ? err.message : "Impossible de modifier le média."
       );
+    } finally {
+      setSaving(false);
     }
   }
 
-  // ==========================================================
-  // SUPPRESSION
-  // ==========================================================
-
-  async function remove(id: string) {
-    resetMessages();
-
-    const confirmed = window.confirm(
-      "Supprimer définitivement ce média ?\n\n" +
-        "Cette action supprimera également le fichier du stockage."
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    const previous = items;
+  async function togglePublished(item: MediaItem) {
+    clearMessages();
+    const published = !item.published;
 
     setItems((current) =>
-      current.filter(
-        (item) => item.id !== id
+      current.map((entry) =>
+        entry.id === item.id ? { ...entry, published } : entry
       )
     );
 
     try {
-      const res = await fetch(
-        `/api/media/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`/api/media/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ published }),
+      });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(
-          data.error ||
-            "Impossible de supprimer le média."
-        );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Impossible de modifier la publication.");
       }
 
-      setSuccess(
-        "Média supprimé définitivement."
+      setSuccess(published ? "Média publié." : "Média masqué.");
+    } catch (err) {
+      setItems((current) =>
+        current.map((entry) =>
+          entry.id === item.id ? { ...entry, published: item.published } : entry
+        )
       );
-    } catch (err: any) {
-      setItems(previous);
-
-      setError(
-        err.message ||
-          "Impossible de supprimer le média."
-      );
+      setError(err instanceof Error ? err.message : "Erreur de publication.");
     }
   }
 
-  // ==========================================================
-  // MONTER / DESCENDRE
-  // ==========================================================
-
-  async function moveItem(
-    id: string,
-    direction: "up" | "down"
-  ) {
-    resetMessages();
-
-    const index = sortedItems.findIndex(
-      (item) => item.id === id
+  async function remove(item: MediaItem) {
+    const confirmed = window.confirm(
+      "Supprimer définitivement ce média ?\n\nLe fichier sera également supprimé du stockage."
     );
+    if (!confirmed) return;
 
-    if (index === -1) {
+    clearMessages();
+    const previous = items;
+    setItems((current) => current.filter((entry) => entry.id !== item.id));
+
+    try {
+      const response = await fetch(`/api/media/${item.id}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Impossible de supprimer ce média.");
+      }
+
+      setSuccess("Média supprimé définitivement.");
+    } catch (err) {
+      setItems(previous);
+      setError(err instanceof Error ? err.message : "Erreur de suppression.");
+    }
+  }
+
+  async function moveItem(item: MediaItem, direction: "up" | "down") {
+    clearMessages();
+
+    const currentIndex = filteredItems.findIndex(
+      (entry) => entry.id === item.id
+    );
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= filteredItems.length) {
       return;
     }
 
-    const targetIndex =
-      direction === "up"
-        ? index - 1
-        : index + 1;
-
-    if (
-      targetIndex < 0 ||
-      targetIndex >= sortedItems.length
-    ) {
-      return;
-    }
-
-    const current =
-      sortedItems[index];
-
-    const target =
-      sortedItems[targetIndex];
-
-    const currentPosition =
-      current.position ?? index;
-
-    const targetPosition =
-      target.position ?? targetIndex;
-
+    const target = filteredItems[targetIndex];
+    const currentPosition = item.position ?? currentIndex;
+    const targetPosition = target.position ?? targetIndex;
     const previous = items;
 
-    setItems((currentItems) =>
-      currentItems.map((item) => {
-        if (item.id === current.id) {
-          return {
-            ...item,
-            position: targetPosition,
-          };
-        }
-
-        if (item.id === target.id) {
-          return {
-            ...item,
-            position: currentPosition,
-          };
-        }
-
-        return item;
+    setItems((current) =>
+      current.map((entry) => {
+        if (entry.id === item.id) return { ...entry, position: targetPosition };
+        if (entry.id === target.id) return { ...entry, position: currentPosition };
+        return entry;
       })
     );
 
     try {
-      const [res1, res2] =
-        await Promise.all([
-          fetch(
-            `/api/media/${current.id}`,
-            {
-              method: "PATCH",
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-              body: JSON.stringify({
-                position:
-                  targetPosition,
-              }),
-            }
-          ),
+      const responses = await Promise.all([
+        fetch(`/api/media/${item.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ position: targetPosition }),
+        }),
+        fetch(`/api/media/${target.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ position: currentPosition }),
+        }),
+      ]);
 
-          fetch(
-            `/api/media/${target.id}`,
-            {
-              method: "PATCH",
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-              body: JSON.stringify({
-                position:
-                  currentPosition,
-              }),
-            }
-          ),
-        ]);
-
-      if (!res1.ok || !res2.ok) {
-        throw new Error(
-          "Impossible de modifier l'ordre des médias."
-        );
+      if (responses.some((response) => !response.ok)) {
+        throw new Error("Impossible d'enregistrer l'ordre des médias.");
       }
 
-      setSuccess(
-        direction === "up"
-          ? "Média remonté."
-          : "Média descendu."
-      );
-    } catch (err: any) {
+      setSuccess("Ordre des médias mis à jour.");
+    } catch (err) {
       setItems(previous);
-
-      setError(
-        err.message ||
-          "Impossible de modifier l'ordre."
-      );
+      setError(err instanceof Error ? err.message : "Erreur de réorganisation.");
     }
   }
 
-  // ==========================================================
-  // RENDU
-  // ==========================================================
+  const activeTitle =
+    view === "all"
+      ? "Tous les médias"
+      : view === "public"
+        ? "Galerie publique"
+        : view === "unassigned"
+          ? "Médias sans emplacement"
+          : activeLocation
+            ? getLocationLabel(activeLocation)
+            : activeGroup;
 
   return (
-    <div>
-      {/* ======================================================
-          AJOUT
-      ====================================================== */}
+    <div className="space-y-6 text-[#173D2D]">
+      {/* EN-TÊTE */}
+      <div className="relative overflow-hidden rounded-3xl bg-[#173D2D] p-6 text-white sm:p-8">
+        <div className="absolute -right-10 -top-16 h-56 w-56 rounded-full border border-white/10" />
+        <div className="absolute -right-2 -top-8 h-40 w-40 rounded-full border border-white/10" />
 
-      <div className="max-w-[760px] rounded-m border border-ink/10 bg-paper p-7">
-        <div>
-          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-goldDeep">
-            Bibliothèque média
-          </p>
-
-          <h2 className="mt-1 font-serif text-[24px] font-semibold">
-            Ajouter une photo ou une vidéo
-          </h2>
-
-          <p className="mt-2 text-[14px] leading-6 text-inkSoft">
-            Choisis l'emplacement principal du média
-            sur le site. Tu peux ensuite décider s'il
-            doit également apparaître dans la Galerie
-            publique.
-          </p>
-        </div>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          {/* TYPE */}
-
-          <div className="field">
-            <label>Type</label>
-
-            <select
-              value={kind}
-              onChange={(e) =>
-                setKind(
-                  e.target.value as
-                    | "photo"
-                    | "video"
-                )
-              }
-            >
-              <option value="photo">
-                Photo
-              </option>
-
-              <option value="video">
-                Vidéo
-              </option>
-            </select>
-          </div>
-
-          {/* EMPLACEMENT */}
-
-          <div className="field">
-            <label>
-              Emplacement du site
-            </label>
-
-            <select
-              value={siteLocation}
-              onChange={(e) =>
-                setSiteLocation(
-                  e.target.value
-                )
-              }
-            >
-              <option value="">
-                Choisir un emplacement
-              </option>
-
-              {productsLoading && (
-                <option value="" disabled>
-                  Chargement des produits...
-                </option>
-              )}
-
-              {siteLocationGroups.map(
-                (group) => (
-                  <optgroup
-                    key={group.label}
-                    label={group.label}
-                  >
-                    {group.options.map(
-                      (option) => (
-                        <option
-                          key={option.value}
-                          value={option.value}
-                        >
-                          {option.label}
-                        </option>
-                      )
-                    )}
-                  </optgroup>
-                )
-              )}
-            </select>
-
-            <p className="mt-1.5 text-[11.5px] leading-5 text-inkSoft">
-              La rubrique « Nos produits » reprend automatiquement les produits
-              disponibles dans le catalogue public.
+        <div className="relative flex flex-wrap items-start justify-between gap-5">
+          <div>
+            <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-[#D9BC7C]">
+              <Images size={16} />
+              Centre de gestion visuelle
+            </div>
+            <h2 className="font-serif text-3xl font-semibold sm:text-4xl">
+              Bibliothèque média
+            </h2>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-white/70">
+              Organise les photos et vidéos d'AgroFarms237 par section du site.
+              Choisis où chaque média apparaît et gère séparément sa visibilité
+              dans la galerie publique.
             </p>
           </div>
 
-          {/* LÉGENDE */}
-
-          <div className="field sm:col-span-2">
-            <label>
-              Légende{" "}
-              <span className="ml-1 font-normal text-inkSoft">
-                (optionnel)
-              </span>
-            </label>
-
-            <input
-              value={caption}
-              onChange={(e) =>
-                setCaption(
-                  e.target.value
-                )
-              }
-              placeholder="Ex. Bassins de production"
-            />
-          </div>
+          <button
+            type="button"
+            onClick={() => openUpload()}
+            className={`${buttonClass} bg-[#D9BC7C] text-[#173D2D] hover:bg-[#E8D4A4]`}
+          >
+            <Upload size={17} />
+            Ajouter un média
+          </button>
         </div>
 
-        {/* ====================================================
-            GALERIE
-        ===================================================== */}
+        <div className="relative mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            { label: "Total des médias", value: items.length, icon: Images },
+            { label: "Publiés sur le site", value: publishedCount, icon: Eye },
+            { label: "Galerie publique", value: publicCount, icon: LayoutGrid },
+            { label: "Sans emplacement", value: unassignedCount, icon: FolderOpen },
+          ].map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={stat.label}
+                className="rounded-2xl border border-white/10 bg-white/[0.07] p-4"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs leading-5 text-white/65">
+                    {stat.label}
+                  </span>
+                  <Icon size={17} className="text-[#D9BC7C]" />
+                </div>
+                <p className="mt-2 text-3xl font-semibold tabular-nums">
+                  {stat.value}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
-        <div className="mt-5 rounded-s border border-ink/10 bg-bgAlt p-4">
-          <p className="text-[13px] font-bold">
-            Galerie publique
-          </p>
+      {/* MESSAGES */}
+      {(error || success) && (
+        <div
+          role="status"
+          className={`flex items-start gap-3 rounded-xl border p-4 text-sm ${
+            error
+              ? "border-red-200 bg-red-50 text-red-800"
+              : "border-emerald-200 bg-emerald-50 text-emerald-800"
+          }`}
+        >
+          {error ? <X size={18} /> : <Check size={18} />}
+          <p className="flex-1">{error || success}</p>
+          <button
+            type="button"
+            onClick={clearMessages}
+            aria-label="Fermer le message"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
-          <p className="mt-1 text-[12.5px] leading-5 text-inkSoft">
-            Voulez-vous que cette photo ou vidéo
-            apparaisse également dans la Galerie
-            publique ?
-          </p>
+      {/* NAVIGATION ET BIBLIOTHÈQUE */}
+      <div className="grid items-start gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
+        <aside className={`${panelClass} overflow-hidden`}>
+          <div className="border-b border-[#173D2D]/10 p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8D9B8D]">
+              Bibliothèque
+            </p>
+          </div>
 
-          <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+          <div className="space-y-1 p-3">
             <button
               type="button"
-              onClick={() =>
-                setGalleryEnabled(true)
-              }
-              className={`rounded-s border px-4 py-2 text-[12.5px] font-semibold transition ${
-                galleryEnabled
-                  ? "border-ink bg-ink text-paper"
-                  : "border-ink/15 bg-paper text-ink hover:bg-bgAlt"
+              onClick={() => {
+                setView("all");
+                setActiveLocation("");
+              }}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${
+                view === "all"
+                  ? "bg-[#173D2D] text-white"
+                  : "hover:bg-[#F2F2EA]"
               }`}
             >
-              Oui, ajouter à la Galerie
+              <Images size={18} />
+              <span className="flex-1">Tous les médias</span>
+              <span className="text-xs opacity-70">{items.length}</span>
             </button>
 
             <button
               type="button"
               onClick={() => {
-                setGalleryEnabled(false);
-                setGalleryCategory("");
+                setView("public");
+                setActiveLocation("");
               }}
-              className={`rounded-s border px-4 py-2 text-[12.5px] font-semibold transition ${
-                !galleryEnabled
-                  ? "border-ink bg-ink text-paper"
-                  : "border-ink/15 bg-paper text-ink hover:bg-bgAlt"
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${
+                view === "public"
+                  ? "bg-[#173D2D] text-white"
+                  : "hover:bg-[#F2F2EA]"
               }`}
             >
-              Non, uniquement sur le site
+              <Eye size={18} />
+              <span className="flex-1">Galerie publique</span>
+              <span className="text-xs opacity-70">{publicCount}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setView("unassigned");
+                setActiveLocation("");
+              }}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${
+                view === "unassigned"
+                  ? "bg-[#173D2D] text-white"
+                  : "hover:bg-[#F2F2EA]"
+              }`}
+            >
+              <FolderOpen size={18} />
+              <span className="flex-1">Sans emplacement</span>
+              <span className="text-xs opacity-70">{unassignedCount}</span>
             </button>
           </div>
 
-          {galleryEnabled && (
-            <div className="mt-4 field">
-              <label>
-                Rubrique de la Galerie
-              </label>
-
-              <select
-                value={galleryCategory}
-                onChange={(e) =>
-                  setGalleryCategory(
-                    e.target.value
-                  )
-                }
-              >
-                <option value="">
-                  Choisir une rubrique
-                </option>
-
-                {GALLERY_CATEGORIES.map(
-                  (item) => (
-                    <option
-                      key={item.value}
-                      value={item.value}
-                    >
-                      {item.label}
-                    </option>
-                  )
-                )}
-              </select>
-            </div>
-          )}
-        </div>
-
-        {/* UPLOAD */}
-
-        <label className="btn btn-ink mt-5 cursor-pointer">
-          {uploading
-            ? "Envoi en cours..."
-            : "Choisir un fichier à envoyer"}
-
-          <input
-            type="file"
-            accept="image/*,video/*"
-            className="hidden"
-            onChange={handleUpload}
-            disabled={uploading}
-          />
-        </label>
-
-        <p className="mt-2 text-[13px] text-inkSoft">
-          25 Mo maximum par fichier.
-        </p>
-
-        {error && (
-          <p className="mt-4 text-[14px] font-semibold text-alert">
-            {error}
-          </p>
-        )}
-
-        {success && (
-          <p className="mt-4 text-[14px] font-semibold text-green-700">
-            {success}
-          </p>
-        )}
-      </div>
-
-      {/* ======================================================
-          MÉDIAS EXISTANTS
-      ====================================================== */}
-
-      <div className="mt-9">
-        <div className="mb-5">
-          <h2 className="font-serif text-[24px] font-semibold">
-            MÉDIAS EXISTANTS
-          </h2>
-
-          <p className="mt-1 text-[13.5px] text-inkSoft">
-            Modifie, masque, réorganise ou supprime
-            tes médias depuis cette bibliothèque.
-          </p>
-        </div>
-
-        {loading ? (
-          <p className="text-inkSoft">
-            Chargement...
-          </p>
-        ) : sortedItems.length === 0 ? (
-          <div className="rounded-m border border-ink/10 bg-bgAlt p-8 text-center">
-            <p className="font-semibold">
-              Aucun média envoyé pour le moment.
-            </p>
-
-            <p className="mt-1 text-[13px] text-inkSoft">
-              Les photos et vidéos ajoutées
-              apparaîtront ici.
+          <div className="border-y border-[#173D2D]/10 px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8D9B8D]">
+              Sections du site
             </p>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {sortedItems.map(
-              (item, index) => {
-                const isEditing =
-                  editingId === item.id;
 
-                const isFirst =
-                  index === 0;
+          <nav className="space-y-1 p-3">
+            {locationGroups.map((group) => {
+              const Icon = sectionIcons[group.label] ?? Images;
+              const locations = new Set(group.options.map((entry) => entry.value));
+              const count = items.filter((item) =>
+                locations.has(getMediaLocation(item))
+              ).length;
+              const selected = view === "locations" && activeGroup === group.label;
 
-                const isLast =
-                  index ===
-                  sortedItems.length - 1;
+              return (
+                <button
+                  type="button"
+                  key={group.label}
+                  onClick={() => selectGroup(group.label)}
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${
+                    selected
+                      ? "bg-[#E8EDE5] text-[#173D2D]"
+                      : "text-[#52675A] hover:bg-[#F5F5EF]"
+                  }`}
+                >
+                  <Icon size={18} />
+                  <span className="min-w-0 flex-1 text-sm font-medium">
+                    {group.label}
+                  </span>
+                  <span className="rounded-full bg-black/[0.04] px-2 py-0.5 text-xs tabular-nums">
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
 
-                const displayedSiteLocation =
-                  item.site_location ||
-                  item.category ||
-                  "";
+        <main className="min-w-0 space-y-5">
+          {/* BARRE DE RECHERCHE */}
+          <div className={`${panelClass} p-4 sm:p-5`}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#B7863D]">
+                  {view === "locations" ? "Emplacements du site" : "Bibliothèque"}
+                </p>
+                <h3 className="mt-1 break-words font-serif text-2xl font-semibold">
+                  {activeTitle}
+                </h3>
+                <p className="mt-1 text-sm text-[#718074]">
+                  {filteredItems.length} média{filteredItems.length > 1 ? "s" : ""}
+                  {" "}affiché{filteredItems.length > 1 ? "s" : ""}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  void load(true);
+                  void loadProducts();
+                }}
+                disabled={refreshing}
+                className={`${buttonClass} border border-[#173D2D]/15 text-[#173D2D] hover:bg-[#F2F2EA]`}
+              >
+                <RefreshCw
+                  size={16}
+                  className={refreshing ? "animate-spin" : ""}
+                />
+                Actualiser
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <label className="relative block md:col-span-2 xl:col-span-1">
+                <Search
+                  size={17}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8D9B8D]"
+                />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Rechercher un média..."
+                  className="w-full rounded-xl border border-[#173D2D]/15 bg-white py-3 pl-10 pr-3 text-sm outline-none transition focus:border-[#B7863D]"
+                />
+              </label>
+
+              <label className="relative">
+                <Filter
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8D9B8D]"
+                />
+                <select
+                  value={kindFilter}
+                  onChange={(event) =>
+                    setKindFilter(event.target.value as typeof kindFilter)
+                  }
+                  className="w-full appearance-none rounded-xl border border-[#173D2D]/15 bg-white py-3 pl-9 pr-3 text-sm outline-none focus:border-[#B7863D]"
+                >
+                  <option value="all">Tous les types</option>
+                  <option value="photo">Photos</option>
+                  <option value="video">Vidéos</option>
+                </select>
+              </label>
+
+              <label>
+                <select
+                  value={statusFilter}
+                  onChange={(event) =>
+                    setStatusFilter(event.target.value as typeof statusFilter)
+                  }
+                  className="w-full rounded-xl border border-[#173D2D]/15 bg-white px-3 py-3 text-sm outline-none focus:border-[#B7863D]"
+                >
+                  <option value="all">Tous les statuts</option>
+                  <option value="published">Publiés sur le site</option>
+                  <option value="hidden">Masqués sur le site</option>
+                </select>
+              </label>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setKindFilter("all");
+                  setStatusFilter("all");
+                }}
+                className={`${buttonClass} border border-[#173D2D]/15 text-[#52675A] hover:bg-[#F2F2EA]`}
+              >
+                Réinitialiser les filtres
+              </button>
+            </div>
+          </div>
+
+          {/* SOUS-EMPLACEMENTS */}
+          {view === "locations" && !activeLocation && (
+            <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+              {groupLocations.map((location) => {
+                const count = countsByLocation[location.value] ?? 0;
 
                 return (
-                  <div
-                    key={item.id}
-                    className="flex h-full flex-col overflow-hidden rounded-m border border-ink/10 bg-paper shadow-sm"
+                  <button
+                    key={location.value}
+                    type="button"
+                    onClick={() => setActiveLocation(location.value)}
+                    className="group flex min-h-[116px] items-start gap-3 rounded-2xl border border-[#173D2D]/10 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#B7863D]/60 hover:shadow-md"
                   >
-                    {/* APERÇU */}
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E8EDE5] text-[#173D2D] transition group-hover:bg-[#173D2D] group-hover:text-white">
+                      <FolderOpen size={20} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold leading-5">{location.label}</p>
+                      <p className="mt-2 text-xs text-[#718074]">
+                        {count} média{count > 1 ? "s" : ""}
+                      </p>
+                    </div>
+                    <ExternalLink
+                      size={15}
+                      className="shrink-0 text-[#9AA59B] transition group-hover:text-[#B7863D]"
+                    />
+                  </button>
+                );
+              })}
 
-                    <div className="relative">
-                      {item.kind ===
-                      "photo" ? (
+              {groupLocations.length === 0 && (
+                <div className={`${panelClass} p-6 text-sm text-[#718074]`}>
+                  {productsLoading
+                    ? "Chargement des emplacements..."
+                    : "Aucun emplacement disponible dans cette section."}
+                </div>
+              )}
+            </div>
+          )}
+
+          {view === "locations" && activeLocation && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#B7863D]/25 bg-[#F9F5EA] p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveLocation("")}
+                  className="rounded-lg border border-[#173D2D]/10 bg-white p-2 hover:bg-[#F2F2EA]"
+                  aria-label="Retour aux emplacements"
+                >
+                  <ChevronUp size={18} />
+                </button>
+                <div className="min-w-0">
+                  <p className="text-xs text-[#8C774E]">Emplacement sélectionné</p>
+                  <p className="break-words font-semibold">
+                    {getLocationLabel(activeLocation)}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => openUpload(activeLocation)}
+                className={`${buttonClass} bg-[#173D2D] text-white hover:bg-[#28563F]`}
+              >
+                <ImagePlus size={16} />
+                Ajouter ici
+              </button>
+            </div>
+          )}
+
+          {/* GRILLE DES MÉDIAS */}
+          {loading ? (
+            <div className={`${panelClass} flex items-center justify-center gap-3 p-14 text-sm text-[#718074]`}>
+              <RefreshCw size={18} className="animate-spin" />
+              Chargement des médias...
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className={`${panelClass} flex flex-col items-center px-6 py-14 text-center`}>
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E8EDE5] text-[#173D2D]">
+                <ImageIcon size={28} />
+              </div>
+              <h4 className="mt-5 font-serif text-xl font-semibold">
+                Aucun média trouvé
+              </h4>
+              <p className="mt-2 max-w-md text-sm leading-6 text-[#718074]">
+                Cet espace ne contient aucun média correspondant aux filtres.
+                Tu peux en ajouter un ou modifier ta recherche.
+              </p>
+              {view === "locations" && (
+                <button
+                  type="button"
+                  onClick={() => openUpload(activeLocation)}
+                  className={`${buttonClass} mt-5 bg-[#173D2D] text-white hover:bg-[#28563F]`}
+                >
+                  <Upload size={16} />
+                  Ajouter un média
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+              {filteredItems.map((item, index) => {
+                const editing = editingId === item.id;
+
+                return (
+                  <article
+                    key={item.id}
+                    className={`${panelClass} min-w-0 overflow-hidden`}
+                  >
+                    <div className="group relative aspect-[4/3] overflow-hidden bg-[#E8E8DF]">
+                      {item.kind === "photo" ? (
                         <img
                           src={item.url}
-                          alt={
-                            item.caption ||
-                            "Média Agrofarms237"
-                          }
-                          className="aspect-square w-full object-cover"
+                          alt={item.caption || "Média AgroFarms237"}
+                          loading="lazy"
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                         />
                       ) : (
                         <video
                           src={item.url}
-                          className="aspect-square w-full object-cover"
-                          muted
                           controls
+                          preload="metadata"
+                          className="h-full w-full object-cover"
                         />
                       )}
 
-                      <div className="absolute left-2.5 top-2.5 rounded-full bg-ink px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-paper">
-                        {item.kind ===
-                        "photo"
-                          ? "Photo"
-                          : "Vidéo"}
+                      <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#173D2D]/90 px-3 py-1.5 text-[11px] font-semibold text-white">
+                          {item.kind === "photo" ? (
+                            <ImageIcon size={13} />
+                          ) : (
+                            <Film size={13} />
+                          )}
+                          {item.kind === "photo" ? "Photo" : "Vidéo"}
+                        </span>
+                        <span
+                          className={`rounded-full px-3 py-1.5 text-[11px] font-semibold ${
+                            item.published
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-white/90 text-[#52675A]"
+                          }`}
+                        >
+                          {item.published ? "Publié" : "Masqué"}
+                        </span>
                       </div>
+
+                      {item.gallery_enabled && (
+                        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-[#D9BC7C] px-3 py-1.5 text-[11px] font-bold text-[#173D2D]">
+                          <Images size={13} />
+                          Galerie publique
+                        </span>
+                      )}
                     </div>
 
-                    <div className="flex flex-1 flex-col p-4">
-                      {/* EMPLACEMENT */}
-
-                      {displayedSiteLocation && (
-                        <p className="text-[11.5px] font-bold leading-5 text-goldDeep">
-                          {productSiteLocationLabels[
-                            displayedSiteLocation
-                          ] ||
-                            SITE_LOCATION_LABELS[
-                              displayedSiteLocation
-                            ] ||
-                            displayedSiteLocation}
-                        </p>
-                      )}
-
-                      {!isEditing ? (
-                        <>
-                          {/* LÉGENDE */}
-
-                          {item.caption ? (
-                            <p className="mt-1 text-[13px] leading-5 text-inkSoft">
-                              {item.caption}
-                            </p>
-                          ) : (
-                            <p className="mt-1 text-[12px] italic text-inkSoft">
-                              Aucune légende
-                            </p>
-                          )}
-
-                          {/* GALERIE */}
-
-                          <div className="mt-3 rounded-s border border-ink/10 bg-bgAlt p-2.5">
-                            {item.gallery_enabled ? (
-                              <>
-                                <p className="text-[11px] font-bold uppercase tracking-wide text-green-700">
-                                  Galerie publique
-                                </p>
-
-                                <p className="mt-0.5 text-[12px] text-inkSoft">
-                                  {GALLERY_CATEGORIES.find(
-                                    (category) =>
-                                      category.value ===
-                                      item.gallery_category
-                                  )?.label ||
-                                    item.gallery_category ||
-                                    "Rubrique non définie"}
-                                </p>
-                              </>
-                            ) : (
-                              <p className="text-[11.5px] text-inkSoft">
-                                Uniquement sur son emplacement
-                                du site
-                              </p>
-                            )}
-                          </div>
-
-                          {/* =================================================
-                              ACTIONS
-                          ================================================== */}
-
-                          <div className="mt-auto pt-4">
-                            {/* MONTER / DESCENDRE */}
-
-                            <div className="grid grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  moveItem(
-                                    item.id,
-                                    "up"
-                                  )
-                                }
-                                disabled={isFirst}
-                                className="rounded-s border border-ink/15 bg-paper px-3 py-2.5 text-[12px] font-semibold text-ink transition hover:bg-bgAlt disabled:cursor-not-allowed disabled:opacity-40"
-                              >
-                                Monter
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  moveItem(
-                                    item.id,
-                                    "down"
-                                  )
-                                }
-                                disabled={isLast}
-                                className="rounded-s border border-ink/15 bg-paper px-3 py-2.5 text-[12px] font-semibold text-ink transition hover:bg-bgAlt disabled:cursor-not-allowed disabled:opacity-40"
-                              >
-                                Descendre
-                              </button>
-                            </div>
-
-                            {/* MODIFIER / PUBLIER */}
-
-                            <div className="mt-2 grid grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  startEditing(
-                                    item
-                                  )
-                                }
-                                className="rounded-s border border-ink/15 bg-paper px-3 py-2.5 text-[12px] font-semibold text-ink transition hover:bg-bgAlt"
-                              >
-                                Modifier
-                              </button>
-
-                              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-s border border-ink/10 bg-paper px-3 py-2.5 text-[12px] font-semibold">
-                                <input
-                                  type="checkbox"
-                                  checked={
-                                    item.published
-                                  }
-                                  onChange={(e) =>
-                                    togglePublished(
-                                      item.id,
-                                      e.target
-                                        .checked
-                                    )
-                                  }
-                                />
-
-                                {item.published
-                                  ? "Publié"
-                                  : "Masqué"}
-                              </label>
-                            </div>
-
-                            {/* SUPPRIMER */}
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                remove(
-                                  item.id
-                                )
-                              }
-                              className="mt-3 w-full rounded-s border border-alert/20 bg-alert/5 px-3 py-2.5 text-[12px] font-semibold text-alert transition hover:bg-alert/10"
-                            >
-                              Supprimer définitivement
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        /* =================================================
-                           MODE MODIFICATION
-                        ================================================== */
-
-                        <div className="mt-3 space-y-3">
-                          {/* EMPLACEMENT */}
-
-                          <div className="field">
-                            <label>
-                              Emplacement du site
+                    <div className="space-y-4 p-4">
+                      {editing ? (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="mb-1.5 block text-xs font-semibold">
+                              Emplacement sur le site
                             </label>
-
                             <select
-                              value={
-                                editingSiteLocation
+                              value={editForm.site_location}
+                              onChange={(event) =>
+                                setEditForm((current) => ({
+                                  ...current,
+                                  site_location: event.target.value,
+                                }))
                               }
-                              onChange={(e) =>
-                                setEditingSiteLocation(
-                                  e.target.value
-                                )
-                              }
+                              className="w-full rounded-xl border border-[#173D2D]/15 bg-white px-3 py-2.5 text-sm"
                             >
-                              <option value="">
-                                Aucun emplacement
-                              </option>
-
-                              {productsLoading && (
-                                <option value="" disabled>
-                                  Chargement des produits...
-                                </option>
-                              )}
-
-                              {siteLocationGroups.map(
-                                (group) => (
-                                  <optgroup
-                                    key={
-                                      group.label
-                                    }
-                                    label={
-                                      group.label
-                                    }
-                                  >
-                                    {group.options.map(
-                                      (
-                                        option
-                                      ) => (
-                                        <option
-                                          key={
-                                            option.value
-                                          }
-                                          value={
-                                            option.value
-                                          }
-                                        >
-                                          {
-                                            option.label
-                                          }
-                                        </option>
-                                      )
-                                    )}
-                                  </optgroup>
-                                )
-                              )}
+                              <option value="">Choisir un emplacement</option>
+                              {locationGroups.map((group) => (
+                                <optgroup key={group.label} label={group.label}>
+                                  {group.options.map((option) => (
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              ))}
                             </select>
-
-                            <p className="mt-1.5 text-[11.5px] leading-5 text-inkSoft">
-                              Les produits proposés ici sont synchronisés avec le
-                              catalogue public.
-                            </p>
                           </div>
 
-                          {/* LÉGENDE */}
-
-                          <div className="field">
-                            <label>
+                          <div>
+                            <label className="mb-1.5 block text-xs font-semibold">
                               Légende
                             </label>
-
                             <input
-                              value={
-                                editingCaption
+                              value={editForm.caption}
+                              onChange={(event) =>
+                                setEditForm((current) => ({
+                                  ...current,
+                                  caption: event.target.value,
+                                }))
                               }
-                              onChange={(e) =>
-                                setEditingCaption(
-                                  e.target.value
-                                )
-                              }
+                              placeholder="Ajouter une légende..."
+                              className="w-full rounded-xl border border-[#173D2D]/15 bg-white px-3 py-2.5 text-sm"
                             />
                           </div>
 
-                          {/* GALERIE */}
-
-                          <div className="rounded-s border border-ink/10 bg-bgAlt p-3">
-                            <p className="text-[12.5px] font-bold">
-                              Galerie publique
-                            </p>
-
-                            <div className="mt-2 grid grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setEditingGalleryEnabled(
-                                    true
-                                  )
+                          <div className="rounded-xl bg-[#F5F5EF] p-3">
+                            <label className="flex cursor-pointer items-center gap-3 text-sm font-medium">
+                              <input
+                                type="checkbox"
+                                checked={editForm.gallery_enabled}
+                                onChange={(event) =>
+                                  setEditForm((current) => ({
+                                    ...current,
+                                    gallery_enabled: event.target.checked,
+                                    gallery_category: event.target.checked
+                                      ? current.gallery_category
+                                      : "",
+                                  }))
                                 }
-                                className={`rounded-s border px-3 py-2 text-[11.5px] font-semibold ${
-                                  editingGalleryEnabled
-                                    ? "border-ink bg-ink text-paper"
-                                    : "border-ink/15 bg-paper text-ink"
-                                }`}
+                                className="h-4 w-4 accent-[#173D2D]"
+                              />
+                              Afficher aussi dans la galerie publique
+                            </label>
+
+                            {editForm.gallery_enabled && (
+                              <select
+                                value={editForm.gallery_category}
+                                onChange={(event) =>
+                                  setEditForm((current) => ({
+                                    ...current,
+                                    gallery_category: event.target.value,
+                                  }))
+                                }
+                                className="mt-3 w-full rounded-xl border border-[#173D2D]/15 bg-white px-3 py-2.5 text-sm"
                               >
-                                Oui
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingGalleryEnabled(
-                                    false
-                                  );
-                                  setEditingGalleryCategory(
-                                    ""
-                                  );
-                                }}
-                                className={`rounded-s border px-3 py-2 text-[11.5px] font-semibold ${
-                                  !editingGalleryEnabled
-                                    ? "border-ink bg-ink text-paper"
-                                    : "border-ink/15 bg-paper text-ink"
-                                }`}
-                              >
-                                Non
-                              </button>
-                            </div>
-
-                            {editingGalleryEnabled && (
-                              <div className="mt-3 field">
-                                <label>
-                                  Rubrique de la Galerie
-                                </label>
-
-                                <select
-                                  value={
-                                    editingGalleryCategory
-                                  }
-                                  onChange={(e) =>
-                                    setEditingGalleryCategory(
-                                      e.target.value
-                                    )
-                                  }
-                                >
-                                  <option value="">
-                                    Choisir une rubrique
+                                <option value="">Choisir une rubrique</option>
+                                {GALLERY_CATEGORIES.map((category) => (
+                                  <option
+                                    key={category.value}
+                                    value={category.value}
+                                  >
+                                    {category.label}
                                   </option>
-
-                                  {GALLERY_CATEGORIES.map(
-                                    (
-                                      galleryCategory
-                                    ) => (
-                                      <option
-                                        key={
-                                          galleryCategory.value
-                                        }
-                                        value={
-                                          galleryCategory.value
-                                        }
-                                      >
-                                        {
-                                          galleryCategory.label
-                                        }
-                                      </option>
-                                    )
-                                  )}
-                                </select>
-                              </div>
+                                ))}
+                              </select>
                             )}
                           </div>
-
-                          {/* ACTIONS */}
 
                           <div className="grid grid-cols-2 gap-2">
                             <button
                               type="button"
-                              onClick={
-                                saveEditing
-                              }
-                              className="btn btn-ink"
+                              onClick={() => void saveEditing()}
+                              disabled={saving}
+                              className={`${buttonClass} bg-[#173D2D] text-white hover:bg-[#28563F]`}
                             >
-                              Enregistrer
+                              <Check size={15} />
+                              {saving ? "Enregistrement..." : "Enregistrer"}
                             </button>
-
                             <button
                               type="button"
-                              onClick={
-                                cancelEditing
-                              }
-                              className="rounded-s border border-ink/15 bg-paper px-3 py-2 text-[12.5px] font-semibold text-ink transition hover:bg-bgAlt"
+                              onClick={cancelEditing}
+                              className={`${buttonClass} border border-[#173D2D]/15 hover:bg-[#F2F2EA]`}
                             >
                               Annuler
                             </button>
                           </div>
                         </div>
+                      ) : (
+                        <>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#B7863D]">
+                              {getLocationLabel(getMediaLocation(item))}
+                            </p>
+                            <p className="mt-1 break-words font-semibold">
+                              {item.caption || "Sans légende"}
+                            </p>
+                            {item.created_at && (
+                              <p className="mt-1 text-xs text-[#8D9B8D]">
+                                Ajouté le{" "}
+                                {new Date(item.created_at).toLocaleDateString(
+                                  "fr-FR"
+                                )}
+                              </p>
+                            )}
+                            {item.gallery_enabled && (
+                              <p className="mt-2 text-xs text-[#52675A]">
+                                Rubrique publique :{" "}
+                                {GALLERY_CATEGORIES.find(
+                                  (category) =>
+                                    category.value === item.gallery_category
+                                )?.label ||
+                                  item.gallery_category ||
+                                  "Non définie"}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void moveItem(item, "up")}
+                              disabled={index === 0}
+                              className={`${buttonClass} border border-[#173D2D]/15 px-2 text-xs hover:bg-[#F2F2EA]`}
+                            >
+                              <ChevronUp size={15} />
+                              Monter
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void moveItem(item, "down")}
+                              disabled={index === filteredItems.length - 1}
+                              className={`${buttonClass} border border-[#173D2D]/15 px-2 text-xs hover:bg-[#F2F2EA]`}
+                            >
+                              <ChevronDown size={15} />
+                              Descendre
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startEditing(item)}
+                              className={`${buttonClass} border border-[#173D2D]/15 hover:bg-[#F2F2EA]`}
+                            >
+                              <Pencil size={15} />
+                              Modifier
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void togglePublished(item)}
+                              className={`${buttonClass} border border-[#173D2D]/15 hover:bg-[#F2F2EA]`}
+                            >
+                              {item.published ? (
+                                <EyeOff size={15} />
+                              ) : (
+                                <Eye size={15} />
+                              )}
+                              {item.published ? "Masquer" : "Publier"}
+                            </button>
+                          </div>
+
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#173D2D]/10 pt-3">
+                            <a
+                              href={item.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs font-medium text-[#52675A] hover:text-[#B7863D]"
+                            >
+                              <ExternalLink size={14} />
+                              Ouvrir le fichier
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => void remove(item)}
+                              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-50"
+                            >
+                              <Trash2 size={14} />
+                              Supprimer
+                            </button>
+                          </div>
+                        </>
                       )}
                     </div>
-                  </div>
+                  </article>
                 );
-              }
-            )}
-          </div>
-        )}
+              })}
+            </div>
+          )}
+        </main>
       </div>
+
+      {/* FENÊTRE D'AJOUT */}
+      {uploadOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#10271D]/70 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !uploading) {
+              setUploadOpen(false);
+            }
+          }}
+        >
+          <div className="my-auto w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 bg-[#173D2D] p-6 text-white">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#D9BC7C]">
+                  Bibliothèque média
+                </p>
+                <h3 className="mt-1 font-serif text-2xl font-semibold">
+                  Ajouter un média
+                </h3>
+                <p className="mt-2 text-sm text-white/70">
+                  Choisis l'emplacement principal puis sa visibilité publique.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => !uploading && setUploadOpen(false)}
+                disabled={uploading}
+                aria-label="Fermer"
+                className="rounded-xl p-2 hover:bg-white/10"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-5 p-6">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold">
+                    Type de média
+                  </label>
+                  <select
+                    value={uploadKind}
+                    onChange={(event) =>
+                      setUploadKind(event.target.value as "photo" | "video")
+                    }
+                    className="w-full rounded-xl border border-[#173D2D]/15 bg-white px-3 py-3 text-sm"
+                  >
+                    <option value="photo">Photo</option>
+                    <option value="video">Vidéo</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold">
+                    Emplacement principal
+                  </label>
+                  <select
+                    value={uploadLocation}
+                    onChange={(event) => setUploadLocation(event.target.value)}
+                    className="w-full rounded-xl border border-[#173D2D]/15 bg-white px-3 py-3 text-sm"
+                  >
+                    <option value="">Choisir un emplacement</option>
+                    {locationGroups.map((group) => (
+                      <optgroup key={group.label} label={group.label}>
+                        {group.options.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  {productsLoading && (
+                    <p className="mt-1 text-xs text-[#8D9B8D]">
+                      Chargement des emplacements produits...
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold">
+                  Légende <span className="font-normal text-[#8D9B8D]">(facultatif)</span>
+                </label>
+                <input
+                  value={uploadCaption}
+                  onChange={(event) => setUploadCaption(event.target.value)}
+                  placeholder="Ex. Nos bassins de production"
+                  className="w-full rounded-xl border border-[#173D2D]/15 bg-white px-3 py-3 text-sm"
+                />
+              </div>
+
+              <div className="rounded-2xl border border-[#173D2D]/10 bg-[#F7F7F1] p-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={uploadGallery}
+                    onChange={(event) => {
+                      setUploadGallery(event.target.checked);
+                      if (!event.target.checked) setUploadGalleryCategory("");
+                    }}
+                    className="mt-1 h-4 w-4 accent-[#173D2D]"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold">
+                      Afficher aussi dans la galerie publique
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-[#718074]">
+                      Le média restera associé à son emplacement principal.
+                      Cette option l'ajoute également à la galerie visible par
+                      les visiteurs.
+                    </span>
+                  </span>
+                </label>
+
+                {uploadGallery && (
+                  <div className="mt-4">
+                    <label className="mb-1.5 block text-sm font-semibold">
+                      Rubrique de la galerie publique
+                    </label>
+                    <select
+                      value={uploadGalleryCategory}
+                      onChange={(event) =>
+                        setUploadGalleryCategory(event.target.value)
+                      }
+                      className="w-full rounded-xl border border-[#173D2D]/15 bg-white px-3 py-3 text-sm"
+                    >
+                      <option value="">Choisir une rubrique</option>
+                      {GALLERY_CATEGORIES.map((category) => (
+                        <option key={category.value} value={category.value}>
+                          {category.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-2xl border-2 border-dashed border-[#173D2D]/20 bg-[#FBFBF7] p-6 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[#E8EDE5] text-[#173D2D]">
+                  {uploadKind === "photo" ? (
+                    <ImagePlus size={23} />
+                  ) : (
+                    <Film size={23} />
+                  )}
+                </div>
+                <p className="mt-3 text-sm font-semibold">
+                  {uploadKind === "photo" ? "Choisir une photo" : "Choisir une vidéo"}
+                </p>
+                <p className="mt-1 text-xs text-[#718074]">
+                  Taille maximale annoncée : 25 Mo par fichier
+                </p>
+                <label
+                  className={`${buttonClass} mt-4 cursor-pointer bg-[#173D2D] text-white hover:bg-[#28563F]`}
+                >
+                  <Upload size={16} />
+                  {uploading ? "Envoi en cours..." : "Parcourir les fichiers"}
+                  <input
+                    type="file"
+                    accept={uploadKind === "photo" ? "image/*" : "video/*"}
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={handleUpload}
+                  />
+                </label>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setUploadOpen(false)}
+                  disabled={uploading}
+                  className={`${buttonClass} border border-[#173D2D]/15 hover:bg-[#F2F2EA]`}
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
