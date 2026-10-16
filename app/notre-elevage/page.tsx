@@ -639,10 +639,34 @@ export default async function NotreElevagePage() {
   const demainSlotImages = getImagesForLocation(siteMedia, "apropos_ferme_demain");
   const agricultureSlotImages = getImagesForLocation(siteMedia, "apropos_agriculture");
   const storySlotImages = getImagesForLocation(siteMedia, "histoire");
+
+  // Les emplacements des cartes « Nos filières » doivent correspondre
+  // aux valeurs utilisées dans Admin → Galerie.
+  const fishSlotImages = getImagesForLocation(siteMedia, "apropos_pisciculture");
+  const pigsSlotImages = getImagesForLocation(siteMedia, "apropos_porcin");
+  const poultrySlotImages = getImagesForLocation(siteMedia, "apropos_aviculture");
+
   const firstFish = poissons[0];
   const firstFishMedia = firstFish
     ? getMediaForFarm(firstFish, siteMedia, mediaByFarm)
     : [];
+  const pigsFarmMedia = porcs[0]
+    ? getMediaForFarm(porcs[0], siteMedia, mediaByFarm).map((item) => item.url)
+    : [];
+  const poultryFarmMedia = poulets[0]
+    ? getMediaForFarm(poulets[0], siteMedia, mediaByFarm).map((item) => item.url)
+    : [];
+
+  // Priorité à l'emplacement éditorial précis, puis aux anciens médias.
+  const fishDisplayImages = fishSlotImages.length > 0
+    ? fishSlotImages
+    : firstFishMedia.map((item) => item.url);
+  const pigsDisplayImages = pigsSlotImages.length > 0
+    ? pigsSlotImages
+    : pigsFarmMedia;
+  const poultryDisplayImages = poultrySlotImages.length > 0
+    ? poultrySlotImages
+    : poultryFarmMedia;
   const heroDisplayImages = heroSlotImages.length > 0 ? heroSlotImages : heroImages;
   const legacyImages = heroImages.slice(0, 6);
   const allImages = [
@@ -799,7 +823,7 @@ export default async function NotreElevagePage() {
 
         <div className="mb-12 overflow-hidden rounded-2xl bg-white shadow-[0_16px_50px_rgba(20,42,32,.08)] lg:grid lg:grid-cols-[1.1fr_.9fr]">
           <div className="relative min-h-[280px] bg-[#18352B] lg:min-h-[470px]">
-            {firstFishMedia[0]?.url ? <ProductCarousel images={firstFishMedia.map((m) => m.url)} /> : <PhotoPlaceholder title="Pisciculture · silure" subtitle="Photo à ajouter : bassins, poissons et gestes de production." />}
+            {fishDisplayImages.length > 0 ? <ProductCarousel images={fishDisplayImages} /> : <PhotoPlaceholder title="Pisciculture · silure" subtitle="Photo à ajouter : bassins, poissons et gestes de production." />}
           </div>
           <div className="flex flex-col justify-center p-7 sm:p-10 lg:p-14">
             <p className="text-[10px] font-bold uppercase tracking-[.23em] text-[#A8833D]">{content.fish_label}</p>
@@ -812,13 +836,13 @@ export default async function NotreElevagePage() {
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="overflow-hidden rounded-2xl border border-[#E1DED4] bg-white">
             <div className="relative min-h-[250px] bg-[#18352B]">
-              {porcs[0] && getMediaForFarm(porcs[0], siteMedia, mediaByFarm).length > 0 ? <ProductCarousel images={getMediaForFarm(porcs[0], siteMedia, mediaByFarm).map((m) => m.url)} /> : <PhotoPlaceholder title="Élevage porcin" subtitle="Un emplacement prêt à accueillir les photos réelles de la filière porcine." />}
+              {pigsDisplayImages.length > 0 ? <ProductCarousel images={pigsDisplayImages} /> : <PhotoPlaceholder title="Élevage porcin" subtitle="Un emplacement prêt à accueillir les photos réelles de la filière porcine." />}
             </div>
             <div className="p-7 sm:p-9"><p className="text-[10px] font-bold uppercase tracking-[.22em] text-[#A8833D]">{content.pigs_label}</p><h3 className="mt-3 font-serif text-3xl">{content.pigs_title}</h3><p className="mt-4 text-sm leading-7 text-[#66736B]">{content.pigs_description}</p><div className="mt-5 flex flex-wrap gap-3">{porcs.map((item) => <span key={item.id} className="rounded-full border border-[#E1DED4] px-3 py-1.5 text-xs text-[#52645B]">{item.name} · {item.status === "disponible" ? "Disponible" : "En développement"}</span>)}</div></div>
           </section>
           <section className="overflow-hidden rounded-2xl border border-[#E1DED4] bg-white">
             <div className="relative min-h-[250px] bg-[#18352B]">
-              {poulets[0] && getMediaForFarm(poulets[0], siteMedia, mediaByFarm).length > 0 ? <ProductCarousel images={getMediaForFarm(poulets[0], siteMedia, mediaByFarm).map((m) => m.url)} /> : <PhotoPlaceholder title="Aviculture" subtitle="Un emplacement prêt à accueillir les photos réelles de la filière avicole." />}
+              {poultryDisplayImages.length > 0 ? <ProductCarousel images={poultryDisplayImages} /> : <PhotoPlaceholder title="Aviculture" subtitle="Un emplacement prêt à accueillir les photos réelles de la filière avicole." />}
             </div>
             <div className="p-7 sm:p-9"><p className="text-[10px] font-bold uppercase tracking-[.22em] text-[#A8833D]">{content.poultry_label}</p><h3 className="mt-3 font-serif text-3xl">{content.poultry_title}</h3><p className="mt-4 text-sm leading-7 text-[#66736B]">{content.poultry_description}</p><div className="mt-5 flex flex-wrap gap-3">{poulets.map((item) => <span key={item.id} className="rounded-full border border-[#E1DED4] px-3 py-1.5 text-xs text-[#52645B]">{item.name} · {item.status === "disponible" ? "Disponible" : "En développement"}</span>)}</div></div>
           </section>
