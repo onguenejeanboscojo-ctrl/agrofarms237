@@ -681,6 +681,15 @@ export default function CommanderPage() {
       return;
     }
 
+    // Ne transmettre que les options appartenant au produit sélectionné
+    // et visibles dans le parcours de commande actuel.
+    const submittedOptions = Object.fromEntries(
+      visibleOptions
+        .map((option) => option.id || option.label)
+        .filter((key) => options[key] !== undefined && options[key] !== "")
+        .map((key) => [key, options[key]])
+    );
+
     setLoading(true);
 
     try {
@@ -693,7 +702,7 @@ export default function CommanderPage() {
           product_id: selectedProduct.id,
           product_name: selectedProduct.name,
 
-          options,
+          options: submittedOptions,
 
           quantity,
           quantity_kg:
@@ -1212,7 +1221,14 @@ export default function CommanderPage() {
                 </strong>
               </div>
 
-              {Object.entries(options).map(([key, value]) => {
+              {Object.entries(
+                Object.fromEntries(
+                  visibleOptions
+                    .map((option) => option.id || option.label)
+                    .filter((key) => options[key] !== undefined && options[key] !== "")
+                    .map((key) => [key, options[key]])
+                )
+              ).map(([key, value]) => {
                 const findLabel = (items: OrderOption[]): string | null => {
                   for (const item of items) {
                     if ((item.id || item.label) === key) return item.label;
