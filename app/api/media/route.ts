@@ -12,29 +12,49 @@ function errorResponse(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
 
-// Récupération des médias publiés
-export async function GET() {
-  const { data, error } = await supabaseAdmin()
-    .from("media")
-    .select("*")
-    .eq("published", true)
-    .order("position")
-    .order("created_at", { ascending: false });
+// =====================================================
+// GET — RÉCUPÉRER LES MÉDIAS PUBLIÉS
+// =====================================================
 
-  if (error) {
+export async function GET() {
+  try {
+    const { data, error } = await supabaseAdmin()
+      .from("media")
+      .select("*")
+      .eq("published", true)
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      return errorResponse(
+        `Impossible de charger les médias : ${error.message}`,
+        500
+      );
+    }
+
+    return NextResponse.json({
+      items: data || [],
+    });
+  } catch (error) {
     return errorResponse(
-      `Impossible de charger les médias : ${error.message}`,
+      error instanceof Error
+        ? error.message
+        : "Une erreur inattendue est survenue lors du chargement.",
       500
     );
   }
-
-  return NextResponse.json({ items: data || [] });
 }
 
-// Téléversement d'un média depuis l'administration
+// =====================================================
+// POST — AJOUTER UNE PHOTO OU UNE VIDÉO
+// =====================================================
+
 export async function POST(req: NextRequest) {
   if (!isAdminAuthed()) {
-    return errorResponse("Session administrateur invalide. Reconnecte-toi.", 401);
+    return errorResponse(
+      "Session administrateur invalide. Reconnecte-toi.",
+      401
+    );
   }
 
   let uploadedPath: string | null = null;
@@ -42,48 +62,68 @@ export async function POST(req: NextRequest) {
   try {
     const form = await req.formData();
     const file = form.get("file");
-    const kindValue = String(form.get("kind") || "photo");
+
+    const kind = String(form.get("kind") || "photo");
+
     const siteLocation = String(
       form.get("site_location") || form.get("category") || ""
     ).trim();
+
     const category = String(
       form.get("category") || siteLocation
     ).trim();
+
     const caption = String(form.get("caption") || "").trim();
-    const galleryEnabled = String(form.get("gallery_enabled")) === "true";
+
+    const galleryEnabled =
+      String(form.get("gallery_enabled")) === "true";
+
     const galleryCategory = String(
       form.get("gallery_category") || ""
     ).trim();
 
+    // Vérifier le fichier
     if (!(file instanceof File)) {
-      return errorResponse("Aucun fichier reçu. Sélectionne une photo ou une vidéo.", 400);
+      return errorResponse(
+        "Aucun fichier reçu. Sélectionne une photo ou une vidéo.",
+        400
+      );
     }
 
     if (!siteLocation) {
-      return errorResponse("Aucun emplacement du site n'a été sélectionné.", 400);
+      return errorResponse(
+        "Choisis un emplacement pour ce média.",
+        400
+      );
     }
 
-    if (kindValue !== "photo" && kindValue !== "video") {
-      return errorResponse("Type de média invalide. Choisis une photo ou une vidéo.", 400);
+    if (kind !== "photo" && kind !== "video") {
+      return errorResponse(
+        "Type de média invalide.",
+        400
+      );
     }
 
     if (file.size === 0) {
-      return errorResponse("Le fichier est vide. Choisis un autre fichier.", 400);
+      return errorResponse(
+        "Le fichier sélectionné est vide.",
+        400
+      );
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return errorResponse("Le fichier dépasse la limite de 25 Mo.", 413);
+      return errorResponse(
+        "Le fichier dépasse la taille maximale de 25 Mo.",
+        413
+      );
     }
 
-    const isImage = file.type.startsWith("image/");
-    const isVideo = file.type.startsWith("video/");
-
     if (
-      (kindValue === "photo" && !isImage) ||
-      (kindValue === "video" && !isVideo)
+      (kind === "photo" && !file.type.startsWith("image/")) ||
+      (kind === "video" && !file.type.startsWith("video/"))
     ) {
       return errorResponse(
-        kindValue === "photo"
+        kind === "photo"
           ? "Le fichier sélectionné n'est pas une image valide."
           : "Le fichier sélectionné n'est pas une vidéo valide.",
         400
@@ -98,13 +138,22 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = supabaseAdmin();
-    const originalName = file.name.split(/[\\/]/).pop() || "media";
-    const extension = originalName.match(/\.([a-zA-Z0-9]{1,10})$/)?.[1]
-      ?.toLowerCase();
 
-    const safeExtension = extension ? `.${extension}` : "";
-    const storagePath = `${Date.now()}-${crypto.randomUUID()}${safeExtension}`;
+    // Nom de fichier unique pour éviter les collisions
+    const originalName =
+      file.name.split(/[\\/]/).pop() || "media";
 
+    const extension =
+      originalName.match(/\.([a-zA-Z0-9]{1,10})$/)?.[1];
+
+    const safeExtension = extension
+      ? `.${extension.toLowerCase()}`
+      : "";
+
+    const storagePath =
+      `${Date.now()}-${crypto.randomUUID()}${safeExtension}`;
+
+    // Envoyer le fichier dans Supabase Storage
     const { error: uploadError } = await supabase.storage
       .from(BUCKET)
       .upload(storagePath, await file.arrayBuffer(), {
@@ -114,7 +163,7 @@ export async function POST(req: NextRequest) {
 
     if (uploadError) {
       return errorResponse(
-        `Échec du stockage du fichier : ${uploadError.message}`,
+        `Impossible de stocker le fichier : ${uploadError.message}`,
         500
       );
     }
@@ -126,61 +175,72 @@ export async function POST(req: NextRequest) {
       .getPublicUrl(storagePath);
 
     if (!publicData.publicUrl) {
-      await supabase.storage.from(BUCKET).remove([storagePath]);
       return errorResponse(
-        "Le fichier a été stocké, mais son URL publique n'a pas pu être créée. Vérifie la configuration du stockage.",
+        "Le fichier a été stocké, mais son URL publique est indisponible.",
         500
       );
     }
 
+    // Enregistrer les informations du média dans la base
     const { data: inserted, error: insertError } = await supabase
       .from("media")
       .insert({
         url: publicData.publicUrl,
         storage_path: storagePath,
-        kind: kindValue,
+        kind,
         category: category || siteLocation,
         site_location: siteLocation,
         gallery_enabled: galleryEnabled,
-        gallery_category: galleryEnabled ? galleryCategory : null,
+        gallery_category: galleryEnabled
+          ? galleryCategory
+          : null,
         caption: caption || null,
         published: true,
-        position: Date.now(),
+
+        // IMPORTANT :
+        // Ne pas utiliser Date.now() ici.
+        // La colonne position est un entier PostgreSQL.
+        position: 0,
       })
       .select("*")
       .single();
 
     if (insertError) {
-      await supabase.storage.from(BUCKET).remove([storagePath]);
-
       return errorResponse(
         `Le fichier a été envoyé, mais son enregistrement a échoué : ${insertError.message}`,
         500
       );
     }
 
+    // L'enregistrement a réussi : conserver le fichier.
     uploadedPath = null;
 
     return NextResponse.json(
       {
         ok: true,
         item: inserted,
-        message: "Le média a été ajouté avec succès.",
+        message: "Votre média a été ajouté avec succès.",
       },
       { status: 201 }
     );
   } catch (error) {
-    if (uploadedPath) {
-      await supabaseAdmin()
-        .storage.from(BUCKET)
-        .remove([uploadedPath]);
-    }
-
     return errorResponse(
       error instanceof Error
         ? `Impossible de téléverser ce média : ${error.message}`
         : "Une erreur inattendue a empêché le téléversement.",
       500
     );
+  } finally {
+    // Nettoyer le fichier si l'envoi a réussi mais que
+    // l'enregistrement en base a échoué.
+    if (uploadedPath) {
+      try {
+        await supabaseAdmin()
+          .storage.from(BUCKET)
+          .remove([uploadedPath]);
+      } catch {
+        // L'erreur principale sera conservée.
+      }
+    }
   }
 }
