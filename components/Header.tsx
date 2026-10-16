@@ -34,7 +34,7 @@ export default function Header() {
           className="flex shrink-0 items-center"
         >
           <img
-            src="/images/Logo%20agricole%20AGROFARMS237%20_%20nature%20et%20%C3%A9levage.png"
+            src="/images/agrofarms237-logo.png.png"
             alt="AgroFarms237 - La qualité commence à la ferme"
             className="h-12 w-auto object-contain md:h-14"
           />
