@@ -45,6 +45,15 @@ export type HomeProductOrderModalProps = {
 };
 
 const DEFAULT_OPTIONS: Record<string, OrderOption[]> = {
+  silure: [
+    {
+      label: "État",
+      values: [
+        { label: "Frais", available: true },
+        { label: "Fumé", available: false },
+      ],
+    },
+  ],
   porc: [
     { label: "Format", values: ["Entier", "Au kg"] },
     { label: "État", values: ["Frais", "Fumé"] },
@@ -58,25 +67,29 @@ const DEFAULT_OPTIONS: Record<string, OrderOption[]> = {
   ],
 };
 
-function defaultOptions(name: string): OrderOption[] {
-  const normalized = name
+function normalizeName(name: string): string {
+  return name
     .trim()
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
+}
 
-  // Le porcelet se vend à la pièce et le silure est identifié par son nom.
-  // Ces exceptions doivent être vérifiées avant les options par défaut.
-  if (normalized.includes("porcelet") || normalized.includes("silure")) return [];
+function defaultOptions(name: string): OrderOption[] {
+  const normalized = normalizeName(name);
 
-  if (normalized.includes("porc")) return DEFAULT_OPTIONS.porc;
+  // Le silure et le porcelet sont identifiés par leur nom de produit.
+  // Ne leur attribue donc aucune option par défaut.
+  if (normalized.includes("silure") || normalized.includes("porcelet")) {
+    return [];
+  }
+
   if (normalized.includes("porc")) return DEFAULT_OPTIONS.porc;
   if (normalized.includes("poulet") && normalized.includes("chair")) {
     return DEFAULT_OPTIONS["poulet de chair"];
   }
-  if (normalized.includes("œuf") || normalized.includes("oeuf")) {
-    return DEFAULT_OPTIONS["œufs"];
-  }
+  if (normalized.includes("oeuf")) return DEFAULT_OPTIONS["œufs"];
+
   return [];
 }
 
@@ -245,22 +258,77 @@ export default function HomeProductOrderModal({
   const options = useMemo(() => {
     if (!useDefaultOptions) return [];
 
-    const normalized = product.name
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+    const normalized = normalizeName(product.name);
 
-    // Le porcelet est vendu à la pièce et le silure est identifié par son nom.
-    // Ne pas afficher d'anciennes options enregistrées pour ces produits.
-    if (normalized.includes("porcelet") || normalized.includes("silure")) {
+    // Le nom du produit suffit pour le silure et le porcelet.
+    // Cette vérification précède les options configurées dans la base afin
+    // qu'une ancienne option « État » ne réapparaisse pas dans la fenêtre.
+    if (normalized.includes("silure") || normalized.includes("porcelet")) {
       return [];
     }
 
-    return Array.isArray(product.order_options) && product.order_options.length > 0
-      ? product.order_options
-      : defaultOptions(product.name);
+    const configuredOptions =
+      Array.isArray(product.order_options) && product.order_options.length > 0
+        ? product.order_options
+        : defaultOptions(product.name);
+
+    return configuredOptions.filter((option) => {
+      const label = normalizeName(option.label);
+
+      // Si le nom du produit précise déjà son état, ne pas le redemander.
+      const stateIsInProductName =
+        /\b(frais|fraiche|fume|fumee|vivant|vivante)\b/.test(normalized);
+      if ((label.includes("etat") || label.includes("state")) && stateIsInProductName) {
+        return false;
+      }
+
+      // Si le nom indique déjà la préparation, ne pas la redemander.
+      if (
+        label.includes("preparation") &&
+        /\b(nettoye|nettoyee|vivant|vivante)\b/.test(normalized)
+      ) {
+        return false;
+      }
+
+      // Le format est déjà indiqué : entier, au kg, /kg ou /pièce.
+      if (
+        (label.includes("format") || label.includes("unite")) &&
+        /\b(entier|au kg|kg|piece)\b/.test(normalized)
+      ) {
+        return false;
+      }
+
+      // Le conditionnement est déjà indiqué dans le nom du produit.
+      if (label.includes("conditionnement") && normalized.includes("alveol")) {
+        return false;
+      }
+
+      return true;
+    });
   }, [product.order_options, product.name, useDefaultOptions]);
+
+  // Élimine les anciennes sélections devenues invalides si le produit change.
+  useEffect(() => {
+    const validKeys = new Set<string>();
+    const collectKeys = (items: OrderOption[]) => {
+      for (const item of items) {
+        validKeys.add(optionKey(item));
+        for (const value of valuesOf(item)) {
+          if (value.children?.length) collectKeys(value.children);
+        }
+      }
+    };
+    collectKeys(options);
+
+    setSelections((current) => {
+      const filtered = Object.fromEntries(
+        Object.entries(current).filter(([key]) => validKeys.has(key))
+      );
+      return Object.keys(filtered).length === Object.keys(current).length
+        ? current
+        : filtered;
+    });
+  }, [options]);
 
   const unitPrice = useMemo(
     () => getUnitPrice(product, options, selections, quantity),
@@ -379,7 +447,7 @@ export default function HomeProductOrderModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           product_id: product.id,
-          options: selections,
+          options: options.length === 0 ? {} : selections,
           quantity,
           client_type: clientType,
           client_name: clientName.trim(),
@@ -836,4 +904,3 @@ export default function HomeProductOrderModal({
     </>
   );
 }
-
