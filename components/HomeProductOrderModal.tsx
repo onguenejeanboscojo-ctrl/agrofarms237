@@ -274,24 +274,29 @@ export default function HomeProductOrderModal({
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");
 
-      // L'état est déjà indiqué dans le nom du produit.
-      if (
-        label === "etat" &&
-        /\b(frais|fraiche|fume|fumee)\b/.test(normalized)
-      ) {
+      // Si le nom du produit précise déjà son état, ne pas le redemander.
+      // On accepte aussi les libellés plus longs comme « État du produit ».
+      const stateIsInProductName =
+        /\b(frais|fraiche|frais|fume|fumee|vivant|vivante)\b/.test(normalized);
+      if ((label.includes("etat") || label.includes("state")) && stateIsInProductName) {
+        return false;
+      }
+
+      // Si le nom indique déjà la préparation, ne pas la redemander.
+      if (label.includes("preparation") && /\b(nettoye|nettoyee|vivant|vivante)\b/.test(normalized)) {
         return false;
       }
 
       // Le format est déjà indiqué : entier, au kg, /kg ou /pièce.
       if (
-        label === "format" &&
+        (label.includes("format") || label.includes("unite")) &&
         /\b(entier|au kg|kg|piece)\b/.test(normalized)
       ) {
         return false;
       }
 
       // Le produit est déjà une alvéole : ne pas redemander le conditionnement.
-      if (label === "conditionnement" && normalized.includes("alveol")) {
+      if (label.includes("conditionnement") && normalized.includes("alveol")) {
         return false;
       }
 
