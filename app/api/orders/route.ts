@@ -64,6 +64,14 @@ function finiteNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function normalizeName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function normalizeValue(value: OptionValue | string): OptionValue {
   if (typeof value === "string") {
     return { label: value, available: true };
@@ -77,47 +85,25 @@ function normalizeValue(value: OptionValue | string): OptionValue {
   };
 }
 
+/**
+ * Options par défaut utilisées lorsqu'aucune option n'est configurée.
+ */
 function defaultOptions(name: string): OrderOption[] {
-  const n = name.trim().toLowerCase();
+  const n = normalizeName(name);
 
-  if (n.includes("silure")) {
-    return [
-      {
-        label: "État",
-        values: [
-          { label: "Frais", available: true },
-          { label: "Fumé", available: false },
-        ],
-      },
-    ];
-  }
-
-  // Le porcelet est traité séparément du porc.
-  if (n.includes("porcelet")) {
+  // Le produit indique déjà sa variante dans son nom.
+  // Le porcelet ne doit pas hériter des options du porc.
+  if (
+    n.includes("silure") ||
+    n.includes("carpe") ||
+    n.includes("porcelet") ||
+    n.includes("porc") ||
+    n.includes("poulet")
+  ) {
     return [];
   }
 
-  if (n.includes("porc")) {
-    return [
-      { label: "Format", values: ["Entier", "Au kg"] },
-      { label: "État", values: ["Frais", "Fumé"] },
-    ];
-  }
-
-  if (n.includes("poulet") && n.includes("chair")) {
-    return [
-      {
-        label: "Préparation",
-        values: ["Nettoyé", "Non nettoyé"],
-      },
-      {
-        label: "État",
-        values: ["Frais", "Fumé"],
-      },
-    ];
-  }
-
-  if (n.includes("œuf") || n.includes("oeuf")) {
+  if (n.includes("oeuf")) {
     return [
       {
         label: "Conditionnement",
@@ -240,8 +226,7 @@ function priceFor(
 }
 
 /**
- * Convertit un produit de la table products vers la structure
- * historique utilisée par le moteur de commande.
+ * Convertit un produit de la table products vers la structure historique.
  */
 function normalizeCatalogProduct(product: any): HomeProduct {
   const priceStandard = finiteNumber(product.price_standard);
@@ -279,7 +264,7 @@ function normalizeCatalogProduct(product: any): HomeProduct {
 }
 
 /**
- * Valide les sélections envoyées par le formulaire.
+ * Valide les options envoyées par le formulaire.
  */
 function validateSelections(
   options: OrderOption[],
@@ -462,13 +447,20 @@ export async function POST(req: NextRequest) {
     }
 
     /**
-     * Les options configurées sont prioritaires.
-     * Les options historiques sont utilisées en secours pour les
-     * produits qui n'en ont pas dans leur configuration.
+     * Pour le silure et le porcelet, on ignore les anciennes options
+     * enregistrées dans le catalogue. Les autres produits conservent
+     * leurs options configurées.
      */
-    const configuredOptions =
-      Array.isArray(product.order_options) &&
-      product.order_options.length > 0
+    const normalizedProductName = normalizeName(product.name);
+
+    const ignoreConfiguredOptions =
+      normalizedProductName.includes("silure") ||
+      normalizedProductName.includes("porcelet");
+
+    const configuredOptions = ignoreConfiguredOptions
+      ? []
+      : Array.isArray(product.order_options) &&
+          product.order_options.length > 0
         ? product.order_options
         : defaultOptions(product.name);
 
@@ -611,7 +603,6 @@ export async function POST(req: NextRequest) {
       : product.name;
 
     const isKgProduct = /silure|porc/i.test(product.name);
-
     const quantityKg = isKgProduct ? quantity : null;
 
     const record = {
