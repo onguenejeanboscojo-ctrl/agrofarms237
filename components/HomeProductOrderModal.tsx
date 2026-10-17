@@ -251,16 +251,52 @@ export default function HomeProductOrderModal({
   const options = useMemo(() => {
     if (!useDefaultOptions) return [];
 
-    const normalized = product.name.trim().toLowerCase();
+    const normalized = product.name
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
 
-    // Exception prioritaire : le porcelet est vendu à la pièce.
-    // Même si d'anciennes options sont enregistrées dans le catalogue,
-    // ne pas afficher « Format » ou « État » pour ce produit.
+    // Le nom du produit détermine déjà certaines caractéristiques :
+    // ex. Silure frais, Silure fumé, Porc frais /kg, Poulet fumé /kg.
+    const configuredOptions =
+      Array.isArray(product.order_options) && product.order_options.length > 0
+        ? product.order_options
+        : defaultOptions(product.name);
+
+    // Le porcelet est vendu à la pièce : aucune option héritée du porc.
     if (normalized.includes("porcelet")) return [];
 
-    return Array.isArray(product.order_options) && product.order_options.length > 0
-      ? product.order_options
-      : defaultOptions(product.name);
+    return configuredOptions.filter((option) => {
+      const label = option.label
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+      // L'état est déjà indiqué dans le nom du produit.
+      if (
+        label === "etat" &&
+        /\b(frais|fraiche|fume|fumee)\b/.test(normalized)
+      ) {
+        return false;
+      }
+
+      // Le format est déjà indiqué : entier, au kg, /kg ou /pièce.
+      if (
+        label === "format" &&
+        /\b(entier|au kg|kg|piece)\b/.test(normalized)
+      ) {
+        return false;
+      }
+
+      // Le produit est déjà une alvéole : ne pas redemander le conditionnement.
+      if (label === "conditionnement" && normalized.includes("alveol")) {
+        return false;
+      }
+
+      return true;
+    });
   }, [product.order_options, product.name, useDefaultOptions]);
 
   const unitPrice = useMemo(
