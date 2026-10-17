@@ -45,15 +45,6 @@ export type HomeProductOrderModalProps = {
 };
 
 const DEFAULT_OPTIONS: Record<string, OrderOption[]> = {
-  silure: [
-    {
-      label: "État",
-      values: [
-        { label: "Frais", available: true },
-        { label: "Fumé", available: false },
-      ],
-    },
-  ],
   porc: [
     { label: "Format", values: ["Entier", "Au kg"] },
     { label: "État", values: ["Frais", "Fumé"] },
@@ -68,14 +59,17 @@ const DEFAULT_OPTIONS: Record<string, OrderOption[]> = {
 };
 
 function defaultOptions(name: string): OrderOption[] {
-  const normalized = name.trim().toLowerCase();
+  const normalized = name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 
-  // Le porcelet se vend à la pièce et ne doit pas hériter
-  // des options « Format » et « État » du porc.
-  // Cette condition doit précéder celle du mot « porc ».
-  if (normalized.includes("porcelet")) return [];
+  // Le porcelet se vend à la pièce et le silure est identifié par son nom.
+  // Ces exceptions doivent être vérifiées avant les options par défaut.
+  if (normalized.includes("porcelet") || normalized.includes("silure")) return [];
 
-  if (normalized.includes("silure")) return DEFAULT_OPTIONS.silure;
+  if (normalized.includes("porc")) return DEFAULT_OPTIONS.porc;
   if (normalized.includes("porc")) return DEFAULT_OPTIONS.porc;
   if (normalized.includes("poulet") && normalized.includes("chair")) {
     return DEFAULT_OPTIONS["poulet de chair"];
@@ -251,12 +245,17 @@ export default function HomeProductOrderModal({
   const options = useMemo(() => {
     if (!useDefaultOptions) return [];
 
-    const normalized = product.name.trim().toLowerCase();
+    const normalized = product.name
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
 
-    // Exception prioritaire : le porcelet est vendu à la pièce.
-    // Même si d'anciennes options sont enregistrées dans le catalogue,
-    // ne pas afficher « Format » ou « État » pour ce produit.
-    if (normalized.includes("porcelet")) return [];
+    // Le porcelet est vendu à la pièce et le silure est identifié par son nom.
+    // Ne pas afficher d'anciennes options enregistrées pour ces produits.
+    if (normalized.includes("porcelet") || normalized.includes("silure")) {
+      return [];
+    }
 
     return Array.isArray(product.order_options) && product.order_options.length > 0
       ? product.order_options
@@ -837,3 +836,4 @@ export default function HomeProductOrderModal({
     </>
   );
 }
+
