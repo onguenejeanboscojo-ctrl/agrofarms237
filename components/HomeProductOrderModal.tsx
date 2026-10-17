@@ -1,10 +1,11 @@
-"use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { formatFCFA } from "@/lib/whatsapp";
-import { DELIVERY_ZONES, getDeliveryFee, isOtherNeighborhood } from "@/lib/delivery";
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { waLink, formatFCFA } from "@/lib/whatsapp";
+import { isAdminAuthed } from "@/lib/adminAuth";
+import { getDeliveryFee } from "@/lib/delivery";
 
-type OrderOptionValue = {
+type OptionValue = {
   id?: string;
   label: string;
   available?: boolean;
@@ -19,8 +20,8 @@ type OrderOptionValue = {
 type OrderOption = {
   id?: string;
   label: string;
-  values?: Array<OrderOptionValue | string>;
-  type?: "single" | "select" | "number" | string;
+  values?: Array<OptionValue | string>;
+  type?: string;
   required?: boolean;
 };
 
@@ -28,7 +29,7 @@ type HomeProduct = {
   id: string;
   name: string;
   description: string | null;
-  status: "disponible" | "bientot" | "rupture";
+  status: string;
   price: number | null;
   price_unit: string | null;
   price_1_label: string | null;
@@ -37,83 +38,38 @@ type HomeProduct = {
   price_2: number | null;
   order_enabled: boolean;
   order_options?: OrderOption[] | null;
-  position: number;
   published: boolean;
 };
 
-const DEFAULT_OPTIONS: Record<string, OrderOption[]> = {
-  silure: [
-    {
-      label: "État",
-      values: [
-        { label: "Frais", available: true },
-        { label: "Fumé", available: false },
-      ],
-    },
-  ],
-
-  porc: [
-    {
-      label: "Format",
-      values: ["Entier", "Au kg"],
-    },
-    {
-      label: "État",
-      values: ["Frais", "Fumé"],
-    },
-  ],
-
-  "poulet de chair": [
-    {
-      label: "Préparation",
-      values: ["Nettoyé", "Non nettoyé"],
-    },
-    {
-      label: "État",
-      values: ["Frais", "Fumé"],
-    },
-  ],
-
-  "œufs": [
-    {
-      label: "Conditionnement",
-      values: ["1 alvéole", "2 alvéoles", "3 alvéoles"],
-    },
-  ],
+type OrderBody = {
+  product_id?: string;
+  options?: Record<string, string>;
+  quantity?: number;
+  client_type?: string;
+  client_name?: string;
+  delivery_mode?: string;
+  delivery_location?: string | null;
+  phone?: string;
 };
 
-function getDefaultOptions(name: string): OrderOption[] {
-  const normalized = name.trim().toLowerCase();
-
-  if (normalized.includes("silure")) {
-    return DEFAULT_OPTIONS.silure;
-  }
-
-  if (normalized.includes("porc")) {
-    return DEFAULT_OPTIONS.porc;
-  }
-
-  if (
-    normalized.includes("poulet") &&
-    normalized.includes("chair")
-  ) {
-    return DEFAULT_OPTIONS["poulet de chair"];
-  }
-
-  if (
-    normalized.includes("œuf") ||
-    normalized.includes("oeuf")
-  ) {
-    return DEFAULT_OPTIONS["œufs"];
-  }
-
-  return [];
+function clean(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
-function normalizeOptionValue(value: OrderOptionValue | string): OrderOptionValue {
+function finiteNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function normalizeValue(value: OptionValue | string): OptionValue {
   if (typeof value === "string") {
     return { label: value, available: true };
   }
+
   return {
     ...value,
     label: typeof value?.label === "string" ? value.label : "",
@@ -122,63 +78,127 @@ function normalizeOptionValue(value: OrderOptionValue | string): OrderOptionValu
   };
 }
 
-function getOptionValues(option: OrderOption): OrderOptionValue[] {
-  if (!Array.isArray(option.values)) return [];
-  return option.values
-    .map(normalizeOptionValue)
-    .filter((value) => value.label.trim().length > 0);
+/**
+ * Options par défaut utilisées uniquement lorsqu'aucune option
+ * n'est configurée pour le produit.
+ *
+ * L'état des silures, porcs, porcelets et poulets est déjà précisé
+ * dans le nom du produit : il ne doit donc pas être demandé une
+ * seconde fois.
+ */
+function defaultOptions(name: string): OrderOption[] {
+  const n = name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (
+    n.includes("silure") ||
+    n.includes("carpe") ||
+    n.includes("porc") ||
+    n.includes("poulet")
+  ) {
+    return [];
+  }
+
+  if (n.includes("oeuf")) {
+    return [
+      {
+        label: "Conditionnement",
+        values: ["1 alvéole", "2 alvéoles", "3 alvéoles"],
+      },
+    ];
+  }
+
+  return [];
 }
 
-function getVisibleOptions(
-  roots: OrderOption[],
-  selected: Record<string, string>
-): OrderOption[] {
-  const visible: OrderOption[] = [];
-  for (const option of roots) {
-    visible.push(option);
-    const chosen = getOptionValues(option).find(
-      (value) => value.label === selected[option.id || option.label]
-    );
-    if (chosen?.children?.length) {
-      visible.push(...getVisibleOptions(chosen.children, selected));
-    }
-  }
-  return visible;
+function optionKey(option: OrderOption): string {
+  return option.id || option.label;
 }
 
-function getSelectedPricedValue(
-  roots: OrderOption[],
-  selected: Record<string, string>
-): OrderOptionValue | null {
-  for (const option of roots) {
-    const chosen = getOptionValues(option).find(
-      (value) => value.label === selected[option.id || option.label]
+function valuesOf(option: OrderOption): OptionValue[] {
+  return Array.isArray(option.values)
+    ? option.values
+        .map(normalizeValue)
+        .filter((value) => value.label.trim())
+    : [];
+}
+
+function findSelectedPricedValue(
+  options: OrderOption[],
+  selections: Record<string, string>
+): OptionValue | null {
+  for (const option of options) {
+    const chosen = valuesOf(option).find(
+      (value) => value.label === selections[optionKey(option)]
     );
-    if (chosen) {
-      const nested = chosen.children?.length
-        ? getSelectedPricedValue(chosen.children, selected)
-        : null;
-      if (nested && (typeof nested.price_1 === "number" || typeof nested.price_2 === "number")) return nested;
-      if (typeof chosen.price_1 === "number" || typeof chosen.price_2 === "number") return chosen;
+
+    if (!chosen) continue;
+
+    if (chosen.children?.length) {
+      const nested = findSelectedPricedValue(
+        chosen.children,
+        selections
+      );
+
+      if (
+        nested &&
+        (typeof nested.price_1 === "number" ||
+          typeof nested.price_2 === "number")
+      ) {
+        return nested;
+      }
+    }
+
+    if (
+      typeof chosen.price_1 === "number" ||
+      typeof chosen.price_2 === "number"
+    ) {
+      return chosen;
     }
   }
+
   return null;
 }
 
 function getTierThreshold(label?: string | null): number | null {
   if (!label) return null;
+
   const match = label.match(/(?:à\s*partir\s*de|dès)\s*(\d+)/i);
+
   return match ? Number(match[1]) : null;
 }
 
-function getProductPrice(
-  product: HomeProduct | null,
+function priceFor(
+  product: HomeProduct,
+  options: OrderOption[],
+  selections: Record<string, string>,
   quantity: number
-) {
-  if (!product) return null;
+): number | null {
+  const selected = findSelectedPricedValue(options, selections);
 
-  // Applique le tarif de volume lorsqu'un seuil est défini
-  // dans le libellé du deuxième prix (ex. : « À partir de 30 kg »).
+  if (selected) {
+    const threshold = getTierThreshold(selected.price_2_label);
+
+    if (
+      threshold !== null &&
+      quantity >= threshold &&
+      typeof selected.price_2 === "number"
+    ) {
+      return selected.price_2;
+    }
+
+    if (typeof selected.price_1 === "number") {
+      return selected.price_1;
+    }
+
+    if (typeof selected.price_2 === "number") {
+      return selected.price_2;
+    }
+  }
+
   const threshold = getTierThreshold(product.price_2_label);
 
   if (
@@ -204,1044 +224,502 @@ function getProductPrice(
   return null;
 }
 
-export default function CommanderPage() {
-  const [products, setProducts] = useState<HomeProduct[]>([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
+/**
+ * Convertit un produit de la table products vers la structure
+ * historique utilisée par le moteur de commande.
+ */
+function normalizeCatalogProduct(product: any): HomeProduct {
+  const priceStandard = finiteNumber(product.price_standard);
+  const priceBulk = finiteNumber(product.price_bulk);
+  const bulkMinKg = finiteNumber(product.bulk_min_kg);
 
-  const [productId, setProductId] = useState("");
-  const [options, setOptions] = useState<Record<string, string>>({});
-
-  const [quantity, setQuantity] = useState(1);
-
-  const [type, setType] = useState(
-    "Particulier / Famille"
-  );
-
-  const [nom, setNom] = useState("");
-  const [tel, setTel] = useState("");
-
-  const [mode, setMode] = useState("Livraison");
-  const [lieu, setLieu] = useState("");
-  const [deliveryNeighborhood, setDeliveryNeighborhood] = useState("");
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const [step, setStep] = useState(1);
-
-  useEffect(() => {
-    async function loadProducts() {
-      try {
-        setLoadingProducts(true);
-
-        const response = await fetch(
-          "/api/catalog-products",
-          {
-            cache: "no-store",
-          }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data?.error ||
-              "Impossible de charger les produits."
-          );
-        }
-
-        const catalogProducts = Array.isArray(data?.products)
-          ? data.products
-          : [];
-
-        const availableProducts: HomeProduct[] =
-          catalogProducts.map((product: any) => {
-            const priceStandard =
-              typeof product.price_standard === "number"
-                ? product.price_standard
-                : Number(product.price_standard);
-
-            const priceBulk =
-              product.price_bulk === null ||
-              product.price_bulk === undefined ||
-              product.price_bulk === ""
-                ? null
-                : Number(product.price_bulk);
-
-            const bulkMinKg =
-              product.bulk_min_kg === null ||
-              product.bulk_min_kg === undefined ||
-              product.bulk_min_kg === ""
-                ? null
-                : Number(product.bulk_min_kg);
-
-            const stockStatus =
-              String(product.stock_status) as HomeProduct["status"];
-
-            return {
-              id: String(product.id),
-              name: String(product.name || ""),
-              description:
-                typeof product.description === "string"
-                  ? product.description
-                  : null,
-
-              status: stockStatus,
-
-              price:
-                Number.isFinite(priceStandard)
-                  ? priceStandard
-                  : null,
-
-              price_unit:
-                typeof product.unit === "string"
-                  ? product.unit
-                  : null,
-
-              price_1_label: null,
-
-              price_1:
-                Number.isFinite(priceStandard)
-                  ? priceStandard
-                  : null,
-
-              price_2_label:
-                priceBulk !== null &&
-                Number.isFinite(priceBulk) &&
-                bulkMinKg !== null &&
-                Number.isFinite(bulkMinKg)
-                  ? `À partir de ${bulkMinKg} kg`
-                  : null,
-
-              price_2:
-                priceBulk !== null &&
-                Number.isFinite(priceBulk)
-                  ? priceBulk
-                  : null,
-
-              order_enabled:
-                stockStatus === "disponible" &&
-                Number.isFinite(priceStandard),
-
-              order_options: [],
-
-              position: 0,
-
-              published: true,
-            };
-          });
-
-        setProducts(availableProducts);
-
-        const firstAvailable =
-          availableProducts.find(
-            (product) =>
-              product.status === "disponible" &&
-              product.order_enabled
-          );
-
-        if (firstAvailable) {
-          setProductId(firstAvailable.id);
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Impossible de charger les produits."
-        );
-      } finally {
-        setLoadingProducts(false);
-      }
-    }
-
-    loadProducts();
-  }, []);
-
-  const selectedProduct = useMemo(
-    () =>
-      products.find(
-        (product) => product.id === productId
-      ) || null,
-    [products, productId]
-  );
-
-  const selectedOptions = useMemo(() => {
-    if (!selectedProduct) return [];
-
-    const productName = selectedProduct.name
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-
-    const configuredOptions =
-      Array.isArray(selectedProduct.order_options) &&
-      selectedProduct.order_options.length > 0
-        ? selectedProduct.order_options
-        : getDefaultOptions(selectedProduct.name);
-
-    // Le porcelet est vendu à la pièce : il ne doit pas hériter des options du porc.
-    if (productName.includes("porcelet")) return [];
-
-    // Ne pas redemander une caractéristique déjà précisée dans le nom du produit.
-    return configuredOptions.filter((option) => {
-      const label = option.label
-        .trim()
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-
-      if (
-        label === "etat" &&
-        /\b(frais|fraiche|frais|fume|fumee)\b/.test(productName)
-      ) {
-        return false;
-      }
-
-      if (
-        label === "format" &&
-        /(\bentier\b|\bau kg\b|\bkg\b|\bpiece\b|\/kg|\/piece)/.test(productName)
-      ) {
-        return false;
-      }
-
-      if (label === "conditionnement" && productName.includes("alveol")) {
-        return false;
-      }
-
-      // Poulet vivant et poulet frais nettoyé ont déjà leur préparation définie.
-      if (
-        label === "preparation" &&
-        (productName.includes("vivant") || productName.includes("nettoye"))
-      ) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [selectedProduct]);
-
-  const visibleOptions = useMemo(
-    () => getVisibleOptions(selectedOptions, options),
-    [selectedOptions, options]
-  );
-
-  const selectedPricedValue = getSelectedPricedValue(selectedOptions, options);
-  const tierThreshold = getTierThreshold(selectedPricedValue?.price_2_label);
-  const optionPrice = selectedPricedValue
-    ? (tierThreshold !== null && quantity >= tierThreshold && typeof selectedPricedValue.price_2 === "number"
-        ? selectedPricedValue.price_2
-        : typeof selectedPricedValue.price_1 === "number"
-        ? selectedPricedValue.price_1
-        : typeof selectedPricedValue.price_2 === "number"
-        ? selectedPricedValue.price_2
-        : null)
-    : null;
-  const unitPrice = optionPrice ?? getProductPrice(selectedProduct, quantity);
-
-  const productTotal =
-    typeof unitPrice === "number"
-      ? unitPrice * quantity
+  const price2Label =
+    priceBulk !== null && bulkMinKg !== null
+      ? `À partir de ${bulkMinKg} kg`
       : null;
 
-  const deliveryFee =
-    mode === "Livraison"
-      ? getDeliveryFee(deliveryNeighborhood)
-      : 0;
+  const stockStatus = clean(product.stock_status);
 
-  const estimatedTotal =
-    productTotal !== null && deliveryFee !== null
-      ? productTotal + deliveryFee
-      : null;
+  return {
+    id: String(product.id),
+    name: clean(product.name),
+    description:
+      typeof product.description === "string"
+        ? product.description
+        : null,
+    status: stockStatus,
+    price: priceStandard,
+    price_unit: typeof product.unit === "string" ? product.unit : null,
+    price_1_label: null,
+    price_1: priceStandard,
+    price_2_label: price2Label,
+    price_2: priceBulk,
+    order_enabled:
+      stockStatus === "disponible" &&
+      priceStandard !== null &&
+      priceStandard >= 0,
+    order_options: [],
+    published: true,
+  };
+}
 
-  function selectProduct(product: HomeProduct) {
-    if (
-      product.status !== "disponible" ||
-      !product.order_enabled
-    ) {
-      return;
-    }
+/**
+ * Valide les options envoyées par le formulaire.
+ */
+function validateSelections(
+  options: OrderOption[],
+  selections: Record<string, string>
+): string | null {
+  const allowedKeys = new Set<string>();
 
-    setProductId(product.id);
-    setOptions({});
-    setError("");
-    setStep(1);
-  }
+  const walk = (items: OrderOption[]): string | null => {
+    for (const option of items) {
+      const key = optionKey(option);
+      allowedKeys.add(key);
 
-  function selectOption(
-    option: OrderOption,
-    value: string
-  ) {
-    const key = option.id || option.label;
-    setOptions((current) => {
-      const next = { ...current, [key]: value };
-      // Clear dependent choices when their parent selection changes.
-      const clearChildren = (items: OrderOption[]) => {
-        for (const item of items) {
-          delete next[item.id || item.label];
-          for (const itemValue of getOptionValues(item)) {
-            if (itemValue.children?.length) clearChildren(itemValue.children);
-          }
-        }
-      };
-      const chosenValue = getOptionValues(option).find((item) => item.label === value);
-      for (const itemValue of getOptionValues(option)) {
-        if (itemValue.children?.length && itemValue.label !== value) clearChildren(itemValue.children);
-      }
-      if (chosenValue?.children?.length) {
-        // Keep the selected branch; unrelated nested selections are cleared above.
-      }
-      return next;
-    });
-  }
+      const values = valuesOf(option);
+      const raw = selections[key];
 
-  function validateOptions() {
-    if (!selectedProduct) {
-      return "Merci de choisir un produit.";
-    }
-
-    if (selectedOptions.length === 0) {
-      return null;
-    }
-
-    for (const option of visibleOptions) {
-      const values = getOptionValues(option);
       if (option.type === "number") {
-        if (option.required !== false && !options[option.id || option.label]) {
+        if (option.required !== false && !raw) {
           return `Merci de renseigner : ${option.label}.`;
         }
+
+        if (raw !== undefined && raw !== "") {
+          const n = Number(raw);
+
+          if (!Number.isFinite(n) || n < 1) {
+            return `Valeur invalide pour : ${option.label}.`;
+          }
+        }
+
         continue;
       }
-      if (values.length > 0 && option.required !== false && !options[option.id || option.label]) {
+
+      if (option.required !== false && values.length > 0 && !raw) {
         return `Merci de choisir : ${option.label}.`;
       }
-      const selectedValue = values.find((value) => value.label === options[option.id || option.label]);
-      if (selectedValue && !selectedValue.available) {
-        return `${selectedValue.label} : pas encore disponible.`;
+
+      if (!raw) continue;
+
+      const chosen = values.find((value) => value.label === raw);
+
+      if (!chosen) {
+        return `Option invalide pour : ${option.label}.`;
+      }
+
+      if (chosen.available === false) {
+        return `${chosen.label} : pas encore disponible.`;
+      }
+
+      if (chosen.children?.length) {
+        const nestedError = walk(chosen.children);
+
+        if (nestedError) return nestedError;
       }
     }
 
     return null;
-  }
+  };
 
-  function goToStep2() {
-    setError("");
+  const error = walk(options);
 
-    const validation = validateOptions();
+  if (error) return error;
 
-    if (validation) {
-      setError(validation);
-      return;
+  for (const key of Object.keys(selections)) {
+    if (!allowedKeys.has(key)) {
+      return "Une option envoyée est invalide.";
     }
-
-    setStep(2);
   }
 
-  function goToStep3() {
-    setError("");
+  return null;
+}
 
-    if (!nom.trim() || !tel.trim()) {
-      setError(
-        "Merci de renseigner ton nom et ton numéro de téléphone."
+export async function POST(req: NextRequest) {
+  try {
+    const body = (await req.json()) as OrderBody;
+
+    const productId = clean(body.product_id);
+    const clientName = clean(body.client_name);
+    const phone = clean(body.phone);
+
+    if (!productId) {
+      return NextResponse.json(
+        { error: "Merci de choisir un produit." },
+        { status: 400 }
       );
-      return;
     }
 
-    if (!Number.isFinite(quantity) || quantity < 1) {
-      setError("Merci de renseigner une quantité valide.");
-      return;
+    if (!clientName || !phone) {
+      return NextResponse.json(
+        { error: "Nom et numéro de téléphone requis." },
+        { status: 400 }
+      );
     }
 
-    if (mode === "Livraison" && !deliveryNeighborhood) {
-      setError("Merci de préciser votre quartier.");
-      return;
+    if (clientName.length > 120 || phone.length > 40) {
+      return NextResponse.json(
+        { error: "Nom ou numéro trop long." },
+        { status: 400 }
+      );
+    }
+
+    const rawQuantity = finiteNumber(body.quantity);
+
+    if (
+      rawQuantity === null ||
+      !Number.isInteger(rawQuantity) ||
+      rawQuantity < 1 ||
+      rawQuantity > 10000
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "La quantité doit être un nombre entier entre 1 et 10 000.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const quantity = rawQuantity;
+
+    // 1. Recherche dans la nouvelle table products.
+    const { data: catalogProductData, error: catalogProductError } =
+      await supabaseAdmin()
+        .from("products")
+        .select("*")
+        .eq("id", productId)
+        .maybeSingle();
+
+    if (catalogProductError) {
+      console.error(
+        "Erreur lecture produit catalogue :",
+        catalogProductError
+      );
+    }
+
+    let product: HomeProduct | null = null;
+
+    if (catalogProductData) {
+      product = normalizeCatalogProduct(catalogProductData);
+    } else {
+      // 2. Compatibilité avec l'ancienne table home_products.
+      const { data: legacyProductData, error: legacyProductError } =
+        await supabaseAdmin()
+          .from("home_products")
+          .select("*")
+          .eq("id", productId)
+          .maybeSingle();
+
+      if (legacyProductError) {
+        console.error(
+          "Erreur lecture produit commande :",
+          legacyProductError
+        );
+
+        return NextResponse.json(
+          { error: "Impossible de vérifier le produit." },
+          { status: 500 }
+        );
+      }
+
+      if (legacyProductData) {
+        product = legacyProductData as HomeProduct;
+      }
+    }
+
+    if (!product) {
+      return NextResponse.json(
+        { error: "Ce produit n'existe plus." },
+        { status: 404 }
+      );
     }
 
     if (
-      mode === "Livraison" &&
-      isOtherNeighborhood(deliveryNeighborhood) &&
-      !lieu.trim()
+      product.published === false ||
+      product.status !== "disponible" ||
+      product.order_enabled !== true
     ) {
-      setError("Merci de saisir votre quartier.");
-      return;
-    }
-
-    setStep(3);
-  }
-
-  async function handleSubmit() {
-    setError("");
-
-    if (!selectedProduct) {
-      setError("Merci de choisir un produit.");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          product_id: selectedProduct.id,
-          product_name: selectedProduct.name,
-
-          options,
-
-          quantity,
-          quantity_kg:
-            selectedProduct.name
-              .toLowerCase()
-              .includes("silure") ||
-            selectedProduct.name
-              .toLowerCase()
-              .includes("porc")
-              ? quantity
-              : null,
-
-          unit_price: unitPrice,
-          total_price: estimatedTotal ?? productTotal,
-
-          client_type: type,
-          client_name: nom,
-          delivery_mode: mode,
-          delivery_location:
-            mode === "Livraison"
-              ? isOtherNeighborhood(deliveryNeighborhood)
-                ? lieu.trim()
-                : deliveryNeighborhood
-              : null,
-          phone: tel,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(
-          data?.error ||
-            "Erreur lors de l'enregistrement."
-        );
-      }
-
-      if (data?.whatsapp_url) {
-        window.location.href = data.whatsapp_url;
-      } else {
-        throw new Error(
-          "Le lien WhatsApp n'a pas été généré."
-        );
-      }
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Une erreur est survenue."
+      return NextResponse.json(
+        { error: "Ce produit n'est pas disponible à la commande." },
+        { status: 400 }
       );
-    } finally {
-      setLoading(false);
     }
+
+    /**
+     * Les options configurées sont prioritaires.
+     * Les options par défaut sont utilisées en secours.
+     */
+    const configuredOptions =
+      Array.isArray(product.order_options) &&
+      product.order_options.length > 0
+        ? product.order_options
+        : defaultOptions(product.name);
+
+    const selections =
+      body.options &&
+      typeof body.options === "object" &&
+      !Array.isArray(body.options)
+        ? body.options
+        : {};
+
+    for (const value of Object.values(selections)) {
+      if (typeof value !== "string" || value.length > 150) {
+        return NextResponse.json(
+          { error: "Options de commande invalides." },
+          { status: 400 }
+        );
+      }
+    }
+
+    const optionError = validateSelections(
+      configuredOptions,
+      selections
+    );
+
+    if (optionError) {
+      return NextResponse.json(
+        { error: optionError },
+        { status: 400 }
+      );
+    }
+
+    // Calcul du prix côté serveur.
+    const unitPrice = priceFor(
+      product,
+      configuredOptions,
+      selections,
+      quantity
+    );
+
+    const totalPrice =
+      unitPrice === null ? null : unitPrice * quantity;
+
+    if (
+      unitPrice !== null &&
+      (!Number.isFinite(unitPrice) ||
+        unitPrice < 0 ||
+        !Number.isFinite(totalPrice))
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Le prix du produit est invalide. Contactez Agrofarms237.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const clientType =
+      clean(body.client_type) || "Particulier / Famille";
+
+    const allowedClientTypes = [
+      "Particulier / Famille",
+      "Restaurant",
+      "Poissonnerie",
+    ];
+
+    if (!allowedClientTypes.includes(clientType)) {
+      return NextResponse.json(
+        { error: "Type de client invalide." },
+        { status: 400 }
+      );
+    }
+
+    const deliveryMode =
+      clean(body.delivery_mode) || "Livraison";
+
+    if (
+      !["Livraison", "Retrait à la ferme"].includes(deliveryMode)
+    ) {
+      return NextResponse.json(
+        { error: "Mode de récupération invalide." },
+        { status: 400 }
+      );
+    }
+
+    const deliveryLocation = clean(body.delivery_location) || null;
+
+    if (deliveryMode === "Livraison" && !deliveryLocation) {
+      return NextResponse.json(
+        { error: "Merci de renseigner le lieu de livraison." },
+        { status: 400 }
+      );
+    }
+
+    if (deliveryLocation && deliveryLocation.length > 250) {
+      return NextResponse.json(
+        { error: "Le lieu de livraison est trop long." },
+        { status: 400 }
+      );
+    }
+
+    const deliveryFee =
+      deliveryMode === "Livraison" && deliveryLocation
+        ? getDeliveryFee(deliveryLocation)
+        : deliveryMode === "Retrait à la ferme"
+          ? 0
+          : null;
+
+    const orderTotal =
+      totalPrice === null || deliveryFee === null
+        ? null
+        : totalPrice + deliveryFee;
+
+    const optionEntries = Object.entries(selections);
+
+    const optionText = optionEntries.map(([key, value]) => {
+      const findLabel = (items: OrderOption[]): string | null => {
+        for (const item of items) {
+          if (optionKey(item) === key) {
+            return item.label;
+          }
+
+          for (const optionValue of valuesOf(item)) {
+            if (optionValue.children?.length) {
+              const nested = findLabel(optionValue.children);
+
+              if (nested) return nested;
+            }
+          }
+        }
+
+        return null;
+      };
+
+      return `${findLabel(configuredOptions) || key} : ${value}`;
+    });
+
+    const finalProductName = optionText.length
+      ? `${product.name} — ${optionText.join(" | ")}`
+      : product.name;
+
+    const isKgProduct = /silure|porc/i.test(product.name);
+    const quantityKg = isKgProduct ? quantity : null;
+
+    const record = {
+      product_name: finalProductName,
+      quantity_kg: quantityKg,
+      unit_price: unitPrice,
+      total_price: totalPrice,
+      client_type: clientType,
+      client_name: clientName,
+      delivery_mode: deliveryMode,
+      delivery_location: deliveryLocation,
+      phone,
+      status: "nouveau",
+    };
+
+    const { data, error } = await supabaseAdmin()
+      .from("orders")
+      .insert(record)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Erreur enregistrement commande :", error);
+
+      return NextResponse.json(
+        { error: "Impossible d'enregistrer la commande." },
+        { status: 500 }
+      );
+    }
+
+    const lines = [
+      "Bonjour Agrofarms237, je souhaite passer une commande.",
+      "",
+      `Produit : ${product.name}`,
+    ];
+
+    if (optionText.length) {
+      lines.push(
+        "",
+        "Options :",
+        ...optionText.map((text) => `- ${text}`)
+      );
+    }
+
+    lines.push("", `Quantité : ${quantity}`);
+
+    if (quantityKg !== null) {
+      lines.push(`Quantité en kg : ${quantityKg} kg`);
+    }
+
+    if (unitPrice !== null) {
+      lines.push(`Prix unitaire : ${formatFCFA(unitPrice)}`);
+    }
+
+    if (totalPrice !== null) {
+      lines.push(`Produits : ${formatFCFA(totalPrice)}`);
+    } else {
+      lines.push("Produits : prix à confirmer avec Agrofarms237");
+    }
+
+    if (deliveryMode === "Livraison") {
+      if (deliveryLocation) {
+        lines.push(`Lieu de livraison : ${deliveryLocation}`);
+      }
+
+      if (deliveryFee !== null) {
+        lines.push(`Livraison : ${formatFCFA(deliveryFee)}`);
+      } else {
+        lines.push("Livraison : frais à confirmer avec Agrofarms237");
+      }
+    } else {
+      lines.push("Livraison : 0 FCFA (Retrait à la ferme)");
+    }
+
+    if (orderTotal !== null) {
+      lines.push(`Total estimatif : ${formatFCFA(orderTotal)}`);
+    } else {
+      lines.push("Total estimatif : à confirmer avec Agrofarms237");
+    }
+
+    lines.push(
+      "",
+      `Nom : ${clientName}`,
+      `Type de client : ${clientType}`,
+      `Mode : ${deliveryMode}`,
+      `Numéro à appeler : ${phone}`
+    );
+
+    return NextResponse.json({
+      order: data,
+      whatsapp_url: waLink(lines.join("\n")),
+    });
+  } catch (error) {
+    console.error("Erreur création commande :", error);
+
+    return NextResponse.json(
+      {
+        error:
+          "Une erreur est survenue lors de la création de la commande.",
+      },
+      { status: 500 }
+    );
   }
+}
 
-  if (loadingProducts) {
-    return (
-      <section className="px-5 py-[72px]">
-        <div className="mx-auto max-w-[1180px]">
-          <span className="mb-2.5 inline-block text-[13px] font-bold text-goldDeep">
-            Commande
-          </span>
-
-          <h1 className="font-serif text-[clamp(28px,4.5vw,42px)] font-semibold">
-            Choisir, commander, confirmer sur WhatsApp.
-          </h1>
-
-          <div className="mt-10 rounded-2xl border border-ink/10 bg-paper p-8 text-sm text-inkSoft">
-            Chargement des produits…
-          </div>
-        </div>
-      </section>
+// ADMIN : liste des commandes
+export async function GET() {
+  if (!(await isAdminAuthed())) {
+    return NextResponse.json(
+      { error: "Non autorisé" },
+      { status: 401 }
     );
   }
 
-  return (
-    <section className="px-5 py-[72px]">
-      <div className="mx-auto max-w-[1180px]">
-        <span className="mb-2.5 inline-block text-[13px] font-bold text-goldDeep">
-          Commande
-        </span>
+  const { data, error } = await supabaseAdmin()
+    .from("orders")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-        <h1 className="font-serif text-[clamp(28px,4.5vw,42px)] font-semibold">
-          Choisir, commander, confirmer sur WhatsApp.
-        </h1>
+  if (error) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
+  }
 
-        <p className="mt-2 max-w-[700px] text-inkSoft">
-          Choisis ton produit et ses options. La
-          commande sera ensuite récapitulée avant
-          confirmation sur WhatsApp.
-        </p>
-
-        {/* ÉTAPES */}
-
-        <div className="mt-8 flex flex-wrap gap-2">
-          {[
-            ["1", "Produit"],
-            ["2", "Informations"],
-            ["3", "Récapitulatif"],
-          ].map(([number, label]) => (
-            <div
-              key={number}
-              className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${
-                step === Number(number)
-                  ? "border-ink bg-ink text-white"
-                  : "border-ink/10 bg-paper text-inkSoft"
-              }`}
-            >
-              <span>{number}</span>
-              <span>{label}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* ÉTAPE 1 */}
-
-        {step === 1 && (
-          <div className="mt-10 max-w-[900px] rounded-2xl border border-ink/10 bg-paper p-6 md:p-9">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-[0.14em] text-goldDeep">
-                Étape 1
-              </span>
-
-              <h2 className="mt-2 font-serif text-2xl font-semibold">
-                Choisir un produit
-              </h2>
-            </div>
-
-            {products.length === 0 ? (
-              <div className="mt-7 rounded-xl border border-dashed border-ink/15 p-8 text-center text-sm text-inkSoft">
-                Aucun produit n'est actuellement
-                disponible.
-              </div>
-            ) : (
-              <div className="mt-7 grid gap-4 md:grid-cols-2">
-                {products.map((product) => {
-                  const available =
-                    product.status ===
-                      "disponible" &&
-                    product.order_enabled;
-
-                  const selected =
-                    product.id === productId;
-
-                  return (
-                    <button
-                      key={product.id}
-                      type="button"
-                      disabled={!available}
-                      onClick={() =>
-                        selectProduct(product)
-                      }
-                      className={`rounded-xl border p-5 text-left transition ${
-                        selected
-                          ? "border-ink bg-ink text-white"
-                          : available
-                          ? "border-ink/10 bg-bg hover:border-ink/30"
-                          : "cursor-not-allowed border-ink/10 bg-bg opacity-55"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p
-                            className={`text-xs font-bold uppercase tracking-[0.12em] ${
-                              selected
-                                ? "text-gold"
-                                : "text-goldDeep"
-                            }`}
-                          >
-                            Agrofarms237
-                          </p>
-
-                          <h3 className="mt-1 font-serif text-xl font-semibold">
-                            {product.name}
-                          </h3>
-                        </div>
-
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-bold ${
-                            available
-                              ? selected
-                                ? "bg-white/10 text-white"
-                                : "bg-ink/10 text-ink"
-                              : "bg-gold/10 text-goldDeep"
-                          }`}
-                        >
-                          {available
-                            ? "Disponible"
-                            : product.status ===
-                              "rupture"
-                            ? "Rupture"
-                            : "Bientôt disponible"}
-                        </span>
-                      </div>
-
-                      {product.description && (
-                        <p
-                          className={`mt-4 text-sm leading-6 ${
-                            selected
-                              ? "text-white/75"
-                              : "text-inkSoft"
-                          }`}
-                        >
-                          {product.description}
-                        </p>
-                      )}
-
-                      {unitPrice &&
-                        selected && (
-                          <p className="mt-4 text-sm font-semibold">
-                            À partir de{" "}
-                            {formatFCFA(
-                              unitPrice
-                            )}
-                            {product.price_unit
-                              ? ` / ${product.price_unit}`
-                              : ""}
-                          </p>
-                        )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {selectedProduct && (
-              <>
-                {/* OPTIONS */}
-
-                {selectedOptions.length > 0 && (
-                  <div className="mt-9 border-t border-ink/10 pt-8">
-                    <h3 className="font-serif text-xl font-semibold">Choisir les options</h3>
-                    <div className="mt-6 grid gap-6">
-                      {visibleOptions.map((option) => {
-                        const optionKey = option.id || option.label;
-                        const values = getOptionValues(option);
-                        if (option.type === "number") {
-                          return (
-                            <div key={optionKey}>
-                              <label className="mb-3 block text-sm font-bold">{option.label}</label>
-                              <input
-                                type="number"
-                                min={1}
-                                value={options[optionKey] || ""}
-                                onChange={(e) => setOptions((current) => ({ ...current, [optionKey]: e.target.value }))}
-                                className="w-full max-w-[280px] rounded-lg border border-ink/15 bg-bg px-4 py-3"
-                              />
-                            </div>
-                          );
-                        }
-                        if (values.length === 0) return null;
-                        return (
-                          <div key={optionKey}>
-                            <label className="mb-3 block text-sm font-bold">{option.label}</label>
-                            <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
-                              {values.map((value) => {
-                                const active = options[optionKey] === value.label;
-                                const unavailable = !value.available;
-                                return (
-                                  <button
-                                    type="button"
-                                    key={value.id || value.label}
-                                    disabled={unavailable}
-                                    onClick={() => selectOption(option, value.label)}
-                                    className={`rounded-lg border px-4 py-3 text-left text-sm font-semibold transition ${
-                                      active ? "border-ink bg-ink text-white" : "border-ink/15 bg-bg hover:border-ink/40"
-                                    } ${unavailable ? "cursor-not-allowed opacity-50" : ""}`}
-                                  >
-                                    <span className="block">{value.label}</span>
-                                    {unavailable && <span className="mt-1 block text-xs font-medium">Pas encore disponible</span>}
-                                    {(typeof value.price_1 === "number" || typeof value.price_2 === "number") && (
-                                      <span className="mt-1 block text-xs font-medium">
-                                        {value.price_1_label ? `${value.price_1_label} : ` : ""}
-                                        {typeof value.price_1 === "number" ? formatFCFA(value.price_1) : ""}
-                                        {typeof value.price_2 === "number" ? ` · ${value.price_2_label ? `${value.price_2_label} : ` : ""}${formatFCFA(value.price_2)}` : ""}
-                                        {value.price_unit ? ` / ${value.price_unit}` : ""}
-                                      </span>
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* QUANTITÉ */}
-
-                <div className="mt-9 border-t border-ink/10 pt-8">
-                  <div className="max-w-[280px]">
-                    <label className="mb-2 block text-sm font-bold">
-                      Quantité
-                    </label>
-
-                    <input
-                      type="number"
-                      min={1}
-                      value={quantity === 0 ? "" : quantity}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        if (raw === "") {
-                          setQuantity(0);
-                          return;
-                        }
-                        const next = Number(raw);
-                        if (Number.isFinite(next)) setQuantity(next);
-                      }}
-                      onBlur={() => {
-                        if (!quantity || quantity < 1) setQuantity(1);
-                      }}
-                      className="w-full rounded-lg border border-ink/15 bg-bg px-4 py-3 outline-none focus:border-goldDeep"
-                    />
-                  </div>
-                </div>
-
-                {unitPrice !== null && (
-                  <div className="mt-8 rounded-xl bg-water p-5 text-paper">
-                    <p className="text-sm text-paper/65">
-                      Estimation
-                    </p>
-
-                    <p className="mt-1 font-serif text-3xl font-semibold">
-                      {formatFCFA(productTotal || 0)}
-                    </p>
-
-                    <p className="mt-1 text-xs text-paper/60">
-                      {quantity} ×{" "}
-                      {formatFCFA(unitPrice)}
-                      {(selectedPricedValue?.price_unit || selectedProduct.price_unit)
-                        ? ` / ${selectedPricedValue?.price_unit || selectedProduct.price_unit}`
-                        : ""}
-                    </p>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={goToStep2}
-                  className="mt-8 rounded-lg bg-ink px-6 py-3 text-sm font-bold text-white transition hover:opacity-90"
-                >
-                  Continuer
-                </button>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ÉTAPE 2 */}
-
-        {step === 2 && (
-          <div className="mt-10 max-w-[900px] rounded-2xl border border-ink/10 bg-paper p-6 md:p-9">
-            <span className="text-xs font-bold uppercase tracking-[0.14em] text-goldDeep">
-              Étape 2
-            </span>
-
-            <h2 className="mt-2 font-serif text-2xl font-semibold">
-              Tes informations
-            </h2>
-
-            <div className="mt-7 grid gap-5 sm:grid-cols-2">
-              <div className="field">
-                <label>Nom</label>
-
-                <input
-                  value={nom}
-                  onChange={(e) =>
-                    setNom(e.target.value)
-                  }
-                  placeholder="Votre nom"
-                />
-              </div>
-
-              <div className="field">
-                <label>Numéro à appeler</label>
-
-                <input
-                  type="tel"
-                  value={tel}
-                  onChange={(e) =>
-                    setTel(e.target.value)
-                  }
-                  placeholder="6XX XXX XXX"
-                />
-              </div>
-
-              <div className="field">
-                <label>Type de client</label>
-
-                <select
-                  value={type}
-                  onChange={(e) =>
-                    setType(e.target.value)
-                  }
-                >
-                  <option>
-                    Particulier / Famille
-                  </option>
-                  <option>Restaurant</option>
-                  <option>Poissonnerie</option>
-                </select>
-              </div>
-
-              <div className="field">
-                <label>
-                  Mode de récupération
-                </label>
-
-                <div className="flex gap-2.5">
-                  {[
-                    "Livraison",
-                    "Retrait à la ferme",
-                  ].map((m) => (
-                    <button
-                      type="button"
-                      key={m}
-                      onClick={() => {
-                        setMode(m);
-                        if (m === "Retrait à la ferme") {
-                          setDeliveryNeighborhood("");
-                          setLieu("");
-                        }
-                      }}
-                      className={`flex-1 rounded-lg border px-3 py-3 text-center text-sm font-bold ${
-                        mode === m
-                          ? "border-water bg-water text-white"
-                          : "border-ink/15 bg-bg"
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {mode === "Livraison" && (
-                <div className="field sm:col-span-2">
-                  <label>
-                    Précisez votre quartier
-                  </label>
-
-                  <select
-                    value={deliveryNeighborhood}
-                    onChange={(e) => {
-                      setDeliveryNeighborhood(e.target.value);
-                      if (!isOtherNeighborhood(e.target.value)) setLieu("");
-                    }}
-                  >
-                    <option value="">Sélectionnez votre quartier</option>
-                    {DELIVERY_ZONES.flatMap((zone) =>
-                      zone.neighborhoods.map((neighborhood) => (
-                        <option key={neighborhood} value={neighborhood}>
-                          {neighborhood}
-                        </option>
-                      ))
-                    )}
-                    <option value="__OTHER__">Autre quartier</option>
-                  </select>
-
-                  {deliveryNeighborhood && !isOtherNeighborhood(deliveryNeighborhood) && (
-                    <p className="mt-2 text-sm font-semibold text-inkSoft">
-                      Frais de livraison : {formatFCFA(getDeliveryFee(deliveryNeighborhood) || 0)}
-                    </p>
-                  )}
-
-                  {isOtherNeighborhood(deliveryNeighborhood) && (
-                    <div className="mt-3">
-                      <input
-                        value={lieu}
-                        onChange={(e) => setLieu(e.target.value)}
-                        placeholder="Saisissez votre quartier"
-                      />
-                      <p className="mt-2 text-sm leading-5 text-inkSoft">
-                        Les frais de livraison pour ce quartier seront évalués par notre équipe et confirmés directement sur WhatsApp.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="rounded-lg border border-ink/15 px-6 py-3 text-sm font-bold"
-              >
-                Retour
-              </button>
-
-              <button
-                type="button"
-                onClick={goToStep3}
-                className="rounded-lg bg-ink px-6 py-3 text-sm font-bold text-white"
-              >
-                Voir le récapitulatif
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ÉTAPE 3 */}
-
-        {step === 3 && selectedProduct && (
-          <div className="mt-10 max-w-[900px] rounded-2xl border border-ink/10 bg-paper p-6 md:p-9">
-            <span className="text-xs font-bold uppercase tracking-[0.14em] text-goldDeep">
-              Étape 3
-            </span>
-
-            <h2 className="mt-2 font-serif text-2xl font-semibold">
-              Récapitulatif de la commande
-            </h2>
-
-            <div className="mt-7 divide-y divide-ink/10 rounded-xl border border-ink/10">
-              <div className="flex justify-between gap-5 p-4">
-                <span className="text-sm text-inkSoft">
-                  Produit
-                </span>
-
-                <strong>
-                  {selectedProduct.name}
-                </strong>
-              </div>
-
-              {Object.entries(options).map(([key, value]) => {
-                const findLabel = (items: OrderOption[]): string | null => {
-                  for (const item of items) {
-                    if ((item.id || item.label) === key) return item.label;
-                    for (const itemValue of getOptionValues(item)) {
-                      const nested = itemValue.children?.length ? findLabel(itemValue.children) : null;
-                      if (nested) return nested;
-                    }
-                  }
-                  return null;
-                };
-                const optionLabel = findLabel(selectedOptions) || key;
-                return (
-                  <div key={key} className="flex justify-between gap-5 p-4">
-                    <span className="text-sm text-inkSoft">{optionLabel}</span>
-                    <strong>{String(value)}</strong>
-                  </div>
-                );
-              })}
-
-              <div className="flex justify-between gap-5 p-4">
-                <span className="text-sm text-inkSoft">
-                  Quantité
-                </span>
-
-                <strong>{quantity}</strong>
-              </div>
-
-              <div className="flex justify-between gap-5 p-4">
-                <span className="text-sm text-inkSoft">
-                  Client
-                </span>
-
-                <strong>{nom}</strong>
-              </div>
-
-              <div className="flex justify-between gap-5 p-4">
-                <span className="text-sm text-inkSoft">
-                  Téléphone
-                </span>
-
-                <strong>{tel}</strong>
-              </div>
-
-              <div className="flex justify-between gap-5 p-4">
-                <span className="text-sm text-inkSoft">
-                  Récupération
-                </span>
-
-                <strong>{mode}</strong>
-              </div>
-
-              {mode === "Livraison" && (
-                <>
-                  <div className="flex justify-between gap-5 p-4">
-                    <span className="text-sm text-inkSoft">Quartier</span>
-                    <strong className="text-right">
-                      {isOtherNeighborhood(deliveryNeighborhood) ? lieu : deliveryNeighborhood}
-                    </strong>
-                  </div>
-                  <div className="flex justify-between gap-5 p-4">
-                    <span className="text-sm text-inkSoft">Livraison</span>
-                    <strong className="text-right">
-                      {deliveryFee !== null ? formatFCFA(deliveryFee) : "À confirmer"}
-                    </strong>
-                  </div>
-                  {isOtherNeighborhood(deliveryNeighborhood) && (
-                    <div className="border-t border-ink/10 px-4 py-3 text-sm leading-5 text-inkSoft">
-                      Les frais de livraison pour ce quartier seront évalués par notre équipe et confirmés directement sur WhatsApp.
-                    </div>
-                  )}
-                </>
-              )}
-
-              {productTotal !== null && (
-                <div className="flex justify-between gap-5 p-4">
-                  <span className="text-sm text-inkSoft">Produits</span>
-                  <strong>{formatFCFA(productTotal)}</strong>
-                </div>
-              )}
-
-              <div className="flex justify-between gap-5 bg-water p-5 text-paper">
-                <span className="font-semibold">Total estimatif</span>
-                <strong className="font-serif text-2xl">
-                  {estimatedTotal !== null ? formatFCFA(estimatedTotal) : "À confirmer"}
-                </strong>
-              </div>
-            </div>
-
-            <p className="mt-6 text-sm leading-6 text-inkSoft">
-              Aucun paiement en ligne. Après validation,
-              tu seras redirigé vers WhatsApp pour
-              confirmer directement ta commande avec
-              Agrofarms237.
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                className="rounded-lg border border-ink/15 px-6 py-3 text-sm font-bold"
-              >
-                Modifier
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={loading}
-                className="btn btn-wa"
-              >
-                {loading
-                  ? "Enregistrement..."
-                  : "Confirmer sur WhatsApp"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <p className="mt-4 max-w-[900px] text-sm font-semibold text-alert">
-            {error}
-          </p>
-        )}
-      </div>
-    </section>
-  );
+  return NextResponse.json({ orders: data });
 }
-
