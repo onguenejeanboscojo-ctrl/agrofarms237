@@ -367,12 +367,12 @@ export default function HomeProductOrderModal({
     setSubmitting(false);
   }
 
+  // Ferme la fenêtre même si une requête est en cours.
+  // Une requête déjà envoyée au serveur peut toutefois continuer.
   function close() {
-    if (!submitting) {
-      dialogRef.current?.close();
-      setOpen(false);
-      reset();
-    }
+    setOpen(false);
+    if (dialogRef.current?.open) dialogRef.current.close();
+    reset();
   }
 
   function validateOptions() {
@@ -517,7 +517,6 @@ export default function HomeProductOrderModal({
               <button
                 type="button"
                 onClick={close}
-                disabled={submitting}
                 className="rounded-full border border-[#173D2D]/10 px-3 py-2 text-sm text-[#52645A] hover:bg-[#EDE9DE]"
                 aria-label="Fermer"
               >
