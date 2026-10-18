@@ -82,28 +82,28 @@ const sectors = [
     number: "01",
     title: "Pisciculture",
     label: "Production aquacole",
-    text: "Une activité déjà engagée, intégrée à la trajectoire de développement de la ferme.",
+    text: "Notre point de départ : l’élevage de silures et le développement de notre production aquacole.",
     accent: "Pisciculture",
   },
   {
     number: "02",
     title: "Élevage porcin",
     label: "Développement",
-    text: "Une nouvelle filière appelée à rejoindre progressivement les productions de la ferme.",
+    text: "Nous préparons le développement de l’élevage porcin pour diversifier nos productions.",
     accent: "Élevage porcin",
   },
   {
     number: "03",
     title: "Aviculture",
     label: "Poulets de chair et autres productions",
-    text: "Une filière développée progressivement pour élargir l’offre agricole d’Agrofarms237.",
+    text: "Des poulets et de nouvelles productions avicoles pour répondre progressivement aux besoins de nos clients.",
     accent: "Aviculture",
   },
   {
     number: "04",
     title: "Agriculture",
     label: "Terres cultivables",
-    text: "Des espaces cultivables qui participent à la vision globale de développement de la ferme.",
+    text: "À terme, développer aussi les cultures pour enrichir notre activité agricole.",
     accent: "Agriculture",
   },
 ];
@@ -111,18 +111,18 @@ const sectors = [
 const commitments = [
   {
     number: "01",
-    title: "Produire localement",
-    text: "Développer une activité agricole ancrée au Cameroun et proche de ses clients.",
+    title: "Ancrés au Cameroun",
+    text: "Développer une ferme locale, en lien avec les besoins de ses clients.",
   },
   {
     number: "02",
-    title: "Avancer progressivement",
-    text: "Construire chaque filière étape par étape, avec une vision de développement sur le long terme.",
+    title: "Construire durablement",
+    text: "Faire progresser chaque filière étape par étape, sans brûler les étapes.",
   },
   {
     number: "03",
-    title: "Créer de la valeur",
-    text: "Transformer progressivement la production agricole en une offre utile aux particuliers comme aux professionnels.",
+    title: "Servir plusieurs besoins",
+    text: "Développer une offre utile aux familles, aux commerces et aux professionnels.",
   },
 ];
 
@@ -168,7 +168,7 @@ export default async function Home() {
               </p>
 
               <p className="hidden text-[10px] font-medium uppercase tracking-[0.22em] text-white/60 sm:block">
-                La qualité commence à la ferme.
+                Du travail de la ferme à votre quotidien.
               </p>
             </div>
 
@@ -178,17 +178,15 @@ export default async function Home() {
               </p>
 
               <h1 className="max-w-[900px] text-[clamp(3.3rem,8vw,8rem)] font-semibold leading-[0.88] tracking-[-0.065em] text-white">
-                Une ferme.
+                Une ferme qui
                 <br />
                 <span className="font-light italic text-[#E8C98A]">
-                  Plusieurs productions.
+                  prépare l’avenir.
                 </span>
               </h1>
 
               <p className="mt-7 max-w-[650px] text-[15px] leading-7 text-white/80 sm:text-lg sm:leading-8">
-                Agrofarms237 développe progressivement une activité agricole
-                camerounaise autour de la pisciculture, de l’élevage, de
-                l’aviculture et de l’agriculture.
+                De nos silures à nos projets d’élevage, Agrofarms237 construit au Cameroun une ferme diversifiée, avec une ambition simple : développer des productions locales et les rendre accessibles à nos clients.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
@@ -196,14 +194,14 @@ export default async function Home() {
                   href="/produits"
                   className="inline-flex min-h-[54px] items-center justify-center rounded-full bg-[#E8C98A] px-8 text-sm font-bold text-[#173D2D] transition duration-300 hover:-translate-y-0.5 hover:bg-white"
                 >
-                  Découvrir nos produits
+                  Voir nos produits
                 </Link>
 
                 <Link
                   href="/notre-elevage"
                   className="inline-flex min-h-[54px] items-center justify-center rounded-full border border-white/40 bg-white/[0.04] px-8 text-sm font-semibold text-white backdrop-blur-sm transition duration-300 hover:-translate-y-0.5 hover:bg-white/10"
                 >
-                  Découvrir notre ferme
+                  Entrer dans notre univers
                 </Link>
               </div>
             </div>
@@ -253,35 +251,31 @@ export default async function Home() {
                 Notre ferme
               </p>
               <p className="mt-2 max-w-[430px] text-xl font-semibold leading-tight text-white sm:text-2xl">
-                Une exploitation agricole construite progressivement autour
-                de plusieurs filières.
+                Une ferme qui grandit, des productions qui se développent, une vision qui prend forme.
               </p>
             </div>
           </div>
 
           <div className="flex flex-col justify-center p-7 sm:p-10 lg:p-12">
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#B7863D]">
-              Une ferme en développement
+              Notre histoire, en action
             </p>
 
             <h2 className="mt-4 max-w-[620px] text-[clamp(2.3rem,4.5vw,4.2rem)] font-semibold leading-[0.98] tracking-[-0.05em] text-[#173D2D]">
-              Produire aujourd’hui.
+              Partir du concret.
               <br />
-              <span className="font-light italic">Construire demain.</span>
+              <span className="font-light italic">Faire grandir ambition.</span>
             </h2>
 
             <p className="mt-6 max-w-[560px] text-[15px] leading-7 text-[#66756B]">
-              Agrofarms237 est une ferme réelle qui évolue progressivement.
-              La pisciculture constitue un point de départ, tandis que
-              l’aviculture, l’élevage porcin et l’agriculture s’intègrent à
-              notre trajectoire de développement.
+              Nous avons commencé par la pisciculture et faisons grandir Agrofarms237 étape par étape. L’aviculture, l’élevage porcin et l’agriculture s’inscrivent dans cette ambition : bâtir une ferme diversifiée, ancrée au Cameroun.
             </p>
 
             <Link
               href="/notre-elevage"
               className="mt-7 inline-flex w-fit min-h-[48px] items-center justify-center rounded-full border border-[#173D2D]/20 px-6 text-sm font-semibold text-[#173D2D] transition duration-300 hover:bg-[#173D2D] hover:text-white"
             >
-              Découvrir notre ferme
+              Entrer dans notre univers
             </Link>
           </div>
         </div>
@@ -292,19 +286,17 @@ export default async function Home() {
         <div className="grid gap-8 lg:grid-cols-[0.75fr_1.25fr] lg:items-end">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#B7863D]">
-              Nos filières
+              Une ferme, plusieurs voies
             </p>
 
             <h2 className="mt-4 max-w-[500px] text-[clamp(2.5rem,5vw,4.7rem)] font-semibold leading-[0.98] tracking-[-0.055em]">
-              Une vision
-              <span className="font-light italic"> diversifiée.</span>
+              Des productions
+              <span className="font-light italic"> qui se complètent.</span>
             </h2>
           </div>
 
           <p className="max-w-[620px] text-[15px] leading-7 text-[#66756B] lg:justify-self-end">
-            Agrofarms237 ne se limite pas à une seule production. Notre
-            objectif est de construire progressivement une ferme capable de
-            développer plusieurs activités agricoles complémentaires.
+            Chaque filière a son rôle. Nous développons nos activités progressivement pour bâtir une ferme plus diversifiée et proposer, au fil du temps, une offre qui répond à différents besoins.
           </p>
         </div>
 
@@ -346,21 +338,19 @@ export default async function Home() {
           <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#E8C98A]">
-                Nos productions
+                À découvrir à la ferme
               </p>
 
               <h2 className="mt-4 max-w-[560px] text-[clamp(2.5rem,5vw,4.7rem)] font-semibold leading-[0.98] tracking-[-0.05em]">
-                De la ferme
+                Des productions locales,
                 <span className="font-light italic text-[#E8C98A]">
-                  {" "}à votre table.
+                  {" "}au plus près de vous.
                 </span>
               </h2>
             </div>
 
             <p className="max-w-[620px] text-[15px] leading-7 text-white/60 lg:justify-self-end">
-              Découvrez les productions actuellement proposées par
-              Agrofarms237 ainsi que celles qui rejoindront progressivement
-              notre catalogue.
+              Explorez les produits disponibles aujourd’hui et découvrez les productions qui viendront enrichir notre offre au fil du développement de une vision.
             </p>
           </div>
         </div>
@@ -374,32 +364,32 @@ export default async function Home() {
           <div className="grid gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-24">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#B7863D]">
-                Notre vision
+                Notre ambition
               </p>
 
               <h2 className="mt-4 text-[clamp(2.6rem,5vw,5rem)] font-semibold leading-[0.96] tracking-[-0.055em] text-[#173D2D]">
-                Grandir avec
+                Faire grandir
                 <br />
-                <span className="font-light italic">la ferme.</span>
+                <span className="font-light italic">une vision.</span>
               </h2>
 
               <p className="mt-7 max-w-[560px] text-[15px] leading-8 text-[#66756B]">
-                Notre ambition est de développer Agrofarms237 sur plusieurs
-                cycles de production, en renforçant progressivement nos
-                infrastructures, nos compétences et nos filières.
+                Notre ambition se construit dans la durée : renforcer nos
+                installations, améliorer nos pratiques et développer nos
+                différentes filières au rythme de la ferme.
               </p>
 
               <p className="mt-5 max-w-[560px] text-[15px] leading-8 text-[#66756B]">
-                Chaque nouvelle activité doit pouvoir s’intégrer à une ferme
-                cohérente, capable de répondre progressivement aux besoins des
-                consommateurs camerounais.
+                Nous voulons bâtir une exploitation cohérente, capable de mieux
+                répondre aux besoins des consommateurs et des professionnels
+                au Cameroun.
               </p>
 
               <Link
                 href="/la-vie-de-la-ferme"
                 className="mt-8 inline-flex min-h-[48px] items-center justify-center rounded-full bg-[#173D2D] px-7 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#245541]"
               >
-                Découvrir notre histoire
+                Suivre notre évolution
               </Link>
             </div>
 
@@ -431,18 +421,16 @@ export default async function Home() {
       <section className="mx-auto max-w-[1320px] px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
         <div className="max-w-[760px]">
           <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#B7863D]">
-            Collaborer avec Agrofarms237
+            Grandissons ensemble
           </p>
 
           <h2 className="mt-4 text-[clamp(2.5rem,5vw,4.7rem)] font-semibold leading-[0.98] tracking-[-0.05em]">
-            Une ferme ouverte
-            <span className="font-light italic"> aux opportunités.</span>
+            Des besoins différents,
+            <span className="font-light italic"> des partenariats utiles.</span>
           </h2>
 
           <p className="mt-6 max-w-[650px] text-[15px] leading-8 text-[#66756B]">
-            Notre développement passe aussi par des collaborations avec les
-            professionnels de l’alimentation et avec des partenaires qui
-            souhaitent participer à la construction de projets agricoles.
+            Vous êtes restaurateur, commerçant ou porteur de projet agricole ? Échangeons sur vos besoins et explorons les possibilités de collaboration avec Agrofarms237.
           </p>
         </div>
 
@@ -475,13 +463,11 @@ export default async function Home() {
                 </p>
 
                 <h3 className="mt-6 max-w-[500px] text-3xl font-semibold leading-tight tracking-[-0.03em] sm:text-4xl">
-                  Approvisionner votre activité avec une ferme locale.
+                  Pour vos achats professionnels, parlons de vos besoins.
                 </h3>
 
                 <p className="mt-5 max-w-[500px] text-sm leading-7 text-white/60">
-                  Restaurants, commerces, distributeurs et autres acteurs de
-                  l’alimentation peuvent échanger directement avec
-                  Agrofarms237.
+                  Restaurants, commerces et revendeurs : contactez-nous pour échanger sur les produits disponibles, les quantités et vos besoins d’approvisionnement.
                 </p>
               </div>
 
@@ -528,13 +514,11 @@ export default async function Home() {
                 </p>
 
                 <h3 className="mt-6 max-w-[500px] text-3xl font-bold leading-tight tracking-[-0.03em] text-white sm:text-4xl">
-                  Construire l’agriculture de demain ensemble.
+                  Construisons l’agriculture de demain ensemble.
                 </h3>
 
                 <p className="mt-5 max-w-[500px] text-sm leading-7 text-white sm:text-base sm:leading-8">
-                  Découvrez notre trajectoire de développement et les
-                  différentes manières de contribuer à la croissance de la
-                  ferme.
+                  Vous souhaitez contribuer à un projet agricole en développement ? Découvrez notre démarche et prenons contact pour discuter des possibilités de partenariat.
                 </p>
               </div>
 
@@ -568,16 +552,15 @@ export default async function Home() {
               </p>
 
               <h2 className="mt-5 text-[clamp(2.7rem,6vw,6rem)] font-semibold leading-[0.92] tracking-[-0.055em] text-white">
-                La qualité
+                L’aventure
                 <br />
                 <span className="font-light italic text-[#E8C98A]">
-                  commence à la ferme.
+                  commence à une vision.
                 </span>
               </h2>
 
               <p className="mt-7 max-w-[620px] text-[15px] leading-8 text-white/65 sm:text-lg">
-                Découvrez nos productions, notre ferme et les projets qui
-                construisent progressivement Agrofarms237.
+                Découvrez nos produits, suivez l’évolution de la ferme et prenez part à l’aventure Agrofarms237.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
@@ -585,14 +568,14 @@ export default async function Home() {
                   href="/produits"
                   className="inline-flex min-h-[54px] items-center justify-center rounded-full bg-[#E8C98A] px-8 text-sm font-bold text-[#173D2D] transition hover:-translate-y-0.5 hover:bg-white"
                 >
-                  Découvrir nos produits
+                  Voir nos produits
                 </Link>
 
                 <Link
                   href="/contact"
                   className="inline-flex min-h-[54px] items-center justify-center rounded-full border border-white/35 px-8 text-sm font-semibold text-white transition hover:bg-white hover:text-[#173D2D]"
                 >
-                  Nous contacter
+                  Parlons de votre projet
                 </Link>
               </div>
             </div>
@@ -620,13 +603,13 @@ export default async function Home() {
                   </p>
 
                   <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.25em] text-white/45">
-                    La qualité commence à la ferme.
+                    Du travail de la ferme à votre quotidien.
                   </p>
                 </div>
               </div>
 
               <p className="mt-6 max-w-[430px] text-sm leading-7 text-white/55">
-                Une ferme agricole camerounaise qui développe
+                Une ferme camerounaise en mouvement qui développe
                 progressivement plusieurs filières de production.
               </p>
             </div>
@@ -724,7 +707,7 @@ export default async function Home() {
             </p>
 
             <p className="font-semibold uppercase tracking-[0.18em] text-[#E8C98A]/70">
-              Produire aujourd’hui, construire demain.
+              Une ferme qui grandit, une vision qui avance.
             </p>
           </div>
         </div>
