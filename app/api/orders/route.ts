@@ -91,8 +91,8 @@ function normalizeValue(value: OptionValue | string): OptionValue {
 function defaultOptions(name: string): OrderOption[] {
   const n = normalizeName(name);
 
-  // Le produit indique déjà sa variante dans son nom.
-  // Le porcelet ne doit pas hériter des options du porc.
+  // Ces produits sont identifiés par leur nom.
+  // Ils ne doivent pas hériter d'anciennes options par défaut.
   if (
     n.includes("silure") ||
     n.includes("carpe") ||
@@ -448,8 +448,7 @@ export async function POST(req: NextRequest) {
 
     /**
      * Pour le silure et le porcelet, on ignore les anciennes options
-     * enregistrées dans le catalogue. Les autres produits conservent
-     * leurs options configurées.
+     * enregistrées dans le catalogue.
      */
     const normalizedProductName = normalizeName(product.name);
 
@@ -464,10 +463,20 @@ export async function POST(req: NextRequest) {
         ? product.order_options
         : defaultOptions(product.name);
 
-    const selections =
-      body.options &&
-      typeof body.options === "object" &&
-      !Array.isArray(body.options)
+    /**
+     * CORRECTION :
+     * Pour le silure et le porcelet, ignore toutes les anciennes sélections
+     * envoyées par le formulaire. Cela évite l'erreur
+     * « Une option envoyée est invalide ».
+     *
+     * Pour les autres produits, les options reçues sont conservées
+     * et validées normalement.
+     */
+    const selections: Record<string, string> = ignoreConfiguredOptions
+      ? {}
+      : body.options &&
+          typeof body.options === "object" &&
+          !Array.isArray(body.options)
         ? body.options
         : {};
 
